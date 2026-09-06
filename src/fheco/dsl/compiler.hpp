@@ -65,6 +65,17 @@ public:
 
   static void gen_vectorized_code(const std::shared_ptr<ir::Func> &func, int window, int optimization_method, float w_ops, float w_keys);
   
+  // 3-argument public overloads for legacy benchmarks
+  static inline void gen_vectorized_code(const std::shared_ptr<ir::Func> &func, int window, int optimization_method)
+  {
+    gen_vectorized_code(func, window, optimization_method, 1.0f, 0.0f);
+  }
+
+  static inline void gen_vectorized_code(const std::shared_ptr<ir::Func> &func, int optimization_method)
+  {
+    gen_vectorized_code(func, optimization_method, 1.0f, 0.0f);
+  }
+
   static void gen_he_code(
     const std::shared_ptr<ir::Func> &func, std::ostream &header_os, std::string_view header_name,
     std::ostream &source_os, std::size_t rotation_keys_threshold = std::numeric_limits<std::size_t>::max(),

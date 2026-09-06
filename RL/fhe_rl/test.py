@@ -63,7 +63,7 @@ def test_agent(
     for budget in test_budgets:
         print(f"\n{'='*60}")
         print(f"  Testing with budget = {budget}")
-        print(f"{='*60}")
+        print(f"{'='*60}")
 
         env.set_options({"budget": budget})
 
