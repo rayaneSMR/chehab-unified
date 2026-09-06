@@ -1,15 +1,14 @@
-
 from expr import Expr, Var, Const, Op
 from serializer import expr_to_str
 import subprocess
 from rules import create_rules
-
-
+from parser import parse_sexpr
 
 LITERAL = 0
 STRUCTURE = 2000
 VEC_OP = 1
 OP = 1
+
 def operations_cost(expr: Expr) -> int:
     
     if isinstance(expr, (Const, Var)):
@@ -24,30 +23,19 @@ def operations_cost(expr: Expr) -> int:
             node_cost = OP * 250
         elif op == "<<":
             node_cost = VEC_OP * 50
-            visit_all_children = False
+            if not isinstance(expr.args[0], Op) or expr.args[0].op != "<<":
+                visit_all_children = False
         elif op == "Vec":
             node_cost = 0
         elif op == "VecAdd":
             second_child = expr.args[1] if len(expr.args) > 1 else None
             node_cost = VEC_OP
-            # if isinstance(second_child, Op):
-            #     if second_child.op == "<<":
-            #         node_cost = VEC_OP * 1051
-            #         visit_all_children = False
         elif op == "VecMinus":
             second_child = expr.args[1] if len(expr.args) > 1 else None
             node_cost = VEC_OP
-            # if isinstance(second_child, Op):
-            #     if second_child.op == "<<":
-            #         node_cost = VEC_OP * 1051
-            #         visit_all_children = False
         elif op == "VecMul":
             second_child = expr.args[1] if len(expr.args) > 1 else None
             node_cost = VEC_OP * 100
-            # if isinstance(second_child, Op):
-            #     if second_child.op == "<<":
-            #         node_cost = VEC_OP * 2150
-            #         visit_all_children = False
         elif op == "VecNeg":
             node_cost = VEC_OP
         else:
@@ -55,10 +43,12 @@ def operations_cost(expr: Expr) -> int:
 
         # 3) Recurse into children
         if visit_all_children:
-            for child in expr.args:
-                node_cost += operations_cost(child)
-        # else:
-        #     node_cost += operations_cost(expr.args[0] )  # Only recurse into the first child
+            if op == "<<":
+                # Special case: only recurse into first child for shifts
+                node_cost += operations_cost(expr.args[0])
+            else:    
+                for child in expr.args:
+                    node_cost += operations_cost(child)
 
     else:
         # any other unexpected node
@@ -166,17 +156,100 @@ def rotations_cost(expr: Expr, parent: Expr = None) -> float:
 
     # Leaves (Const/Var) contribute zero
     return 0.0
+
+def evaluate_const_expr(expr: Expr) -> int:
+    """
+    Recursively evaluate a constant expression to an integer.
+    Returns None if the expression cannot be evaluated (contains variables).
+    """
+    if isinstance(expr, Const):
+        return expr.value
+    
+    if isinstance(expr, Var):
+        # Can't evaluate variables
+        return None
+    
+    if isinstance(expr, Op):
+        # Recursively evaluate operands
+        operands = []
+        for arg in expr.args:
+            result = evaluate_const_expr(arg)
+            if result is None:
+                return None  # Can't evaluate if any operand has variables
+            operands.append(result)
+        
+        # Evaluate based on operator
+        if expr.op == '+':
+            return sum(operands)
+        elif expr.op == '-':
+            if len(operands) == 1:
+                return -operands[0]  # Unary minus
+            return operands[0] - operands[1]
+        elif expr.op == '*':
+            result = 1
+            for op in operands:
+                result *= op
+            return result
+        else:
+            # Unknown operator, can't evaluate
+            return None
+    
+    return None
+
+def get_unique_rotations(expr: Expr, rotations=None) -> int:
+    """
+    Count unique rotation offsets in the expression.
+    Safely handles both constant offsets and computed offsets.
+    """
+    if rotations is None:
+        rotations = set()
+    
+    if isinstance(expr, Op):
+        if expr.op == "<<":
+            offset = expr.args[1]
+            
+            # Try to get the rotation value
+            rotation_value = None
+            if isinstance(offset, Const):
+                rotation_value = offset.value
+            elif isinstance(offset, Op):
+                # Try to evaluate the expression
+                try:
+                    rotation_value = evaluate_const_expr(offset)
+                except Exception as e:
+                    # If evaluation fails, just skip this rotation
+                    pass
+            
+            # Add to set if we successfully got a value
+            if rotation_value is not None:
+                rotations.add(rotation_value)
+        
+        # Recursively process all children
+        for child in expr.args:
+            get_unique_rotations(child, rotations)
+    
+    return len(rotations)
+
+def get_total_rotations(expr: Expr) -> int:
+    count = 0
+    if isinstance(expr, Op):
+        if expr.op == "<<":
+            count += 1
+        for child in expr.args:
+            count += get_total_rotations(child)
+    return count
+
 def calculate_cost(expr: Expr,
                w_ops=1.0,
                w_rot=1.0,
                w_depth=1.0,
                w_muldepth=1.0,
-               w_vec=-1.0
+               w_keys=1.0
                ) -> float:
     return (
         w_ops * operations_cost(expr) +
         w_rot * rotations_cost(expr) +
         w_depth * get_normal_depth(expr) +
-        w_muldepth * get_multiplicative_depth(expr) 
+        w_muldepth * get_multiplicative_depth(expr) +
+        w_keys * get_unique_rotations(expr)
     )
-

@@ -1,28 +1,16 @@
-
 import sys
+import os
 import argparse
 from .run import run_agent
 from .train import train_agent
 from .test import test_agent, test_agent_v2
 from .utils import load_embeddings_from_config
-from .TRAE_bpe import BPETokenizer  # Import for pickle compatibility
-from .config import (
-    get_model_path, get_tokenizer_type, 
-    print_config
-)
-
+from .config import get_model_path, print_config
+from .morl import run_interactive, add_subparser
 
 def parse_arguments(args=None):
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description="FHE RL Agent")
-    
-    # Add tokenizer type argument
-    parser.add_argument(
-        '--tokenizer_type', 
-        choices=['dynamic', 'bpe'], 
-        default=get_tokenizer_type(),
-        help='Tokenizer type to use (default: from config)'
-    )
     
     # Add config flag
     parser.add_argument(
@@ -34,38 +22,38 @@ def parse_arguments(args=None):
     # Subcommands
     subparsers = parser.add_subparsers(dest='mode', help='Available commands')
     
-    # Train command
+    # ─── TRAIN COMMAND ────────────────────────────────────────────────────────
     train_parser = subparsers.add_parser('train', help='Train the agent')
+    train_parser.add_argument(
+        '--dataset',
+        type=str,
+        default='./fhe_rl/datasets/final_llm_dataset.txt',
+        help='Path to the training expressions file'
+    )
     train_parser.add_argument(
         '--budgets',
         type=str,
         default=None,
-        help='Comma-separated list of noise budgets (e.g., "300,400,500,1000,9000000")'
+        help='Comma-separated list of noise budgets (e.g., "240,300,1000,9000000")'
     )
     train_parser.add_argument(
-        '--timesteps',
+        '--total_timesteps',
         type=int,
         default=2_000_000,
         help='Total training timesteps (default: 2000000)'
     )
     train_parser.add_argument(
-        '--num_envs',
+        '--n_envs',
         type=int,
         default=8,
         help='Number of parallel environments (default: 8)'
     )
     train_parser.add_argument(
-        '--denom_factor',
-        type=int,
-        default=4,
-        help='Lagrangian update frequency denominator (default: 4, lower=more frequent updates)'
-    )
-    train_parser.add_argument(
         '--method',
         type=str,
-        default='lagrangian_od_ov',
-        choices=['none', 'lagrangian_od_ov', 'lagrangian_perstep', 'lagrangian_always_done', 'margin_barrier', 'noise_masking', 'nato_sc'],
-        help='Constraint enforcement method (default: lagrangian_od_ov)'
+        default='lagrangian_pid',
+        choices=['none', 'lagrangian_od_ov', 'lagrangian_perstep', 'lagrangian_always_done', 'margin_barrier', 'noise_masking', 'nato_sc', 'lagrangian_pid'],
+        help='Constraint enforcement method (default: lagrangian_pid)'
     )
     train_parser.add_argument(
         '--algo',
@@ -77,9 +65,9 @@ def parse_arguments(args=None):
     train_parser.add_argument(
         '--budget_encoding',
         type=str,
-        default='raw',
-        choices=['raw', 'embed', 'film'],
-        help='Budget encoding in policy (raw=one-hot, embed=learned embedding, film=FiLM conditioning)'
+        default='film',
+        choices=['raw', 'embed', 'film', 'none'],
+        help='Budget encoding in policy (default: film)'
     )
     train_parser.add_argument(
         '--ent_coef',
@@ -87,20 +75,40 @@ def parse_arguments(args=None):
         default=0.01,
         help='Entropy coefficient for exploration (default: 0.01)'
     )
+    
+    # MORL hyperparameters
     train_parser.add_argument(
-        '--curriculum',
-        action='store_true',
-        default=False,
-        help='Enable curriculum budget scheduling (tight budgets first, then widen)'
+        '--n_cycle',
+        type=int,
+        default=1,
+        help='Biased-preference cycle length. 0 for always random. (default: 1)'
+    )
+    train_parser.add_argument(
+        '--n_budget',
+        type=int,
+        default=5,
+        help='Fixed normalization budget for rotation keys (default: 5)'
+    )
+    train_parser.add_argument(
+        '--lambda_env',
+        type=float,
+        default=0.0,
+        help='Pareto-envelope bonus weight (default: 0.0)'
+    )
+    train_parser.add_argument(
+        '--lambda_kl',
+        type=float,
+        default=0.0,
+        help='KL-divergence bonus weight (default: 0.0)'
     )
     
-    # Test command
+    # ─── TEST COMMAND ─────────────────────────────────────────────────────────
     test_parser = subparsers.add_parser('test', help='Test the agent')
     test_parser.add_argument(
         '--model',
         type=str,
         default=None,
-        help='Path to trained model .zip file (e.g., model_14007517_lagrangian_od_ov.zip)'
+        help='Path to trained model .zip file'
     )
     test_parser.add_argument(
         '--budgets',
@@ -112,19 +120,18 @@ def parse_arguments(args=None):
         '--train_budgets',
         type=str,
         default=None,
-        help='Comma-separated budgets the model was TRAINED on (for correct obs space). Defaults to --budgets.'
+        help='Comma-separated budgets the model was TRAINED on (for correct obs space)'
     )
     test_parser.add_argument(
         '--method',
         type=str,
-        default='lagrangian_od_ov',
-        choices=['none', 'lagrangian_od_ov', 'lagrangian_perstep', 'lagrangian_always_done', 'margin_barrier', 'noise_masking', 'nato_sc'],
-        help='Constraint method the model was trained with (default: lagrangian_od_ov)'
+        default='lagrangian_pid',
+        help='Constraint method the model was trained with (default: lagrangian_pid)'
     )
     test_parser.add_argument(
         '--test_mode',
         type=str,
-        default='v1',
+        default='v2',
         choices=['v1', 'v2'],
         help='v1=existing test, v2=trajectory checkpointing + safety rollback'
     )
@@ -132,7 +139,7 @@ def parse_arguments(args=None):
         '--output',
         type=str,
         default=None,
-        help='Output Excel file path (default: auto-generated from model name)'
+        help='Output Excel file path'
     )
     test_parser.add_argument(
         '--benchmark',
@@ -147,37 +154,38 @@ def parse_arguments(args=None):
         help='Save RL-optimized expressions to this file (one per line, expr:name format)'
     )
     
-    # Run command
+    # ─── RUN COMMAND ──────────────────────────────────────────────────────────
     run_parser = subparsers.add_parser('run', help='Run the agent')
     run_parser.add_argument('input_expr_file', help='Input expression file')
     run_parser.add_argument('output_vector_file', help='Output vector file')
-    
-    return parser.parse_args(args)
+    run_parser.add_argument('--w_ops', type=float, default=1.0, help='Weight for execution time/operations')
+    run_parser.add_argument('--w_keys', type=float, default=0.0, help='Weight for rotation keys')
+    run_parser.add_argument('--noise_budget', type=int, default=300, help='Noise budget for execution')
 
+    # ─── INTERACTIVE COMMAND ──────────────────────────────────────────────────
+    add_subparser(subparsers)
+
+    return parser.parse_args(args)
 
 def usage() -> None:
     print(
         "Usage:\n"
-        "  python -m fhe_rl train [--tokenizer_type {dynamic,bpe}]\n"
-        "  python -m fhe_rl test  [--tokenizer_type {dynamic,bpe}]\n"
-        "  python -m fhe_rl run   [--tokenizer_type {dynamic,bpe}] "
-        "<input_expr_file> <output_vector_file>\n"
-        "  python -m fhe_rl --show_config  # Show current configuration\n"
-        "\n"
-        "Options:\n"
-        "  --tokenizer_type {dynamic,bpe}  Choose tokenizer type (overrides config)\n"
-        "  --show_config                   Show current configuration\n"
+        "  python -m fhe_rl train [options]         Train the MORL agent\n"
+        "  python -m fhe_rl test [options]          Test safety rollback on benchmarks\n"
+        "  python -m fhe_rl run [options] <in> <out> Run direct optimization\n"
+        "  python -m fhe_rl interactive [--mode {direct,menu}]\n"
+        "                                           Optimise FHE circuits interactively\n"
+        "                                           direct: single preference -> one circuit\n"
+        "                                           menu:   preference range  -> Pareto frontier\n"
         "\n"
         "All model paths are loaded from config.py."
     )
     sys.exit(1)
 
-
 def main(args=None):
     """Main function with configuration support"""
     parsed_args = parse_arguments(args)
     
-    # Show configuration if requested
     if parsed_args.show_config:
         print_config()
         return
@@ -188,45 +196,40 @@ def main(args=None):
 
     # ────────────────────────────── TRAIN ─────────────────────────────
     if mode == "train":
-        embeddings, tokenizer = load_embeddings_from_config(parsed_args.tokenizer_type)
+        embeddings, _ = load_embeddings_from_config()
         
-        # Parse budget options if provided
         budget_options = None
         if parsed_args.budgets:
             budget_options = [int(b.strip()) for b in parsed_args.budgets.split(',')]
             print(f"Using custom budgets: {budget_options}")
         
         train_agent(
-            "./fhe_rl/datasets/final_llm_dataset.txt",
+            parsed_args.dataset,
             embeddings,
-            total_timesteps=parsed_args.timesteps,
-            num_envs=parsed_args.num_envs,
+            total_timesteps=parsed_args.total_timesteps,
+            num_envs=parsed_args.n_envs,
             budget_options=budget_options,
-            denom_factor=parsed_args.denom_factor,
             constraint_method=parsed_args.method,
             budget_encoding=parsed_args.budget_encoding,
             ent_coef=parsed_args.ent_coef,
-            curriculum=parsed_args.curriculum,
             algo=parsed_args.algo,
+            n_cycle=parsed_args.n_cycle,
+            n_budget=parsed_args.n_budget,
+            lambda_env=parsed_args.lambda_env,
+            lambda_kl=parsed_args.lambda_kl,
         )
 
     # ─────────────────────────────── TEST ─────────────────────────────
     elif mode == "test":
-        embeddings, tokenizer = load_embeddings_from_config(parsed_args.tokenizer_type)
+        embeddings, _ = load_embeddings_from_config()
 
-        # Model path: CLI arg or fallback to config
-        if parsed_args.model:
-            agent_zip = parsed_args.model
-        else:
-            agent_zip = get_model_path("agent_model")
+        agent_zip = parsed_args.model if parsed_args.model else get_model_path("agent_model")
 
-        # Budgets to test on
         test_budgets = None
         if parsed_args.budgets:
             test_budgets = [int(b.strip()) for b in parsed_args.budgets.split(',')]
             print(f"Testing on budgets: {test_budgets}")
 
-        # Budgets the model was trained on (for obs space)
         train_budgets = None
         if parsed_args.train_budgets:
             train_budgets = [int(b.strip()) for b in parsed_args.train_budgets.split(',')]
@@ -235,6 +238,7 @@ def main(args=None):
 
         benchmark_file = parsed_args.benchmark or "./fhe_rl/datasets/benchmarks.txt"
         test_fn = test_agent_v2 if parsed_args.test_mode == "v2" else test_agent
+        
         kwargs = dict(
             budget_options=train_budgets,
             test_budgets=test_budgets,
@@ -243,6 +247,7 @@ def main(args=None):
         )
         if parsed_args.test_mode == "v2" and parsed_args.save_optimized:
             kwargs["save_optimized"] = parsed_args.save_optimized
+            
         test_fn(benchmark_file, embeddings, agent_zip, **kwargs)
 
     # ─────────────────────────────── RUN ──────────────────────────────
@@ -250,15 +255,19 @@ def main(args=None):
         agent_zip = get_model_path("agent_model")
         input_file = parsed_args.input_expr_file
         output_file = parsed_args.output_vector_file
-        embeddings, tokenizer = load_embeddings_from_config(parsed_args.tokenizer_type)
-        run_agent(input_file, embeddings, agent_zip, output_file, noise_budget=300)
+        embeddings, _ = load_embeddings_from_config()
+        
+        run_agent(input_file, embeddings, agent_zip, output_file, 
+                  noise_budget=parsed_args.noise_budget, 
+                  w_ops=parsed_args.w_ops, w_keys=parsed_args.w_keys)
 
+    # ────────────────────────── INTERACTIVE ───────────────────────────
+    elif mode == "interactive":
+        run_interactive(mode=getattr(parsed_args, "interactive_mode", None))    
+        
     else:
-        print("Invalid command. Use 'train', 'test' or 'run'.")
+        print("Invalid command. Use 'train', 'test', 'run', or 'interactive'.")
         usage()
-
-
-
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,3 @@
-
-
-
 from expr import Const, Var, Op
 from rewrite_rule import RewriteRule
 import re
@@ -11,16 +8,16 @@ from parser import parse_sexpr
 import subprocess
 
 
-
-
-def create_rules(path: str) -> dict:
-    
-    rules_text = open(path,'r').read().replace("?","")
+def create_rules(rules_path: str, rotations_rules_path: str = None) -> dict:
+    rules_text = open(rules_path, 'r').read().replace("?", "")
     rules = parse_rules_from_text(rules_text)
     
+    if rotations_rules_path:
+        rotations_rules_text = open(rotations_rules_path, 'r').read().replace("?", "")
+        rules.extend(parse_rules_from_text(rotations_rules_text))
+        
     rules_dict = {rule.name: rule for rule in rules}
     return rules_dict 
-
 
 
 def group_rules_from_dict(rules_dict):
