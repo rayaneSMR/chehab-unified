@@ -101,6 +101,14 @@ def parse_arguments(args=None):
         default=0.0,
         help='KL-divergence bonus weight (default: 0.0)'
     )
+    train_parser.add_argument(
+        '--policy_variant',
+        type=str,
+        default='film_a',
+        choices=['film_a', 'film_b'],
+        help='film_a: FiLM(budget) then concat preference after (default, current repo design). '
+             'film_b: single FiLM on concat[budget, preference] (A/B comparison alternative).'
+    )
     
     # ─── TEST COMMAND ─────────────────────────────────────────────────────────
     test_parser = subparsers.add_parser('test', help='Test the agent')
