@@ -66,7 +66,8 @@ class PIDLagrangianWrapper(VecEnvWrapper):
                 continue
             noise = info.get("noise", 0.0)
             budget = info.get("budget", 1)
-            delta = noise - budget
+            delta = (noise - budget) / max(budget, 1)  # normalized, matches PID controller units
+
             if delta > 0:
                 rewards[env_idx] -= self.lambda_penalty * delta
             self.update_lambda_penalty(noise, budget)
