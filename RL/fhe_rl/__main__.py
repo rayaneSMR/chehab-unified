@@ -225,6 +225,7 @@ def main(args=None):
             n_budget=parsed_args.n_budget,
             lambda_env=parsed_args.lambda_env,
             lambda_kl=parsed_args.lambda_kl,
+            policy_variant=parsed_args.policy_variant,
         )
 
     # ─────────────────────────────── TEST ─────────────────────────────

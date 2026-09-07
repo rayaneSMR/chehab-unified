@@ -9,6 +9,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback
 
 from .env import fheEnv
 from .policy import HierarchicalMaskablePolicy
+from .policy_film_b import HierarchicalMaskablePolicyFiLMB
 from .utils import load_expressions, create_rules
 from .logger import log_training_details
 from .callbacks import linear_schedule, EntCoefScheduler, ParetoEvalCallback
@@ -39,7 +40,8 @@ def train_agent(
     lambda_env: float = 0.0,
     lambda_kl: float = 0.0,
     n_cycle: int = 1,
-    n_budget: int = 5
+    n_budget: int = 5,
+    policy_variant: str = "film_a"
 ):
     set_random_seed(seed)
     
@@ -55,7 +57,7 @@ def train_agent(
     rules_list["END"] = None
     
     job_id = os.environ.get("SLURM_JOB_ID", "jobid")
-    run_name = f"model_{job_id}_{constraint_method}"
+    run_name = f"model_{job_id}_{constraint_method}_{policy_variant}"
     tensorboard_log_dir = f"./tensorboard/{run_name}"
     checkpoint_dir = f"./checkpoints/{run_name}"
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -98,8 +100,10 @@ def train_agent(
     ent_schedule = linear_schedule(ent_coef)
     ent_callback = EntCoefScheduler(ent_schedule, verbose=1)
     
+    policy_cls = HierarchicalMaskablePolicyFiLMB if policy_variant == "film_b" else HierarchicalMaskablePolicy
+
     model_params = {
-        "policy": HierarchicalMaskablePolicy,
+        "policy": policy_cls,
         "env": env,
         "learning_rate": 1e-4,
         "n_steps": 2048,
