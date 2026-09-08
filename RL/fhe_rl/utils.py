@@ -61,7 +61,7 @@ def flatten_expr(expr):
 def load_expressions(file_path: str, validation_exprs=[]):
     validation_token_set = set()
     for val in validation_exprs:
-        exp_str = val.strip()
+        exp_str = val.split(":")[0].strip()
         token_seq = get_token_sequence(exp_str)
         validation_token_set.add(token_seq)
         
