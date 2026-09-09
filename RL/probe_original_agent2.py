@@ -64,7 +64,10 @@ while not done:
     if rule_name != "END":
         try:
             step_tree = parse_sexpr(final_expr)
+            prev_val = evaluate_expr(cur_tree, assignments)
             step_val = evaluate_expr(step_tree, assignments)
+            if set(map(str, step_val)) != set(map(str, prev_val)):
+                print(f"  -> [STEP UNSOUND] step {step_i} rule={rule_name} pos={pos_idx}: {prev_val} -> {step_val}")
             print(f"  -> result: {final_expr}")
             print(f"  -> eval: {step_val}  (orig was {orig_val})")
         except Exception as e:

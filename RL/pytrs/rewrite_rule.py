@@ -11,6 +11,20 @@ from .util import generate_random_assignments, evaluate_expr
 
 MAX_VECTOR_SIZE = 32
 
+# Binary SIMD ops whose operands must all share one lane count.
+BINARY_VEC_OPS = {"VecMul", "VecAdd", "VecMinus"}
+
+
+def _simd_lane_count(e: Expr) -> Optional[int]:
+    """Lane count of the SIMD value *e* evaluates to (None if not a vector)."""
+    if isinstance(e, Op):
+        if e.op == "Vec":
+            return len(e.args)
+        if e.op in ("VecAdd", "VecMinus", "VecMul", "<<") and len(e.args) == 2:
+            return _simd_lane_count(e.args[0])
+    return None
+
+
 class RewriteRule:
     """
     A single rewrite rule: when LHS pattern matches, replace by RHS template.
@@ -100,6 +114,38 @@ class RewriteRule:
                 return None
             result = self._build_rhs(self.rhs, subst)
             return result if result.validate_expression() else None
+
+    def _apply_guarded(
+        self,
+        target: Expr,
+        parent: Optional[Expr] = None,
+        parent_idx: Optional[int] = None,
+    ) -> Optional[Expr]:
+        """self.apply() plus the sibling-lane-count precondition.
+
+        Rotation-vectorization rewrites double the lane count of the Vec
+        they fire on.  If that Vec is an operand of a binary SIMD op
+        (VecAdd/VecMinus/VecMul) whose sibling keeps the old lane count,
+        the rewrite breaks the equal-lanes invariant of the parent (the
+        "VecMinus operands must be equal-length vectors" eval crash).
+        Such rewrites are refused (return None).  Siblings that are `<<`
+        rotation nodes are exempt: _apply_via_path rebuilds them in
+        lockstep from the rewritten vector.
+        """
+        rewritten = self.apply(target)
+        if rewritten is None:
+            return None
+        lanes_before = _simd_lane_count(target)
+        lanes_after  = _simd_lane_count(rewritten)
+        lane_change  = (lanes_before is not None
+                        and lanes_after is not None
+                        and lanes_before != lanes_after)
+        if (lane_change and parent is not None and parent_idx is not None
+                and parent.op in BINARY_VEC_OPS and len(parent.args) == 2):
+            sibling = parent.args[1 - parent_idx]
+            if not (isinstance(sibling, Op) and sibling.op == "<<"):
+                return None
+        return rewritten
 
     def _apply_vectorize(self, expr: Expr) -> Optional[Expr]:
         """Apply uniform vectorization - handles both binary and unary operations."""
@@ -460,20 +506,12 @@ class RewriteRule:
         """Find vectorization matches for all vectorization rule types."""
         matches = []
         
-        def _find_recursive(current: Expr, path: List[int]):
+        def _find_recursive(current: Expr, path: List[int],
+                            parent: Optional[Expr] = None,
+                            parent_idx: Optional[int] = None):
             if isinstance(current, Op) and current.op == "Vec":
-                if self.rule_type == "vectorize":
-                    if self._apply_vectorize(current) is not None:
-                        matches.append((path.copy(), current))
-                elif self.rule_type == "vectorize-flexible":
-                    if self._apply_flexible_vectorize(current) is not None:
-                        matches.append((path.copy(), current))
-                elif self.rule_type == "vectorize-rotation":
-                    if self._apply_rotation_vectorize(current) is not None:
-                        matches.append((path.copy(), current))
-                elif self.rule_type == "vectorize-rotation-flexible":
-                    if self._apply_flexible_rotation_vectorize(current) is not None:
-                        matches.append((path.copy(), current))
+                if self._apply_guarded(current, parent, parent_idx) is not None:
+                    matches.append((path.copy(), current))
             
             if isinstance(current, Op):
                 rotation = False
@@ -483,9 +521,9 @@ class RewriteRule:
                         break
                 if not rotation or self.name.startswith("rotate_"):
                         for i, child in enumerate(current.args):
-                            _find_recursive(child, path + [i])
+                            _find_recursive(child, path + [i], current, i)
                 else:
-                    _find_recursive( current.args[0],path + [0])   
+                    _find_recursive(current.args[0], path + [0], current, 0)
         _find_recursive(expr, [])
         return matches
 
@@ -518,10 +556,12 @@ class RewriteRule:
     def _apply_via_path(self, expr: Expr, path: List[int]) -> Optional[Expr]:
         WRAPPER_OPS = {"VecMul", "VecAdd", "VecMinus"}
 
-        def rec(node: Expr, subpath: List[int]) -> Expr:
-            # reached the target node – standard replacement
+        def rec(node: Expr, subpath: List[int],
+                parent: Optional[Expr] = None,
+                parent_idx: Optional[int] = None) -> Expr:
+            # reached the target node – lane-count-guarded replacement
             if not subpath:
-                return self.apply(node) or node
+                return self._apply_guarded(node, parent, parent_idx) or node
 
             # leaf that cannot hold children
             if not isinstance(node, Op):
@@ -535,8 +575,10 @@ class RewriteRule:
             # must rebuild the *companion* operand so it references the
             # fresh vector.
             # ────────────────────────────────────────────────────────────
-            if node.op in WRAPPER_OPS and idx == 0:
-                new_vec  = rec(node.args[0], subpath[1:])   # rewrite left
+            if (node.op in WRAPPER_OPS and idx == 0
+                    and self.rule_type in {"vectorize", "vectorize-flexible",
+                                           "vectorize-rotation", "vectorize-rotation-flexible"}):
+                new_vec  = rec(node.args[0], subpath[1:], node, 0)   # rewrite left
                 other    = node.args[1]
                 new_other = other  # default: no change
                 # common form  (<< old_vec shift)
@@ -551,7 +593,7 @@ class RewriteRule:
 
             # default path – just recurse
             new_args = [
-                rec(a, subpath[1:]) if i == idx else a
+                rec(a, subpath[1:], node, i) if i == idx else a
                 for i, a in enumerate(node.args)
             ]
             return Op(node.op, new_args)
