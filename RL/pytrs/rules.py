@@ -4,7 +4,8 @@ import re
 from typing import List
 from rule_parser import parse_rules_from_text
 from expr import Expr, Const, Var
-from parser import parse_sexpr
+from fhe_rl.utils import create_rules
+from pytrs.parser import parse_sexpr
 import subprocess
 
 

@@ -62,34 +62,29 @@ def load_expressions(file_path: str, validation_exprs=[]):
     validation_token_set = set()
     for val in validation_exprs:
         exp_str = val.split(":")[0].strip()
-        # Skip empty lines or vectorized expressions incompatible with scalar rules
-        if not exp_str or exp_str.startswith("(Vec") or "Vec" in exp_str:
-            continue
-        try:
-            token_seq = get_token_sequence(exp_str)
-            if token_seq:
-                validation_token_set.add(tuple(token_seq))
-        except Exception:
-            continue
-
-    expressions = []
+        token_seq = get_token_sequence(exp_str)
+        validation_token_set.add(token_seq)
+        
+    unique_expressions = {}
     with open(file_path, "r") as f:
         for line in f:
-            line = line.strip()
-            if not line or line.startswith("#"):
-                continue
             exp_str = line.split(":")[0].strip()
-            # Skip vector expressions to prevent C++ parser errors
-            if exp_str.startswith("(Vec") or "Vec" in exp_str:
+            if not exp_str:
                 continue
             try:
+                expr = parse_sexpr(exp_str)
                 token_seq = get_token_sequence(exp_str)
-                if token_seq and tuple(token_seq) not in validation_token_set:
-                    expressions.append(exp_str)
-            except Exception:
+                if token_seq in validation_token_set:
+                    continue
+                if token_seq not in unique_expressions:
+                    unique_expressions[token_seq] = exp_str
+            except Exception as e:
+                print(e)
                 continue
+    print("Number of unique valid expressions (excluding validation):", len(unique_expressions))
+    return list(unique_expressions.values())
 
-    return expressions
+
 
 
 def load_expressions_named(file_path: str):
