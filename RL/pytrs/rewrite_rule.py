@@ -4,10 +4,10 @@ from __future__ import annotations
 from typing import List, Dict, Union, Tuple, Optional
 from collections import deque
 
-from expr import Expr, Const, Var, Op
-from pattern import Pattern
-from vectorization_analyzer import VectorizationAnalyzer
-from util import generate_random_assignments, evaluate_expr
+from .expr import Expr, Const, Var, Op
+from .pattern import Pattern
+from .vectorization_analyzer import VectorizationAnalyzer
+from .util import generate_random_assignments, evaluate_expr
 
 MAX_VECTOR_SIZE = 32
 
@@ -58,7 +58,7 @@ class RewriteRule:
             
         self.rotation_rules = []
         if name not in ["rotation-mul", "rotation-add", "rotation-sub", "rotation-neg"]:
-            from rule_parser import parse_rules_from_text
+            from .rule_parser import parse_rules_from_text
             self.rotation_rules = parse_rules_from_text("""
                                                         Rewrite { name: "rotation-mul", searcher: (VecMul x (<< x a)), applier: (VecMul x (<< x a)) }
                                                         Rewrite { name: "rotation-add", searcher: (VecAdd x (<< x a)), applier: (VecAdd x (<< x a)) }

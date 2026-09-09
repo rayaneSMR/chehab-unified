@@ -14,10 +14,13 @@ DEVICE = get_device()
 
 def load_embeddings_from_config():
     """
-    GNNAE is integrated directly into the policy network's CustomFeaturesExtractor.
-    Returning None, None to satisfy legacy unpacked signatures in __main__.py.
+    Load the frozen GNN expression embedder (FHEFeatureExtractor).
+    Returns (embedder, None) where embedder has .get_embedding(expr_str) -> np.ndarray(256,).
     """
-    return None, None
+    from .config import get_model_path
+    from .gnn_embeddings import FHEFeatureExtractor
+    model_path = get_model_path("gnn_embeddings_model")
+    return FHEFeatureExtractor(model_path), None
 
 def create_rules(rules_path: str, rotations_rules_path: str = None):
     return _create_rules(rules_path=rules_path, rotations_rules_path=rotations_rules_path)

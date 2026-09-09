@@ -1,8 +1,8 @@
 """Vectorization analysis functionality extracted from pattern matching."""
 
 from typing import List, Tuple
-from expr import Expr, Const, Op, Var
-from util import generate_random_assignments, evaluate_expr
+from .expr import Expr, Const, Op, Var
+from .util import generate_random_assignments, evaluate_expr
 import re
 
 

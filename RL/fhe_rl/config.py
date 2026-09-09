@@ -26,7 +26,7 @@ FHE_RL_DIR = Path(__file__).parent
 # Model paths configuration
 MODEL_PATHS = {
     "agent_model": FHE_RL_DIR / "trained_models" / "agent_pareto_model.zip",
-    "gnn_embeddings_model": FHE_RL_DIR / "trained_models" / "embeddings_gnn_model.pth",
+    "gnn_embeddings_model": FHE_RL_DIR / "trained_models" / "embeddings_gnn_model_epoch_100.pth",
 }
 
 # Agent configuration

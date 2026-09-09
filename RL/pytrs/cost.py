@@ -1,8 +1,8 @@
-from expr import Expr, Var, Const, Op
-from serializer import expr_to_str
+from .expr import Expr, Var, Const, Op
+from .serializer import expr_to_str
 import subprocess
-from rules import create_rules
-from parser import parse_sexpr
+from .rules import create_rules
+from .parser import parse_sexpr
 
 LITERAL = 0
 STRUCTURE = 2000

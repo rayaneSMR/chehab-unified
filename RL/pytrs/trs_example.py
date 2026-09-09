@@ -1,10 +1,10 @@
 # main.py
 
-from serializer import expr_to_str
-from parser import parse_sexpr
-from rules import create_rules
-from util import evaluate_expr, generate_random_assignments
-from cost import calculate_cost
+from .serializer import expr_to_str
+from .parser import parse_sexpr
+from .rules import create_rules
+from .util import evaluate_expr, generate_random_assignments
+from .cost import calculate_cost
 
 
 

@@ -1,10 +1,9 @@
-from expr import Const, Var, Op
-from rewrite_rule import RewriteRule
+from .expr import Const, Var, Op
+from .rewrite_rule import RewriteRule
 import re
 from typing import List
-from rule_parser import parse_rules_from_text
-from expr import Expr, Const, Var
-from fhe_rl.utils import create_rules
+from .rule_parser import parse_rules_from_text
+from .expr import Expr, Const, Var
 from pytrs.parser import parse_sexpr
 import subprocess
 
