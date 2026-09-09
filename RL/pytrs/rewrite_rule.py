@@ -509,7 +509,7 @@ class RewriteRule:
                 for rule in self.rotation_rules:
                     if rule.lhs.match(node) is not None:
                         rotation = True
-                if not rotation:
+                if not rotation or self.name.startswith("rotate_"): 
                     for i, child in enumerate(node.args):
                         queue.append((cur_path + [i], child))
                 else:
