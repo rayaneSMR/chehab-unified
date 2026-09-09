@@ -481,7 +481,7 @@ class RewriteRule:
                     if rule.lhs.match(current) is not None:
                         rotation = True
                         break
-                if not rotation:
+                if not rotation or self.name.startswith("rotate_"):
                         for i, child in enumerate(current.args):
                             _find_recursive(child, path + [i])
                 else:
