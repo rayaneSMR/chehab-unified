@@ -68,9 +68,10 @@ def test_agent(
         env.set_options({"budget": budget})
 
         for expr_idx in range(len(expressions)):
-            obs = env.reset()
             wrapper = env.envs[0]
             fhe_env = wrapper.env
+            fhe_env.current_index = expr_idx  # pin cursor: neutralize DummyVecEnv auto-reset double-advance
+            obs = env.reset()
 
             test_expr = fhe_env.initial_expression
             initial_exec = fhe_env.initial_ops
@@ -179,9 +180,10 @@ def test_agent_v2(
         for expr_idx in range(len(expressions)):
             t0 = time.perf_counter()
 
-            obs = env.reset()
             wrapper = env.envs[0]
             fhe_env = wrapper.env
+            fhe_env.current_index = expr_idx  # pin cursor: neutralize auto-reset double-advance
+            obs = env.reset()
 
             w_vec = fhe_env.current_w
             n_budget = fhe_env.n_budget
