@@ -84,7 +84,9 @@ def train_agent(
                 constraint_method=constraint_method,
                 pref_list=pref_list,
                 lambda_env=lambda_env, lambda_kl=lambda_kl,
-                n_cycle=n_cycle, n_budget=n_budget, env_idx=rank
+                n_cycle=n_cycle, n_budget=n_budget, env_idx=rank,
+                                verbose=False
+
             )
             return Monitor(env)
         return _init  
