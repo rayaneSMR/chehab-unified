@@ -30,6 +30,4 @@ def generate_report(file_a, file_b, label):
         print(f"Skipping {label}: {e}")
 
 # Run for all test suites
-generate_report("./results_film_a_multibudget.xlsx", "./results_film_b_multibudget.xlsx", "SCALAR BENCHMARKS")
-generate_report("./results_dnn_film_a.xlsx", "./results_dnn_film_b.xlsx", "DNN VECTOR BENCHMARKS")
-generate_report("./results_rotations_film_a.xlsx", "./results_rotations_film_b.xlsx", "ROTATION BENCHMARKS")
+generate_report("C:\\Users\\smara\\chehab-unified\\RL\\results_benchmarks_film_a.xlsx", "C:\\Users\\smara\\chehab-unified\\RL\\results_benchmarks_film_b.xlsx", "BENCHMARKS.TXT")
