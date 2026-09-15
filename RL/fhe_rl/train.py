@@ -51,7 +51,7 @@ def train_agent(
     
     # Common setup
     benchmarks = load_expressions("./fhe_rl/datasets/benchmarks.txt")
-    expressions = load_expressions(expressions_file, benchmarks)
+    expressions = load_expressions(expressions_file)
     max_positions = 16
     rules_list = create_rules("rules.txt", "rotations_rules.txt")
     rules_list["END"] = None
