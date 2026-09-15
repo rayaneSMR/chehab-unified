@@ -86,14 +86,13 @@ def train_agent(
                 lambda_env=lambda_env, lambda_kl=lambda_kl,
                 n_cycle=n_cycle, n_budget=n_budget, env_idx=rank
             )
-            # Wrap environment if PID Lagrangian is selected
-            if constraint_method == "lagrangian_pid":
-                from .algos.lagrangian_pid import PIDLagrangianWrapper
-                env = PIDLagrangianWrapper(env)
             return Monitor(env)
         return _init  
 
     env = SubprocVecEnv([make_env(i, expressions) for i in range(num_envs)], start_method='spawn')
+    if constraint_method == "lagrangian_pid":
+        from .algos.lagrangian_pid import PIDLagrangianWrapper
+        env = PIDLagrangianWrapper(env)
     val_env = DummyVecEnv([make_env(0, benchmarks)])
 
     # PPO model params
