@@ -153,7 +153,7 @@ def train_agent(
 
     # Callbacks
     checkpoint_callback = CheckpointCallback(
-        save_freq=10000,
+        save_freq=5000,
         save_path=checkpoint_dir,
         name_prefix="rl_model",
         save_replay_buffer=False,
