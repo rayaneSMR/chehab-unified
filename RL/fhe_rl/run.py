@@ -33,12 +33,13 @@ def run_agent(expressions_file: str, embeddings_model, model_filepath: str,
             expressions, 
             max_positions=max_positions, 
             embeddings_model=embeddings_model, 
-            budget_options=[noise_budget],
+            # CORRECTION : Déclarer l'espace complet pour correspondre aux poids PyTorch
+            budget_options=[100, 200, 300], 
             pref_list=[pref]
         ))
     ])
     
-    # Apply both noise budget constraints and MORL preferences
+    # Appliquer le budget spécifique requis par l'évaluation C++
     env.set_options({ "budget": noise_budget })
     env.env_method("set_preference_vector", pref)
     
@@ -47,7 +48,6 @@ def run_agent(expressions_file: str, embeddings_model, model_filepath: str,
         env=env
     )
     
-    # Hack to allow loading older models if module paths changed
     sys.modules["fhe_rl_new"] = importlib.import_module("fhe_rl")
     model = model.load(model_filepath)
     
@@ -79,3 +79,5 @@ def run_agent(expressions_file: str, embeddings_model, model_filepath: str,
     end_time = time.perf_counter()
     elapsed_seconds = end_time - start_time
     print(f"Optimization completed in {elapsed_seconds:.2f} seconds.")
+    print(f"Final exec cost   : {fhe_env.curr_ops}")
+    print(f"Final keys cost   : {fhe_env.curr_keys}")

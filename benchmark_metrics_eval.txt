@@ -1,0 +1,8 @@
+*****run lin_reg , slot : 4******
+*****run lin_reg , slot : 8******
+*****run lin_reg , slot : 16******
+*****run lin_reg , slot : 32******
+*****run box_blur , slot : 4******
+*****run box_blur , slot : 8******
+*****run box_blur , slot : 16******
+*****run box_blur , slot : 32******
