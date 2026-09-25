@@ -11,7 +11,7 @@ operations = ["add", "sub", "multiply_plain", "rotate_rows", "negate", "multiply
 infos = ["benchmark", "w_ops", "w_keys"]
 additional_infos = ["Depth", "Multiplicative Depth", "compile_time (s)", "circuit_execution_time (s)",
                     'galois_keys_generation_time (s)', 'total_execution_time (s)', "Remaining_noise_budget",
-                    'rotation_keys_size (MB)', 'final_ops_cost', 'final_keys_cost']
+                    'rotation_keys_size (MB)', 'rotation_keys_count', 'final_ops_cost', 'final_keys_cost']
 infos.extend(operations)
 infos.extend(additional_infos)
 
@@ -84,7 +84,7 @@ def run_benchmark(subfolder_name, slot_count, w_ops, w_keys, build_path, build_p
         "negate": [], "multiply": [], "Depth": [], "Multiplicative Depth": [],
         "compile_time (s)": [], "circuit_execution_time (s)": [], "galois_keys_generation_time (s)": [],
         "total_execution_time (s)": [], "Remaining_noise_budget": [], "rotation_keys_size (MB)": [],
-        "final_ops_cost": [], "final_keys_cost": []
+        "rotation_keys_count": [], "final_ops_cost": [], "final_keys_cost": []
     }
 
     if not subfolder_name in exceptions:
@@ -177,6 +177,8 @@ def run_benchmark(subfolder_name, slot_count, w_ops, w_keys, build_path, build_p
                                     operation_stats["total_execution_time (s)"].append(float(line.split()[1]))
                                 if 'rotation_keys_size_(MB):' in line:
                                     operation_stats["rotation_keys_size (MB)"].append(float(line.split()[1]))
+                                if 'rotation_keys_count_:' in line:
+                                    operation_stats["rotation_keys_count"].append(int(line.split()[1]))
                                 if 'Remaining_noise_budget:' in line:
                                     operation_stats["Remaining_noise_budget"].append(int(line.split()[1]))
                                 if comp == 2:
@@ -355,7 +357,7 @@ def run_poly_benchmark(subfolder_name, build_path, build_path_he, build_path_he_
         "compile_time (s)": [], "circuit_execution_time (s)": [],
         "galois_keys_generation_time (s)": [], "total_execution_time (s)": [],
         "Remaining_noise_budget": [], "rotation_keys_size (MB)": [],
-        "final_ops_cost": [], "final_keys_cost": []
+        "rotation_keys_count": [], "final_ops_cost": [], "final_keys_cost": []
     }
 
     for iteration in range(iterations):
@@ -452,6 +454,8 @@ def run_poly_benchmark(subfolder_name, build_path, build_path_he, build_path_he_
                                 operation_stats["total_execution_time (s)"].append(float(line.split()[1]))
                             if 'rotation_keys_size_(MB):' in line:
                                 operation_stats["rotation_keys_size (MB)"].append(float(line.split()[1]))
+                            if 'rotation_keys_count_:' in line:
+                                operation_stats["rotation_keys_count"].append(int(line.split()[1]))
                             if 'Remaining_noise_budget:' in line:
                                 operation_stats["Remaining_noise_budget"].append(int(line.split()[1]))
                             if comp == 2:
@@ -646,4 +650,4 @@ for subfolder_name in polynomial_folders:
                         except Exception as e:
                             print(f"Poly bisect failed for {benchmark_name} "
                                   f"[{w_lo}, {w_hi}]: {e}")
-                            continue                    
+                            continue
