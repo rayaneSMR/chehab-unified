@@ -1,7 +1,10 @@
+import os
 import sys
 import time
 import importlib
 from stable_baselines3 import PPO
+# ... le reste du code reste identique ...
+
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 
@@ -22,7 +25,11 @@ def run_agent(expressions_file: str, embeddings_model, model_filepath: str,
         sys.exit(1)
         return
     print(expressions)
-    
+    if not os.path.exists("rotations_rules.txt"):
+        print("WARNING: rotations_rules.txt not found in cwd — "
+            "rotation rules will be missing from the action space!")
+    else:
+        print(f"rotation rules loaded from: {os.path.abspath('rotations_rules.txt')}")
     rules_list = create_rules("rules.txt", "rotations_rules.txt")
     rules_list["END"] = None
     max_positions = 16
@@ -62,22 +69,26 @@ def run_agent(expressions_file: str, embeddings_model, model_filepath: str,
     last_expr = None
     
     while not done:
-        last_expr = fhe_env.expression
-        last_cost = fhe_env.current_cost
-        
         action, _ = model.predict(obs, deterministic=True)
         obs, rewards, dones, infos = env.step(action)
         done = bool(dones[0])
         steps += 1
+        
+        # FIX: On capture les métriques finales AVANT le reset automatique
+        if done:
+            terminal_info = infos[0]
+            final_expr = terminal_info.get("expression", fhe_env.expression)
+            final_exec = terminal_info.get("c_exec", fhe_env.curr_ops)
+            final_keys = terminal_info.get("c_keys", fhe_env.curr_keys)
 
-    parsed = parse_sexpr(last_expr)
+    parsed = parse_sexpr(final_expr)
     vec_sizes = " ".join(str(x) for x in calc_vec_sizes(parsed))
     
     with open(output_file, "w") as f:
-        f.write(last_expr + "\n" + vec_sizes)
+        f.write(final_expr + "\n" + vec_sizes)
         
     end_time = time.perf_counter()
     elapsed_seconds = end_time - start_time
     print(f"Optimization completed in {elapsed_seconds:.2f} seconds.")
-    print(f"Final exec cost   : {fhe_env.curr_ops}")
-    print(f"Final keys cost   : {fhe_env.curr_keys}")
+    print(f"Final exec cost   : {final_exec}")
+    print(f"Final keys cost   : {final_keys}")
