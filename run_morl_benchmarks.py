@@ -105,13 +105,14 @@ def run_benchmark(subfolder_name, slot_count, w_ops, w_keys, build_path, build_p
             compile_time_found = False
             poly_mod_found = True
             for line in lines:
-                clean_line = re.sub(r'\x1b\[[0-9;]*m', '', line)
-                if 'final ops cost:' in clean_line:
+                clean_line = re.sub(r'\x1b\[[0-9;]*m', '', line).strip()
+                clean_lower = clean_line.lower()
+                if 'final exec cost' in clean_lower:
                     try:
-                        operation_stats["final_ops_cost"].append(float(clean_line.split(':')[1].strip()))
+                        operation_stats["final_ops_cost"].append(float(clean_lower.split(':')[1].strip()))
                     except (IndexError, ValueError):
                         pass
-                if 'final keys cost:' in clean_line:
+                if 'final keys cost' in clean_lower:
                     try:
                         operation_stats["final_keys_cost"].append(float(clean_line.split(':')[1].strip()))
                     except (IndexError, ValueError):
@@ -164,7 +165,7 @@ def run_benchmark(subfolder_name, slot_count, w_ops, w_keys, build_path, build_p
                             universal_newlines=True, cwd=build_path_he_build
                         )
                         print("**fhe run done**")
-                        if counter > 0:
+                        if counter > 0 or iterations == 1:
                             lines = result.stdout.splitlines()
                             comp = 0
                             print(f"returned lines : \n {lines} \n\n")
@@ -384,13 +385,14 @@ def run_poly_benchmark(subfolder_name, build_path, build_path_he, build_path_he_
             compile_time_found = False
             poly_mod_found = True
             for line in lines:
-                clean_line = re.sub(r'\x1b\[[0-9;]*m', '', line)
-                if 'final ops cost:' in clean_line:
+                clean_line = re.sub(r'\x1b\[[0-9;]*m', '', line).strip()
+                clean_lower = clean_line.lower()
+                if 'final exec cost' in clean_lower:
                     try:
-                        operation_stats["final_ops_cost"].append(float(clean_line.split(':')[1].strip()))
+                        operation_stats["final_ops_cost"].append(float(clean_lower.split(':')[1].strip()))
                     except (IndexError, ValueError):
                         pass
-                if 'final keys cost:' in clean_line:
+                if 'final keys cost' in clean_lower:
                     try:
                         operation_stats["final_keys_cost"].append(float(clean_line.split(':')[1].strip()))
                     except (IndexError, ValueError):
@@ -441,7 +443,7 @@ def run_poly_benchmark(subfolder_name, build_path, build_path_he, build_path_he_
                         universal_newlines=True, cwd=build_path_he_build
                     )
                     print("**fhe run done**")
-                    if counter > 0:
+                    if counter > 0 or iterations == 1:
                         lines = result.stdout.splitlines()
                         comp = 0
                         print(f"returned lines : \n {lines} \n\n")
