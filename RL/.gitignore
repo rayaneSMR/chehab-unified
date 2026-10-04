@@ -6,3 +6,5 @@ eval/
 old_test_results/
 job_logs.xlsx
 test_results.xlsx
+# raw sweep logs routinely exceed GitHub's 100 MB hard limit
+test_*.log

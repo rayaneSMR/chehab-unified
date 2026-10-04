@@ -209,7 +209,15 @@ class fheEnv(gym.Env):
             parsed = parse_sexpr(self.expression)
             rule_obj = self.rules[rule_name]
             matches = rule_obj.find_matching_subexpressions(parsed)
-            k, _ = matches[pos_idx]
+            # de-rotate exposes a single position (0); clamp so a stale or
+            # unmasked pos_idx can never index past its one match.
+            # (An empty match list still raises, as before: it means an
+            # invalid action bypassed the mask.)
+            if not matches:
+                raise IndexError(
+                    f"rule {rule_name} has no matches at pos {pos_idx}; "
+                    "the action mask should have excluded it")
+            k, _ = matches[min(pos_idx, len(matches) - 1)]
             new_expr_tree = rule_obj.apply_rule(parsed, path=k)
             temp = expr_to_str(new_expr_tree)
             self.expression = temp

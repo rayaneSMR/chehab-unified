@@ -493,14 +493,26 @@ class RewriteRule:
     ) -> List[Tuple[List[int], Expr]]:
         if self.rule_type in ["vectorize", "vectorize-flexible", "vectorize-rotation", "vectorize-rotation-flexible"]:
             return self._find_vectorize_matches(expr)
-        else:
-            # Regular rules
+        if self.rule_type == "de-rotate":
+            # A rotation offset is rewritten at *every* occurrence in one
+            # action, so expose a single position (0) instead of one position
+            # per occurrence.  This is also why de-rotate must not inherit the
+            # `VecOp(x, (<< x a))` search guard: the `<<` node lives in args[1]
+            # and is the only place a rotate_* pattern can match.
             matches: List[Tuple[List[int], Expr]] = []
             self._find_matches_recursive(expr, [], matches)
-            return [
+            valid = [
                 (p, m) for p, m in matches
                 if self._apply_via_path(expr, p) is not None
             ]
+            return [([], expr)] if valid else []
+        # Regular rules
+        matches: List[Tuple[List[int], Expr]] = []
+        self._find_matches_recursive(expr, [], matches)
+        return [
+            (p, m) for p, m in matches
+            if self._apply_via_path(expr, p) is not None
+        ]
 
     def _find_vectorize_matches(self, expr: Expr) -> List[Tuple[List[int], Expr]]:
         """Find vectorization matches for all vectorization rule types."""
@@ -519,7 +531,7 @@ class RewriteRule:
                     if rule.lhs.match(current) is not None:
                         rotation = True
                         break
-                if not rotation or self.name.startswith("rotate_"):
+                if not rotation or self.rule_type == "de-rotate":
                         for i, child in enumerate(current.args):
                             _find_recursive(child, path + [i], current, i)
                 else:
@@ -547,7 +559,7 @@ class RewriteRule:
                 for rule in self.rotation_rules:
                     if rule.lhs.match(node) is not None:
                         rotation = True
-                if not rotation or self.name.startswith("rotate_"): 
+                if not rotation or self.rule_type == "de-rotate": 
                     for i, child in enumerate(node.args):
                         queue.append((cur_path + [i], child))
                 else:
@@ -617,11 +629,39 @@ class RewriteRule:
         match: Optional[Expr] = None,
         path:  Optional[List[int]] = None
     ) -> Expr:
+        if self.rule_type == "de-rotate":
+            # Ignore `path`: a rotation offset is rewritten everywhere at once.
+            return self._apply_rule_everywhere(expr)
         if path is not None:
             return self._apply_via_path(expr, path)
         if match is not None:
             return self._apply_rule_match(expr, match)
         return self.apply(expr) or expr
+
+    def _apply_rule_everywhere(self, expr: Expr) -> Expr:
+        """de-rotate: rewrite every occurrence of the offset in one call.
+
+        Keys are ``len(set(offsets))`` (see ``util.get_unique_rotations`` /
+        ``cost.get_unique_rotations``), so with N copies of one offset only the
+        last split changes the key count.  Applying one occurrence per action
+        leaves N-1 steps with reward exactly 0.0 and defers the whole payoff to
+        a single step; applying them together makes the key delta land in one
+        reward.
+        """
+        while True:
+            matches: List[Tuple[List[int], Expr]] = []
+            self._find_matches_recursive(expr, [], matches)
+            valid = [
+                (p, m) for p, m in matches
+                if self._apply_via_path(expr, p) is not None
+            ]
+            if not valid:
+                break
+            rewritten = self._apply_via_path(expr, valid[0][0])
+            if rewritten is None:      # defensive: keeps the loop Expr-typed
+                break
+            expr = rewritten
+        return expr
 
     def _apply_rule_match(self, expr: Expr, match: Expr) -> Expr:
         if expr is match:
