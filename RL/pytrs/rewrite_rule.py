@@ -124,11 +124,11 @@ class RewriteRule:
         """self.apply() plus the sibling-lane-count precondition.
 
         Rotation-vectorization rewrites double the lane count of the Vec
-        they fire on.  If that Vec is an operand of a binary SIMD op
+        they fire on. If that Vec is an operand of a binary SIMD op
         (VecAdd/VecMinus/VecMul) whose sibling keeps the old lane count,
         the rewrite breaks the equal-lanes invariant of the parent (the
         "VecMinus operands must be equal-length vectors" eval crash).
-        Such rewrites are refused (return None).  Siblings that are `<<`
+        Such rewrites are refused (return None). Siblings that are `<<`
         rotation nodes are exempt: _apply_via_path rebuilds them in
         lockstep from the rewritten vector.
         """
@@ -155,7 +155,6 @@ class RewriteRule:
         if len(expr.args) < 2:
             return None
             
-        # Check if we're dealing with binary or unary operations
         first_lane = expr.args[0]
         if not isinstance(first_lane, Op) or first_lane.op != self.scalar_op:
             return None
@@ -167,7 +166,6 @@ class RewriteRule:
             return None
         
         if is_binary:
-            # Binary operations (e.g., subtraction: (- a b))
             left_operands = []
             right_operands = []
             
@@ -184,8 +182,7 @@ class RewriteRule:
             right_vec = Op("Vec", right_operands)
             result = Op(self.vector_op, [left_vec, right_vec])
             
-        else:  # is_unary
-            # Unary operations (e.g., negation: (- a))
+        else:  
             operands = []
             
             for lane in expr.args:
@@ -197,7 +194,6 @@ class RewriteRule:
                 operands.append(lane.args[0])
             
             operand_vec = Op("Vec", operands)
-            # For unary operations, we only need one operand
             result = Op(self.vector_op, [operand_vec])
         
         return result if result.validate_expression() else None
@@ -210,7 +206,6 @@ class RewriteRule:
         if len(expr.args) < 2:
             return None
             
-        # Analyze which lanes can be vectorized and determine operation type
         binary_lanes = []
         unary_lanes = []
         binary_left_operands = []
@@ -229,15 +224,12 @@ class RewriteRule:
         
         total_vectorizable = len(binary_lanes) + len(unary_lanes)
         
-        # Need at least min_count vectorizable operations
         if total_vectorizable < self.min_count:
             return None
         
-        # Don't match if ALL lanes are vectorizable - let uniform rule handle that
         if total_vectorizable == len(expr.args):
             return None
         
-        # Determine identity element and check if operation is non-commutative
         target_op = self.target_ops[0]
         is_non_commutative = target_op in {"-", "/"}
         
@@ -250,9 +242,7 @@ class RewriteRule:
         else:
             identity_value = 0
         
-        # Decide whether to handle as binary or unary based on which is more common
         if len(binary_lanes) >= len(unary_lanes):
-            # Handle as binary operations
             left_vec_elements = []
             right_vec_elements = []
             
@@ -265,19 +255,14 @@ class RewriteRule:
                     right_vec_elements.append(binary_right_operands[binary_idx])
                     binary_idx += 1
                 elif i in unary_lanes:
-                    # Convert unary to binary with identity
                     left_vec_elements.append(unary_operands[unary_idx])
                     right_vec_elements.append(Const(identity_value))
                     unary_idx += 1
                 else:
-                    # Non-vectorizable expression
                     if is_non_commutative:
-                        # For non-commutative ops: put non-matching expr on LEFT, identity on RIGHT
-                        # This ensures: non_matching_expr OP identity = non_matching_expr
                         left_vec_elements.append(expr.args[i])
                         right_vec_elements.append(Const(identity_value))
                     else:
-                        # For commutative ops: can put identity on either side
                         left_vec_elements.append(Const(identity_value))
                         right_vec_elements.append(expr.args[i])
             
@@ -286,9 +271,7 @@ class RewriteRule:
             result = Op(self.vector_op, [left_vec, right_vec])
             
         else:
-            # Handle as unary operations
             operand_vec_elements = []
-            
             binary_idx = 0
             unary_idx = 0
             
@@ -297,12 +280,9 @@ class RewriteRule:
                     operand_vec_elements.append(unary_operands[unary_idx])
                     unary_idx += 1
                 elif i in binary_lanes:
-                    # For binary ops in unary context, we could take first operand
-                    # For now, let's take the first operand
                     operand_vec_elements.append(binary_left_operands[binary_idx])
                     binary_idx += 1
                 else:
-                    # Non-vectorizable expression - wrap in target operation
                     operand_vec_elements.append(expr.args[i])
             
             operand_vec = Op("Vec", operand_vec_elements)
@@ -319,12 +299,10 @@ class RewriteRule:
         if original_size < 1:
             return None
             
-        # Check size limit
         new_size = original_size * 2
         if new_size > self.max_vector_size:
             return None
             
-        # Check if we're dealing with binary or unary operations
         first_lane = expr.args[0]
         if not isinstance(first_lane, Op) or first_lane.op != self.scalar_op:
             return None
@@ -336,7 +314,6 @@ class RewriteRule:
             return None
         
         if is_binary:
-            # Binary operations - extract both operands
             first_operands = []
             second_operands = []
             
@@ -348,11 +325,9 @@ class RewriteRule:
                 first_operands.append(lane.args[0])
                 second_operands.append(lane.args[1])
             
-            # Create doubled vector: [first_operands..., second_operands...]
             doubled_vector_elements = first_operands + second_operands
             
-        else:  # is_unary
-            # Unary operations - duplicate the operands
+        else:  
             operands = []
             
             for lane in expr.args:
@@ -362,16 +337,11 @@ class RewriteRule:
                     return None
                 operands.append(lane.args[0])
             
-            # Create doubled vector: [operands..., operands...]
             doubled_vector_elements = operands + operands
         
         doubled_vector = Op("Vec", doubled_vector_elements)
-        
-        # Create rotation with shift = original_size
         shift_amount = Const(original_size)
         rotated_vector = Op("<<", [doubled_vector, shift_amount])
-        
-        # Create final result
         result = Op(self.vector_op, [doubled_vector, rotated_vector])
         
         return result if result.validate_expression() else None
@@ -385,12 +355,10 @@ class RewriteRule:
         if original_size < 2:
             return None
             
-        # Check size limit
         new_size = original_size * 2
         if new_size > self.max_vector_size:
             return None
             
-        # Analyze which lanes can be vectorized
         binary_lanes = []
         unary_lanes = []
         binary_first_operands = []
@@ -408,18 +376,7 @@ class RewriteRule:
                     unary_operands.append(lane.args[0])
         
         total_vectorizable = len(binary_lanes) + len(unary_lanes)
-        
-        # Special case: for size-2 vectors, allow 1 matching operation
-        # For other sizes, need at least min_count vectorizable operations
-        min_required = 1 if original_size == 2 else self.min_count
-        if total_vectorizable < min_required:
-            return None
-        
-        # Don't match if ALL lanes are vectorizable - let uniform rotation handle that
-        if total_vectorizable == original_size:
-            return None
-        
-        # Determine identity element and check if operation is non-commutative
+
         target_op = self.target_ops[0]
         is_non_commutative = target_op in {"-", "/"}
         
@@ -431,8 +388,28 @@ class RewriteRule:
             identity_value = 1
         else:
             identity_value = 0
+
+        def _is_identity_padding_lane(lane: Expr) -> bool:
+            return isinstance(lane, Const) and lane.value == identity_value
+
+        vectorizable_lane_idx = set(binary_lanes) | set(unary_lanes)
+        non_vectorizable_non_padding = sum(
+            1
+            for i, lane in enumerate(expr.args)
+            if i not in vectorizable_lane_idx and not _is_identity_padding_lane(lane)
+        )
+
+        if original_size == 2 or non_vectorizable_non_padding == 0:
+            min_required = 1
+        else:
+            min_required = self.min_count
+            
+        if total_vectorizable < min_required:
+            return None
         
-        # For rotation, we'll prioritize binary operations
+        if total_vectorizable == original_size:
+            return None
+        
         first_half = []
         second_half = []
         
@@ -441,36 +418,25 @@ class RewriteRule:
         
         for i in range(original_size):
             if i in binary_lanes:
-                # Binary operation - use both operands
                 first_half.append(binary_first_operands[binary_idx])
                 second_half.append(binary_second_operands[binary_idx])
                 binary_idx += 1
             elif i in unary_lanes:
-                # Unary operation - duplicate the operand
                 first_half.append(unary_operands[unary_idx])
                 second_half.append(unary_operands[unary_idx])
                 unary_idx += 1
             else:
-                # Non-matching expression
                 if is_non_commutative:
-                    # For non-commutative ops: put non-matching expr on LEFT, identity on RIGHT
-                    # This ensures: non_matching_expr OP identity = non_matching_expr
                     first_half.append(expr.args[i])
                     second_half.append(Const(identity_value))
                 else:
-                    # For commutative ops: can put identity on either side
                     first_half.append(expr.args[i])
                     second_half.append(Const(identity_value))
         
-        # Create doubled vector: [first_half..., second_half...]
         doubled_vector_elements = first_half + second_half
         doubled_vector = Op("Vec", doubled_vector_elements)
-        
-        # Create rotation with shift = original_size
         shift_amount = Const(original_size)
         rotated_vector = Op("<<", [doubled_vector, shift_amount])
-        
-        # Create final result
         result = Op(self.vector_op, [doubled_vector, rotated_vector])
         
         return result if result.validate_expression() else None
@@ -532,8 +498,8 @@ class RewriteRule:
                         rotation = True
                         break
                 if not rotation or self.rule_type == "de-rotate":
-                        for i, child in enumerate(current.args):
-                            _find_recursive(child, path + [i], current, i)
+                    for i, child in enumerate(current.args):
+                        _find_recursive(child, path + [i], current, i)
                 else:
                     _find_recursive(current.args[0], path + [0], current, 0)
         _find_recursive(expr, [])
@@ -543,27 +509,27 @@ class RewriteRule:
         self, current: Expr, path: List[int],
         matches: List[Tuple[List[int], Expr]]
     ):
-        # Use a deque for BFS
         queue = deque([(path, current)])
         while queue:
             cur_path, node = queue.popleft()
 
-            # check for a match
             if self.lhs.match(node) is not None:
                 matches.append((cur_path.copy(), node))
 
-            # enqueue children one level deeper
             if isinstance(node, Op):
-                rotation = False
-                
-                for rule in self.rotation_rules:
-                    if rule.lhs.match(node) is not None:
-                        rotation = True
-                if not rotation or self.rule_type == "de-rotate": 
+                if self.rule_type == "de-rotate":
                     for i, child in enumerate(node.args):
                         queue.append((cur_path + [i], child))
                 else:
-                    queue.append((cur_path + [0], node.args[0]))
+                    rotation = False
+                    for rule in self.rotation_rules:
+                        if rule.lhs.match(node) is not None:
+                            rotation = True
+                    if not rotation:
+                        for i, child in enumerate(node.args):
+                            queue.append((cur_path + [i], child))
+                    else:
+                        queue.append((cur_path + [0], node.args[0]))
 
     def _apply_via_path(self, expr: Expr, path: List[int]) -> Optional[Expr]:
         WRAPPER_OPS = {"VecMul", "VecAdd", "VecMinus"}
@@ -571,39 +537,23 @@ class RewriteRule:
         def rec(node: Expr, subpath: List[int],
                 parent: Optional[Expr] = None,
                 parent_idx: Optional[int] = None) -> Expr:
-            # reached the target node – lane-count-guarded replacement
             if not subpath:
                 return self._apply_guarded(node, parent, parent_idx) or node
 
-            # leaf that cannot hold children
             if not isinstance(node, Op):
                 return node
 
             idx = subpath[0]
 
-            # ────────────────────────────────────────────────────────────
-            # Special case: we are stepping into the **first operand** of
-            # a wrapper (rotation) op.  After we rewrite that operand we
-            # must rebuild the *companion* operand so it references the
-            # fresh vector.
-            # ────────────────────────────────────────────────────────────
             if (node.op in WRAPPER_OPS and idx == 0
                     and self.rule_type in {"vectorize", "vectorize-flexible",
                                            "vectorize-rotation", "vectorize-rotation-flexible"}):
-                new_vec  = rec(node.args[0], subpath[1:], node, 0)   # rewrite left
+                new_vec  = rec(node.args[0], subpath[1:], node, 0)   
                 other    = node.args[1]
-                new_other = other  # default: no change
-                # common form  (<< old_vec shift)
-                if (isinstance(other, Op)
-                        and other.op == "<<" and len(other.args) >= 1):
-                    new_other = Op("<<", [new_vec, *other.args[1:]])
-                # else:
-                #     # generic deep replace if the structure is different
-                #     new_other = self._replace_expr(other, node.args[0], new_vec)
+                new_other = self._replace_expr(other, node.args[0], new_vec)
 
                 return Op(node.op, [new_vec, new_other])
 
-            # default path – just recurse
             new_args = [
                 rec(a, subpath[1:], node, i) if i == idx else a
                 for i, a in enumerate(node.args)
@@ -614,8 +564,6 @@ class RewriteRule:
 
     @staticmethod
     def _replace_expr(node: Expr, old: Expr, new: Expr) -> Expr:
-        """Deep structural substitution: replace every occurrence of *old*
-        (pointer-equal **or** structurally equal) by *new* inside *node*."""
         if node is old or node == old:
             return new
         if isinstance(node, Op):

@@ -20,11 +20,11 @@ UNCONSTRAINED_BUDGET_THRESHOLD = 100_000
 
 
 class fheEnv(gym.Env):
-    DEFAULT_BUDGET_OPTIONS = [240, 300, 1_000_000]
+    DEFAULT_BUDGET_OPTIONS = [230, 369, 9000]
     
     def __init__(self, rules_list, expressions, max_positions=2, embeddings_model=None, 
                  budget_options=None, constraint_method="lagrangian_pid", verbose=True,
-                 pref_list=[[1.0, 0.0], [0.0, 1.0]], lambda_env=0.0, lambda_kl=0.0, 
+                 pref_list=[[1.0, 0.0], [0.8, 0.2]], lambda_env=0.0, lambda_kl=0.0, 
                  n_cycle=1, n_budget=5, env_idx=0):
         super().__init__()
         
@@ -132,6 +132,7 @@ class fheEnv(gym.Env):
         self.curr_ops, self.curr_keys = self.initial_ops, self.initial_keys
 
         # Budget sampling
+        # FIX: use the env's own seeded RNG (reproducible) instead of global np.random
         budget = int(self.np_random.choice(self.active_budgets))
         if isinstance(options, dict):
             budget = options.get("budget", budget)
@@ -327,7 +328,7 @@ class fheEnv(gym.Env):
                        delta_keys_old, delta_keys_new) -> np.ndarray:
         """Compute the 2-D reward vector [r_ops, r_keys]."""
         r_ops  = (delta_ops_old  - delta_ops_new)  / delta_ops_old  if delta_ops_old  != 0 else 0.0
-        r_keys = (delta_keys_old - delta_keys_new) / self.n_budget
+        r_keys = (delta_keys_old - delta_keys_new) / delta_keys_old if delta_keys_old != 0 else 0.0
         return np.array([r_ops, r_keys], dtype=np.float32)
 
     def _kl_bonus(self, r_vec: np.ndarray) -> float:
@@ -345,7 +346,7 @@ class fheEnv(gym.Env):
         """Total reward = linear term + optional bonuses."""
         reward = float(np.dot(self.current_w, r_vec))
         if self.lambda_env != 0.0:
-            reward += self.lambda_env * self._pareto_envelope_bonus(r_vec)
+            reward += self.lambda_env * self._parest_envelope_bonus(r_vec) if hasattr(self, '_pareto_envelope_bonus') else self.lambda_env * self._pareto_envelope_bonus(r_vec)
         if self.lambda_kl != 0.0:
             reward += self.lambda_kl * self._kl_bonus(r_vec)
         return reward
@@ -377,7 +378,12 @@ class fheEnv(gym.Env):
         if budget in self.budget_options:
             budget_idx = self.budget_options.index(budget)
         else:
-            # Test budget not in training set — use nearest training budget for encoding
+            if not getattr(self, "_warned_budget_snap", False):
+                print(f"[fheEnv] WARNING: budget {budget} is not in the training budgets "
+                      f"{self.budget_options}. The policy observes it as "
+                      f"{self.budget_options[min(range(len(self.budget_options)), key=lambda i: abs(self.budget_options[i]-budget))]}"
+                      f" (nearest); only noise_ratio and the violation check use the real value.")
+                self._warned_budget_snap = True
             budget_idx = min(range(len(self.budget_options)),
                              key=lambda i: abs(self.budget_options[i] - budget))
         self.budget_one_hot_encoding[budget_idx] = 1.0

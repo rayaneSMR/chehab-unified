@@ -34,4 +34,3 @@ def generate_report(file_a, label):
 generate_report("./resultsABench.xlsx", "SCALAR BENCHMARKS")
 generate_report("./resultsABenchDNN.xlsx", "DNN VECTOR BENCHMARKS")
 generate_report("./resultsABenchDNNScaled.xlsx", "Scaled DNN VECTOR BENCHMARKS")
-

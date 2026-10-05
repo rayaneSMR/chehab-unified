@@ -2,6 +2,7 @@
 #include "fheco/ckks/ckks_scale_manager.hpp"
 #include "fheco/code_gen/gen_func.hpp"
 #include "fheco/code_gen/gen_func_lattigo.hpp"
+#include "fheco/code_gen/gen_func_heongpu.hpp"
 #include "fheco/dsl/ciphertext.hpp"
 #include "fheco/dsl/compiler.hpp"
 #include "fheco/dsl/plaintext.hpp"
@@ -205,6 +206,26 @@ void Compiler::gen_lattigo_code(
 }
 
 /***********************************************************************/
+void Compiler::gen_heongpu_code(
+  const std::shared_ptr<ir::Func> &func, std::ostream &cu_os, int scheme,
+  size_t rotation_keys_threshold)
+{
+#ifdef FHECO_LOGGING
+  clog << "\nHEonGPU code generation (CUDA)\n";
+#endif
+
+  // Get rotation steps
+  unordered_set<int> rotation_steps_keys;
+  rotation_steps_keys = passes::reduce_rotation_keys(func, rotation_keys_threshold);
+
+  // We add explicit relin for HEonGPU (similar to SEAL)
+  passes::relin_after_ctxt_ctxt_mul(func);
+
+  // Call the generator
+  code_gen::heongpu::gen_func_heongpu(func, rotation_steps_keys, cu_os, func->name(), scheme);
+}
+
+/***********************************************************************/
 const shared_ptr<ir::Func> &Compiler::add_func(shared_ptr<ir::Func> func)
 {
   if (auto it = funcs_table_.find(func->name()); it != funcs_table_.end())
@@ -329,7 +350,7 @@ void Compiler::compile(shared_ptr<ir::Func> func, Ruleset ruleset, trs::RewriteH
  *
  * @param func Shared pointer to the function to be vectorized.
  */
-void Compiler::gen_vectorized_code(const std::shared_ptr<ir::Func> &func, int optimization_method, float w_ops, float w_keys)
+void Compiler::gen_vectorized_code(const std::shared_ptr<ir::Func> &func, int optimization_method, float w_ops, float w_keys, const std::string& framework)
 {
   // Utility function to print expressions in prefix notation
   util::ExprPrinter expr_printer(func);
@@ -438,7 +459,7 @@ void Compiler::gen_vectorized_code(const std::shared_ptr<ir::Func> &func, int op
   /*********************************************************/
   // Call the vectorizer function with the computed vector width
   std::cout << "Call the code vectorizer \n";
-  call_vectorizer(vector_width, optimization_method, w_ops, w_keys);
+  call_vectorizer(vector_width, optimization_method, w_ops, w_keys, framework);
   /***********************************************************/
   // Call the script to build the source code that operates on vectors
   format_vectorized_code(func,false);
@@ -464,7 +485,7 @@ void Compiler::gen_vectorized_code(const std::shared_ptr<ir::Func> &func, int op
  * @param func Shared pointer to the function to be vectorized.
  * @param window The number of subvectors to divide the outputs into for vectorization.
  */
-void Compiler::gen_vectorized_code(const std::shared_ptr<ir::Func> &func, int window, int optimization_method, float w_ops, float w_keys)
+void Compiler::gen_vectorized_code(const std::shared_ptr<ir::Func> &func, int window, int optimization_method, float w_ops, float w_keys, const std::string& framework)
 {
   if (window < 0)
   {
@@ -495,7 +516,7 @@ void Compiler::gen_vectorized_code(const std::shared_ptr<ir::Func> &func, int wi
   /***************************************************************/
   if (window == 0)
   {
-    gen_vectorized_code(func, optimization_method, w_ops, w_keys);
+    gen_vectorized_code(func, optimization_method, w_ops, w_keys, framework);
     return;
   }
   else
@@ -554,7 +575,7 @@ void Compiler::gen_vectorized_code(const std::shared_ptr<ir::Func> &func, int wi
     if (vector_full_width < window)
     {
       std::cout << "\nresult vector width smaller than window size ==> windows will be considered=0(deactivated)\n";
-      gen_vectorized_code(func, optimization_method, w_ops, w_keys);
+      gen_vectorized_code(func, optimization_method, w_ops, w_keys, framework);
       return;
     }
     int index = 0;
@@ -589,7 +610,7 @@ void Compiler::gen_vectorized_code(const std::shared_ptr<ir::Func> &func, int wi
         }
         expression_file << expression;
         expression_file.close();
-        call_vectorizer(vector_width, optimization_method, w_ops, w_keys);
+        call_vectorizer(vector_width, optimization_method, w_ops, w_keys, framework);
         /********************************************/
         std::string vectorized_file = "../vectorized_code.txt";
         /******************************************************/
@@ -636,7 +657,7 @@ void Compiler::gen_vectorized_code(const std::shared_ptr<ir::Func> &func, int wi
   }
 }
 /***********************************************************************/
-void Compiler::call_vectorizer(int vector_width, int optimization_method, float w_ops, float w_keys)
+void Compiler::call_vectorizer(int vector_width, int optimization_method, float w_ops, float w_keys, const std::string& framework)
 {
   if (optimization_method == 0)
   {
@@ -644,7 +665,7 @@ void Compiler::call_vectorizer(int vector_width, int optimization_method, float 
   }
   else if (optimization_method == 1)
   {
-    call_rl_vectorizer(vector_width, w_ops, w_keys);
+    call_rl_vectorizer(vector_width, w_ops, w_keys, framework);
   }
   else
   {
@@ -668,7 +689,7 @@ void Compiler::call_egraph_vectorizer(int vector_width,int rewrite_rule_family_i
   }
 }
 
-void Compiler::call_rl_vectorizer(int vector_width, float w_ops, float w_keys)
+void Compiler::call_rl_vectorizer(int vector_width, float w_ops, float w_keys, const std::string& framework)
 {
   namespace fs = std::filesystem;
 
@@ -705,12 +726,19 @@ void Compiler::call_rl_vectorizer(int vector_width, float w_ops, float w_keys)
         Note: embeddings model path is now loaded from config.py
   -----------------------------------------------------------------*/
   std::ostringstream cmd;
-  cmd << "python -m fhe_rl run "
+  cmd << "python -m fhe_rl ";
+  if (!framework.empty()) {
+      cmd << "--framework " << framework << " ";
+  } else if (w_ops >= 0.0f && w_keys >= 0.0f) {
+      cmd << "--framework morl ";
+  }
+  cmd << "run "
       << "'" << expr_file.string() << "' "
-      << "'" << vect_file.string() << "' "
-      << "--w_ops " << w_ops << " "
-      << "--w_keys " << w_keys;
-  std::cout << "Executing RL Inference with weights: [" << w_ops << ", " << w_keys << "]\n";
+      << "'" << vect_file.string() << "'";
+  if (w_ops >= 0.0f && w_keys >= 0.0f) {
+      cmd << " --w_ops " << w_ops << " --w_keys " << w_keys;
+  }
+  std::cout << "Executing: " << cmd.str() << '\n';
   const int rc = std::system(cmd.str().c_str());
   /*-----------------------------------------------------------------
     5.  Restore caller’s working directory
@@ -724,6 +752,7 @@ void Compiler::call_rl_vectorizer(int vector_width, float w_ops, float w_keys)
   if (rc != 0)
   {
     std::cerr << "Vectorizer exited with status " << rc << '\n';
+    throw std::runtime_error("Vectorizer failed");
   }
 }
 /**********************************************************************/
@@ -1627,7 +1656,7 @@ std::pair<std::string, int> process(
                        : (operation == "VecMinusRot") ? "VecMinusRot"
                        : (operation == "VecMulRot")   ? "VecMulRot"
                                                       : "<<";
-      /******/ new_expression += " " + op;
+      /*****/ new_expression += " " + op;
       index++;
       auto [operand_1, new_index] =
         process(tokens, index, dictionary, inputs_entries, inputs, inputs_types, slot_count, new_expression);
@@ -1861,7 +1890,7 @@ void Compiler::format_vectorized_code(const std::shared_ptr<ir::Func> &func, boo
   }
   std::cout<<"==> stop_reached : "<<final_expression_reached<<" \n";
   // we need to run the greedy trs at this stage 
-  if(!final_expression_reached){ // we can activate it to test the effect of greedy trs on the final expression
+  if(!final_expression_reached){
     auto ruleset = Compiler::Ruleset::depth;
     auto rewrite_heuristic = trs::RewriteHeuristic::bottom_up;
     compile(func, ruleset, rewrite_heuristic);
