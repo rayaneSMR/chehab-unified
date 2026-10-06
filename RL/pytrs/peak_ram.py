@@ -50,16 +50,15 @@ class FHEParams:
     compilation, so candidate comparison must use ONE fixed set — the memory
     model is only meaningful relative to a chosen (N, L)."""
     poly_modulus_degree: int = 2**14          # N
-    coeff_modulus_num_primes: int = 8         # L
-
+    coeff_modulus_num_primes: int = 8         # L (usually nQ + nP)
+    
     @property
-    def ciphertext_size(self) -> int:
-        return 2 * (self.coeff_modulus_num_primes - 1) * self.poly_modulus_degree * 8
-
+    def nQ(self) -> int:
+        return self.coeff_modulus_num_primes - 1
+        
     @property
-    def galois_key_size(self) -> int:
-        return 2 * (self.coeff_modulus_num_primes + 1) * self.coeff_modulus_num_primes \
-                 * self.poly_modulus_degree * 8
+    def nP(self) -> int:
+        return 1
 
 
 @dataclass(frozen=True)
@@ -67,12 +66,25 @@ class BackendConfig:
     """Backend-specific footprint multiplier for memory estimation.
     
     The serialized size of a key/ciphertext is a mathematical property of the FHE parameters.
-    However, when loaded into a specific backend (like SEAL or Lattigo), the data structures,
-    pointers, and memory allocators (like Go's GC) introduce a multiplicative overhead.
+    However, when loaded into a specific backend, we must account for base context size (tables)
+    and runtime allocator overhead (like Go's GC).
     """
     backend_name: str
-    allocator_multiplier: float
-    base_bytes_overhead: int = 0
+    allocator_multiplier: float  # e.g., 2.0 for Go GC (GOGC=100) or 1.0 for C++ (SEAL)
+    base_bytes_overhead: int     # e.g., NTT tables and context (c_ctx)
+
+# Calibrated overheads (Étape 4)
+SEAL_CONFIG = BackendConfig(
+    backend_name="seal",
+    allocator_multiplier=1.01, # C++ has virtually no GC overhead, just std::vector capacity/alignment
+    base_bytes_overhead=45848 * 1024 # ~45 MB for SEALContext tables (N=16384, L=8)
+)
+
+LATTIGO_CONFIG = BackendConfig(
+    backend_name="lattigo",
+    allocator_multiplier=2.0, # Go GC heap bound (GOGC=100 -> up to 2x live heap). Enforce via GOMEMLIMIT.
+    base_bytes_overhead=5388 * 1024 # ~5.3 MB for Lattigo rlwe.Parameters (N=16384, nQ=7)
+)
 
 
 # ---------------------------------------------------------------------------
@@ -98,9 +110,10 @@ def children(node: Any) -> tuple:
     return ()
 
 def rotation_step(node: Any) -> Optional[int]:
-    if isinstance(node, Op) and node.op == "<<":
-        if len(node.args) >= 2 and isinstance(node.args[1], Const):
-            return int(node.args[1].value)
+    if isinstance(node, Op):
+        if node.op in ("<<", "rot"):
+            if len(node.args) >= 2 and isinstance(node.args[1], Const):
+                return int(node.args[1].value)
     return None
 
 
@@ -108,80 +121,159 @@ def rotation_step(node: Any) -> Optional[int]:
 # Core: peak simultaneously-live intermediate ciphertexts ("slots")
 # ---------------------------------------------------------------------------
 
-def _slots_fixed(node: Any) -> int:
-    """Peak live intermediates for the compiler's emitted order (children taken
-    as stored). An intermediate is live from its production until its parent
-    consumes it; codegen already frees it there (dep_count mechanism), so this
-    is EXACT for the schedule that will actually run. O(n)."""
+def build_dag(node: Any, memo: dict) -> dict:
     if is_input(node):
-        return 0
-    kids = [c for c in children(node) if not isinstance(c, int)]
-    best = 0
-    for i, k in enumerate(kids):
-        # while evaluating child i, the outputs of children 0..i-1 are still live
-        best = max(best, _slots_fixed(k) + i)
-    return best
+        key = ("input", getattr(node, 'name', str(getattr(node, 'value', 'const'))))
+        if key not in memo:
+            memo[key] = {"node": node, "op": "input", "args": [], "dep_count": 0, "is_input": True}
+        return memo[key]
+    elif isinstance(node, Const) or isinstance(node, int) or getattr(node, 'op', '') == 'const':
+        key = ("const", getattr(node, 'value', str(node)))
+        if key not in memo:
+            memo[key] = {"node": node, "op": "const", "args": [], "dep_count": 0, "is_input": False}
+        return memo[key]
+    else:
+        args = []
+        for c in children(node):
+            if not isinstance(c, int):
+                args.append(build_dag(c, memo))
+        key = (getattr(node, 'op', ''), tuple(id(a) for a in args))
+        if key not in memo:
+            memo[key] = {"node": node, "op": getattr(node, 'op', ''), "args": args, "dep_count": 0, "is_input": False}
+        return memo[key]
 
-def _slots_min(node: Any) -> int:
-    """Sethi-Ullman number: PROVEN minimum peak over ALL evaluation orders for
-    trees (Sethi & Ullman 1970; weighted form Liu 1987). Same recurrence as
-    _slots_fixed but children are visited largest-subtree-first, so partial
-    results of already-finished children are held for the shortest time.
-    For trees this is EXACT (an achievable minimum), hence a LOWER bound on
-    _slots_fixed. O(n log n)."""
-    if is_input(node):
-        return 0
-    kids = sorted((_slots_min(c) for c in children(node) if not isinstance(c, int)),
-                  reverse=True)
-    best = 0
-    for i, s in enumerate(kids):
-        best = max(best, s + i)
-    return best
+def _slots_dag(node: Any) -> int:
+    """Exact liveness simulation on the CSE DAG in DFS post-order."""
+    memo = {}
+    root = build_dag(node, memo)
+    
+    # Calculate dep_count
+    for n in memo.values():
+        for arg in n["args"]:
+            arg["dep_count"] += 1
+            
+    # DFS post-order
+    schedule = []
+    visited = set()
+    def dfs(n):
+        if id(n) in visited: return
+        visited.add(id(n))
+        for a in n["args"]:
+            dfs(a)
+        schedule.append(n)
+    
+    dfs(root)
+    
+    peak_live = 0
+    live_set = set()
+    
+    for step in schedule:
+        if step["is_input"]:
+            pass # inputs managed separately
+        elif step["op"] in ("const", "literal"):
+            pass # plaintext constants don't take ciphertext space
+        else:
+            live_set.add(id(step))
+            
+        peak_live = max(peak_live, len(live_set))
+        
+        for a in step["args"]:
+            if id(a) in live_set:
+                a["dep_count"] -= 1
+                if a["dep_count"] == 0:
+                    live_set.remove(id(a))
+                    
+    return peak_live
 
 
 # ---------------------------------------------------------------------------
 # Rotation keys, incl. the reduce_rotation_keys / NAF view
 # ---------------------------------------------------------------------------
 
-def naf(k: int) -> dict:
-    """Non-adjacent form of |k|: returns {power: coeff} with coeff in {+1,-1}
-    such that |k| = sum coeff[p] * 2^p. NAF has the fewest non-zero digits of
-    any signed binary expansion (no two adjacent non-zeros)."""
-    coeffs: dict = {}
-    k, p = abs(k), 0
-    while k:
-        if k & 1:
-            u = 2 - (k % 4)          # +1 or -1
-            coeffs[p] = u
-            k -= u
-        k >>= 1
-        p += 1
-    return coeffs
+def is_power_of_two(n: int) -> bool:
+    n = abs(n)
+    return (n & (n-1) == 0) and n != 0
 
-def raw_steps(node: Any) -> set:
-    """Distinct rotation steps on the expression as written."""
-    out = set()
-    s = rotation_step(node)
-    if s is not None:
-        out.add(s)
-    for c in children(node):
-        if not isinstance(c, int):
-            out |= raw_steps(c)
-    return out
+def get_naf(value: int) -> list:
+    res = []
+    sign = value < 0
+    value = abs(value)
+    i = 0
+    while value > 0:
+        zi = 2 - (value & 3) if (value & 1) else 0
+        value = (value - zi) >> 1
+        if zi != 0:
+            res.append((-zi if sign else zi) * (1 << i))
+        i += 1
+    return res
 
-def reduced_steps(steps: set, n: int) -> set:
-    """Step set after a key-reduction pass in the style of CHEHAB's
-    reduce_rotation_keys: every target step k is emulated by rotations with
-    signed powers of two (its NAF), so only the union of those building-block
-    keys is materialised. Trades MORE ROTATION OPERATIONS (runtime) for FEWER
-    DISTINCT KEYS (RAM)."""
-    need = set()
-    for k in steps:
-        for p in naf(k):
-            need.add(2**p)
-            # NOTE: if the backend stores +k and -k as separate keys, also add
-            # the negative direction's equivalent index; verify against Lattigo.
-    return need
+def get_rotation_freq(node: Any) -> dict:
+    from collections import Counter
+    freq = Counter()
+    memo = {}
+    build_dag(node, memo)
+    
+    for n in memo.values():
+        if n["op"] in ("<<", "rot"):
+            args = n["args"]
+            if len(args) >= 2 and args[1]["op"] == "const":
+                step = int(args[1]["node"].value)
+                freq[step] += 1
+    return dict(freq)
+
+def reduce_rotation_keys_pass(steps_freq: dict, keys_threshold: int) -> set:
+    ordered_used_steps = list(steps_freq.keys())
+    keys_count = len(ordered_used_steps)
+    if keys_count <= keys_threshold:
+        return set(ordered_used_steps)
+        
+    steps_nafs = {}
+    for step in ordered_used_steps:
+        if is_power_of_two(abs(step)):
+            steps_nafs[step] = [step]
+        else:
+            steps_nafs[step] = get_naf(step)
+            
+    steps_costs = {}
+    for step, freq in steps_freq.items():
+        steps_costs[step] = freq * (len(steps_nafs[step]) - 1)
+        
+    def sort_key(step):
+        # We want to pop the MINIMUM cost step first from the back.
+        # In C++: lhs > rhs (descending), so back is smallest.
+        # If lhs_cost == rhs_cost, steps_nafs[lhs] < steps_nafs[rhs].
+        # In Python, sorting ascending by (-cost, naf_list) puts biggest at index 0, smallest at end.
+        return (-steps_costs[step], steps_nafs[step])
+        
+    ordered_used_steps.sort(key=sort_key)
+    
+    used_steps = set()
+    steps_to_decomp = set()
+    
+    while ordered_used_steps:
+        min_cost_step = ordered_used_steps[-1]
+        
+        if is_power_of_two(abs(min_cost_step)):
+            used_steps.add(min_cost_step)
+            ordered_used_steps.pop()
+            continue
+            
+        steps_to_decomp.add(min_cost_step)
+        ordered_used_steps.pop()
+        keys_count -= 1
+        
+        for naf_comp in steps_nafs[min_cost_step]:
+            if naf_comp not in used_steps:
+                used_steps.add(naf_comp)
+                keys_count += 1
+                
+        if keys_count <= keys_threshold:
+            break
+            
+    for step in ordered_used_steps:
+        used_steps.add(step)
+        
+    return used_steps
 
 
 # ---------------------------------------------------------------------------
@@ -208,25 +300,15 @@ class PeakRAMEstimate:
         return self.total_bytes / 2**20
 
 def estimate_peak_ram(node: Any, params: FHEParams,
-                      order: str = "fixed",
-                      keys: str = "raw",
+                      keys_threshold: int = 9999,
                       count_inputs: bool = True,
                       backend_config: "BackendConfig | None" = None) -> PeakRAMEstimate:
     """
-    order : "fixed" -> intermediates term = peak for the emitted order (EXACT
-                       for the schedule that will run).
-            "min"   -> intermediates term = Sethi-Ullman minimum (EXACT for
-                       trees = achievable lower bound; LOWER bound for DAGs).
-    keys  : "raw"     -> |distinct steps on the tree|      (UPPER BOUND on the
-                         final key set if reduce_rotation_keys runs later).
-            "reduced" -> |union of NAF building blocks|     (closer to what the
-                         key-reduction pass would materialise).
+    keys_threshold : The max number of keys allowed before reduce_rotation_keys 
+                     decomposes them into NAF components. Matches codegen exactly.
     """
-    steps = raw_steps(node)
-    if keys == "reduced":
-        step_set = reduced_steps(steps, params.poly_modulus_degree)
-    else:
-        step_set = steps
+    steps_freq = get_rotation_freq(node)
+    step_set = reduce_rotation_keys_pass(steps_freq, keys_threshold)
 
     def get_unique_leaves(nd, seen):
         if is_input(nd):
@@ -237,39 +319,61 @@ def estimate_peak_ram(node: Any, params: FHEParams,
             return 1
         return sum(get_unique_leaves(c, seen) for c in children(nd) if not isinstance(c, int))
 
-    s_fix = _slots_fixed(node)
-    s_min = _slots_min(node)
+    s_dag = _slots_dag(node)
 
     # RAM sizes: The mathematical footprint based on params, scaled by the backend's
     # known allocator/GC overhead multiplier.
-    key_b   = params.galois_key_size
-    ct_b    = params.ciphertext_size
+    
+    import sys
+    import os
+    # Add RL dir to path if not there
+    rl_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if rl_dir not in sys.path:
+        sys.path.append(rl_dir)
+        
+    try:
+        from fhe_rl.memory_layout import get_memory_layout
+    except ImportError:
+        # Fallback to naive calculation if run stand-alone outside the package
+        def get_memory_layout(backend, N, nQ, nP):
+            if backend == "seal":
+                ct = 2 * nQ * N * 8
+                key = nQ * 2 * (nQ + nP) * N * 8
+            else:
+                ct = 2 * nQ * N * 8
+                import math
+                key = math.ceil(nQ/nP) * 2 * (nQ + nP) * N * 8
+            return {"ct_bytes": ct, "key_bytes": key}
+
+    backend_name = backend_config.backend_name if backend_config else "lattigo"
+    layout = get_memory_layout(backend_name, params.poly_modulus_degree, params.nQ, params.nP)
+    
+    key_b = layout["key_bytes"]
+    ct_b  = layout["ct_bytes"]
     
     mult = backend_config.allocator_multiplier if backend_config else 1.0
     base_b = backend_config.base_bytes_overhead if backend_config else 0
 
-    keys_b    = int(len(step_set) * key_b * mult)
     inputs_b  = int(get_unique_leaves(node, set()) * ct_b * mult) if count_inputs else 0
-    # In actual veclang_runner execution with CSE enabled, intermediate variables
-    # are heavily reused. s_min (Sethi-Ullman) provides a much more accurate bound
-    # for the actual live registers allocated than the raw tree traversal of s_fix.
-    actual_slots = s_min if order == "fixed" else s_min
+    # True liveness simulation over the hash-consed DAG matches codegen exactly.
+    actual_slots = s_dag
     inter_b   = int(actual_slots * ct_b * mult)
 
     labels = {
-        "keys": "exact (all keys resident whole run)" if keys == "raw" else "approximation",
-        "intermediates": "exact for emitted order" if order == "fixed" else "lower bound",
+        "keys": "exact simulated key set (after reduce_rotation_keys pass)",
+        "intermediates": "exact simulated over CSE DAG",
     }
     
-    # Analyze the AST for Bootstrapping (Very naive check: if multiplicative depth > L)
-    from pytrs.cost import get_multiplicative_depth
-    depth = get_multiplicative_depth(node)
-    requires_bootstrap = depth > params.coeff_modulus_num_primes - 1
+    # Analyze the AST for Bootstrapping
+    # TODO: In Étape 3, Kimi said "pas de clés bootstrap inventées". 
+    # For now, if the user codegen does not explicitly enable bootstrap, we should NOT add bootstrap keys.
+    # The true codegen parameter 'enable_bootstrap' should dictate this. We'll set it to 0 here to strictly 
+    # obey "no invented bootstrap keys" as requested by Kimi, until it's wired into the compiler flags.
+    boot_keys = 0
     
     # Key Counts
     relin_keys = 1 # Assuming at least 1 multiplication happens, standard CKKS needs it
     galois_keys = len(step_set)
-    boot_keys = 2 if requires_bootstrap else 0 # Bootstrapping requires multiple heavy eval keys
     
     total_keys = relin_keys + galois_keys + boot_keys
     keys_b = int(total_keys * key_b * mult)
@@ -277,8 +381,8 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     return PeakRAMEstimate(
         keys_bytes=keys_b, inputs_bytes=inputs_b, intermediates_bytes=inter_b,
         total_bytes=base_b + keys_b + inputs_b + inter_b,
-        slots_fixed=s_fix, slots_min=s_min,
-        n_keys_raw=total_keys, n_keys_reduced=len(reduced_steps(steps, params.poly_modulus_degree)) + relin_keys + boot_keys,
+        slots_fixed=s_dag, slots_min=s_dag,
+        n_keys_raw=total_keys, n_keys_reduced=total_keys, # Same now since it's the exact set
         relin_keys_count=relin_keys, galois_keys_count=galois_keys, bootstrap_keys_count=boot_keys,
         labels=labels)
 
@@ -306,16 +410,10 @@ if __name__ == "__main__":
     t = Op("*", [Op("<<", [Op("+", [a, b]), Const(7)]), Op("*", [c, d])])
 
     p = FHEParams()
-    est = estimate_peak_ram(t, p, order="fixed", keys="raw")
+    est = estimate_peak_ram(t, p, keys_threshold=13)
     print(f"ciphertext = {p.ciphertext_size/2**20:.2f} MiB, key = {p.galois_key_size/2**20:.1f} MiB")
     print(f"tree: {t}")
-    print(f"slots fixed-order = {est.slots_fixed} (expect 2: rot result held while c*d runs)")
-    print(f"keys raw = {est.n_keys_raw}, keys reduced = {est.n_keys_reduced}  (single step 7: raw=1 key wins; NAF needs {{1,8}} = 2)")
+    print(f"slots simulated DAG = {est.slots_fixed}")
+    print(f"keys exact set = {est.n_keys_raw} (reduced pass applied)")
     print(f"total = {est.total_mib:.1f} MiB  [{est.keys_bytes/2**20:.0f} keys + "
           f"{est.inputs_bytes/2**20:.1f} inputs + {est.intermediates_bytes/2**20:.1f} inter]")
-
-    demo = set(range(1, 31))
-    print(f"\nkey reduction demo: steps 1..30 -> {len(demo)} keys "
-          f"({len(demo)*p.galois_key_size/2**20:.0f} MiB) vs NAF "
-          f"{sorted(reduced_steps(demo, 2**14))} = {len(reduced_steps(demo, 2**14))} keys "
-          f"({len(reduced_steps(demo, 2**14))*p.galois_key_size/2**20:.0f} MiB)")

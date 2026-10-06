@@ -114,14 +114,12 @@ for exp in experiments:
     except Exception:
         seal_ram = 0
         
+    from pytrs.peak_ram import SEAL_CONFIG, LATTIGO_CONFIG
     params = FHEParams(poly_modulus_degree=exp['N'], coeff_modulus_num_primes=exp['L'])
-    lat_mult = {8192: 0.20, 16384: 0.286, 32768: 0.438}[exp['N']]
-    lat_conf = BackendConfig("lattigo", lat_mult, base_bytes_overhead=45*1024**2)
-    lat_est = estimate_peak_ram(ast, params, order="fixed", keys="raw", backend_config=lat_conf).total_mib * 1024**2
+    lat_est = estimate_peak_ram(ast, params, keys_threshold=13, backend_config=LATTIGO_CONFIG).total_bytes
     
-    seal_keys = keys if keys <= 1 else {8192: 13, 16384: 14, 32768: 15}[exp['N']]
-    seal_conf = BackendConfig("seal", 1.9, base_bytes_overhead=50*1024**2)
-    seal_est = estimate_peak_ram(ast, params, order="fixed", keys=seal_keys, backend_config=seal_conf).total_mib * 1024**2
+    seal_keys = 13
+    seal_est = estimate_peak_ram(ast, params, keys_threshold=seal_keys, backend_config=SEAL_CONFIG).total_bytes
     
     seal_err = abs(seal_est - seal_ram) / seal_ram * 100 if seal_ram > 0 else 0
     seal_dir = "OVER" if seal_est > seal_ram else "UNDER" if seal_est < seal_ram else "EXACT"
