@@ -4,6 +4,7 @@ Contains model paths, tokenizer settings, and other configuration parameters.
 """
 
 import importlib
+import os
 from pathlib import Path
 import torch
 import enum
@@ -44,6 +45,12 @@ MODEL_PATHS = {
     
   
     "mo_agent_model": FHE_RL_DIR / "trained_models" / "agent_pareto_2_full.zip",
+
+    # Unified (MORL + constrained) agent. Edit the path below, or set FHE_UNIFIED_MODEL.
+    "unified_agent_model": Path(os.environ.get(
+        "FHE_UNIFIED_MODEL",
+        PROJECT_ROOT / "checkpoints" / "model_jobid_lagrangian_pid_film_a" / "rl_model_600000_steps.zip",
+    )),
     "gnn_agent_model": FHE_RL_DIR / "trained_models" / "agent_lppo_14848346.zip",
     "dynamic_embeddings_model": FHE_RL_DIR / "trained_models" / "embeddings_ROT_15_32_5m_10742576.pth",
     "bpe_embeddings_model": FHE_RL_DIR / "trained_models" / "model_Transformer_BPE_ddp_jobid_epoch_5000000.pth",
@@ -73,22 +80,68 @@ COMPONENT_CONFIG = {
     "wrapper_class": "auto",
 }
 
+# ----------------------------------------------------------------------------
+# Framework registry.  `--framework X` selects ONE complete stack:
+#   env class, policy class, checkpoint key, pytrs mode and preference mode.
+#   constrained : constrained RL only      (single preference [1, 0])
+#   morl        : original multi-objective RL (env_mo / policy_mo)
+#   unified     : MORL + constrained RL    (Pareto preferences + noise budgets)
+# ----------------------------------------------------------------------------
+FRAMEWORKS = {
+    "constrained": dict(
+        env="fhe_rl.env.fheEnv",
+        policy="fhe_rl.policy.HierarchicalMaskablePolicy",
+        wrapper="auto",
+        model_key="agent_model",
+        pytrs="constrained",
+        pref_mode="single",
+    ),
+    "morl": dict(
+        env="fhe_rl.env_mo.fheEnvMO",
+        policy="fhe_rl.policy_mo.HierarchicalMaskablePolicyMO",
+        wrapper=None,
+        model_key="mo_agent_model",
+        pytrs="morl",
+        pref_mode="pareto",
+    ),
+    "unified": dict(
+        env="fhe_rl.env_unified.fheEnvUnified",
+        policy="fhe_rl.policy.HierarchicalMaskablePolicy",
+        wrapper="auto",
+        model_key="unified_agent_model",
+        pytrs="constrained",
+        pref_mode="pareto",
+    ),
+}
+_CURRENT_FRAMEWORK = "constrained"   # matches the default COMPONENT_CONFIG above
+
+
 def set_framework(framework_name: str):
     """
-    Set the framework to use for the RL agent.
-    Updates COMPONENT_CONFIG based on the selected framework.
-    Supported frameworks: 'constrained', 'mo'
+    Select the framework ('constrained', 'morl' or 'unified').
+    The legacy alias 'mo' is still accepted and means 'morl'.
     """
+    global _CURRENT_FRAMEWORK
     if framework_name == "mo":
-        COMPONENT_CONFIG["env_class"] = "fhe_rl.env_mo.fheEnvMO"
-        COMPONENT_CONFIG["policy_class"] = "fhe_rl.policy_mo.HierarchicalMaskablePolicyMO"
-        COMPONENT_CONFIG["wrapper_class"] = None
-    elif framework_name == "constrained":
-        COMPONENT_CONFIG["env_class"] = "fhe_rl.env.fheEnv"
-        COMPONENT_CONFIG["policy_class"] = "fhe_rl.policy.HierarchicalMaskablePolicy"
-        COMPONENT_CONFIG["wrapper_class"] = "auto"
-    else:
-        raise ValueError(f"Unknown framework: {framework_name}")
+        framework_name = "morl"
+    if framework_name not in FRAMEWORKS:
+        raise ValueError(
+            f"Unknown framework: {framework_name}. Choose from {list(FRAMEWORKS)}"
+        )
+    spec = FRAMEWORKS[framework_name]
+    COMPONENT_CONFIG["env_class"] = spec["env"]
+    COMPONENT_CONFIG["policy_class"] = spec["policy"]
+    COMPONENT_CONFIG["wrapper_class"] = spec["wrapper"]
+    _CURRENT_FRAMEWORK = framework_name
+
+
+def get_framework() -> str:
+    return _CURRENT_FRAMEWORK
+
+
+def get_framework_spec() -> dict:
+    return FRAMEWORKS[_CURRENT_FRAMEWORK]
+
 
 def get_model_path(model_key):
     """
@@ -141,6 +194,7 @@ def get_wrapper_class():
 
 def print_config():
     print("=== FHE RL Agent Configuration ===")
+    print(f"Framework: {get_framework()}")
     print(f"Tokenizer type: {get_tokenizer_type()}")
     print(f"Device: {get_device()}")
     print(f"Env class: {COMPONENT_CONFIG['env_class']}")

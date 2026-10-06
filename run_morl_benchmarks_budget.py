@@ -6,12 +6,15 @@ import statistics
 
 benchmarks_folder = "benchmarks"
 build_folder = os.path.join("build", "benchmarks")
+
+# Which agent the C++ driver should use: "morl" | "constrained" | "unified"
+FRAMEWORK = "unified"
 operations = ["add", "sub", "multiply_plain", "rotate_rows", "negate", "multiply"]
 infos = ["benchmark", "w_ops", "w_keys", "noise_budget"]
 additional_infos = [
     "Depth", "Multiplicative Depth", "compile_time (s)",
     "circuit_execution_time (s)", 'galois_keys_generation_time (s)', 'total_execution_time (s)',
-    "Remaining_noise_budget", 'rotation_keys_size (MB)', 'rotation_keys_count', 'final_ops_cost', 'final_keys_cost'
+    "Remaining_noise_budget", 'rotation_keys_size (MB)', 'final_ops_cost', 'final_keys_cost'
 ]
 infos.extend(operations)
 infos.extend(additional_infos)
@@ -22,7 +25,7 @@ benchmark_folders = [
 #  "lin_reg", "box_blur", "matrix_mul", "max", "sort", "l2_distance",
     #"poly_reg", "roberts_cross", 
 pref_list = [[0.8, 0.2], [1.0, 0.0]]  # Points de grille grossière pour la bisection
-budget_list = [230, 369, 9000]
+budget_list = [240,300,1000000]
 
 depths = [5, 10]
 regimes = ["50-50", "100-50", "100-100"]
@@ -57,11 +60,13 @@ def run_benchmark(subfolder_name, slot_count, w_ops, w_keys, noise_budget, build
     stats = {k: [] for k in operations + infos[4:]}
 
     if subfolder_name not in exceptions:
-        gen_script = os.path.join(build_path, f"generate_{subfolder_name}.py")
-        if os.path.exists(gen_script):
-            subprocess.Popen(['python3', gen_script, '--slot_count', str(slot_count)], cwd=build_path).wait()
+        gen_name = f"generate_{subfolder_name}.py"
+        # build_path is relative and is also used as cwd below, so pass the BARE file name
+        # (joining it with build_path doubled the path: build/benchmarks/x/build/benchmarks/x/...)
+        if os.path.exists(os.path.join(build_path, gen_name)):
+            subprocess.Popen(['python3', gen_name, '--slot_count', str(slot_count)], cwd=build_path).wait()
 
-    cmd = f"./{subfolder_name} 1 {slot_count} morl 1 0 1 1 1 0 {w_ops} {w_keys}"
+    cmd = f"./{subfolder_name} 1 {slot_count} {FRAMEWORK} 1 0 1 1 1 0 {w_ops} {w_keys}"
     run_env = os.environ.copy()
     run_env["FHECO_NOISE_BUDGET"] = str(noise_budget)
 

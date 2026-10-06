@@ -1,0 +1,14 @@
+run=> cmake -S . -B build
+run=> cmake --build build
+*****run dot_product , slot : 4 , w=(0.8,0.2) , budget=240******
+*****run dot_product , slot : 4 , w=(1.0,0.0) , budget=240******
+*****run dot_product , slot : 4 , w=(0.8,0.2) , budget=300******
+*****run dot_product , slot : 4 , w=(1.0,0.0) , budget=300******
+*****run dot_product , slot : 4 , w=(0.8,0.2) , budget=1000000******
+*****run dot_product , slot : 4 , w=(1.0,0.0) , budget=1000000******
+*****run dot_product , slot : 8 , w=(0.8,0.2) , budget=240******
+*****run dot_product , slot : 8 , w=(1.0,0.0) , budget=240******
+*****run dot_product , slot : 8 , w=(0.8,0.2) , budget=300******
+*****run dot_product , slot : 8 , w=(1.0,0.0) , budget=300******
+*****run dot_product , slot : 8 , w=(0.8,0.2) , budget=1000000******
+*****run dot_product , slot : 8 , w=(1.0,0.0) , budget=1000000******

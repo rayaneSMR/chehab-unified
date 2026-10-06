@@ -7,7 +7,7 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
 
-from .env import fheEnv
+from .config import get_env_class, get_framework_spec
 from .policy import HierarchicalMaskablePolicy
 from .policy_film_b import HierarchicalMaskablePolicyFiLMB
 from .utils import load_expressions, create_rules
@@ -41,13 +41,23 @@ def train_agent(
     lambda_kl: float = 0.0,
     n_cycle: int = 1,
     n_budget: int = 5,
-    policy_variant: str = "film_a"
+    policy_variant: str = "film_a",
+    pref_mode: str = "pareto",
 ):
     set_random_seed(seed)
     
     # MORL setup
-    N = 11
-    pref_list = generate_pref_list(N)
+    # 'pareto' -> MORL + constrained (unified); 'single' -> constrained only
+    if pref_mode == "single":
+        pref_list = [[1.0, 0.0]]
+    else:
+        N = 11
+        pref_list = generate_pref_list(N)
+
+    # Resolve the env class in the PARENT process: with start_method='spawn' the
+    # workers never run main(), so set_framework() would not be applied there.
+    EnvCls = get_env_class()
+    pytrs_framework = get_framework_spec()["pytrs"]
     
     # Common setup
     benchmarks = load_expressions("./fhe_rl/datasets/benchmarks.txt")
@@ -80,7 +90,12 @@ def train_agent(
             # Seed worker-local Python, NumPy, and PyTorch RNGs
             np.random.seed(seed + rank)
             torch.manual_seed(seed + rank)
-            env = fheEnv(
+            try:
+                import pytrs.config
+                pytrs.config.framework = pytrs_framework
+            except ImportError:
+                pass
+            env = EnvCls(
                 rules_list, exprs, max_positions=max_positions,
                 embeddings_model=embeddings_model,
                 budget_options=budget_options,
@@ -158,7 +173,7 @@ def train_agent(
         num_actions=len(rules_list),
         total_timesteps=total_timesteps,
         output_model_name=run_name,
-        notes=f"Algo: {algo} | Method: {constraint_method} | budget_encoding={budget_encoding} | num_envs={num_envs} | budgets={budget_options} | n_cycle={n_cycle} | n_budget={n_budget}",
+        notes=f"Algo: {algo} | Method: {constraint_method} | budget_encoding={budget_encoding} | num_envs={num_envs} | budgets={budget_options} | n_cycle={n_cycle} | n_budget={n_budget} | pref_mode={pref_mode}",
     )
 
     # Callbacks

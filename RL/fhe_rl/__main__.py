@@ -2,13 +2,15 @@ import sys
 import os
 import argparse
 
-# Support framework flag (--framework constrained/morl)
+# Support framework flag (--framework constrained/morl/unified)
+# pytrs only knows the original two modes: 'unified' reuses the constrained one.
+PYTRS_FRAMEWORK = {"constrained": "constrained", "morl": "morl", "unified": "constrained"}
 framework_parser = argparse.ArgumentParser(add_help=False)
-framework_parser.add_argument("--framework", choices=["constrained", "morl"], default="constrained", help='Framework to use (default: constrained)')
+framework_parser.add_argument("--framework", choices=["constrained", "morl", "unified"], default="unified", help='Framework to use (default: unified). Put it BEFORE the sub-command.')
 args, _ = framework_parser.parse_known_args()
 try:
     import pytrs.config
-    pytrs.config.framework = args.framework
+    pytrs.config.framework = PYTRS_FRAMEWORK[args.framework]
 except ImportError:
     pass
 
@@ -21,7 +23,7 @@ from .TRAE_bpe import BPETokenizer  # Import for pickle compatibility
 from .morl import run_interactive, add_subparser
 from .config import (
     get_model_path, get_tokenizer_type, 
-    print_config, set_framework
+    print_config, set_framework, get_framework_spec
 )
 
 
@@ -213,6 +215,12 @@ def parse_arguments(args=None):
     run_parser.add_argument('--w_ops', type=float, default=1.0, help='Weight for execution time/operations')
     run_parser.add_argument('--w_keys', type=float, default=0.0, help='Weight for rotation keys')
     run_parser.add_argument(
+        '--model',
+        type=str,
+        default=None,
+        help='Path to trained model .zip (default: checkpoint of the selected framework)'
+    )
+    run_parser.add_argument(
         '--noise_budget',
         type=int,
         default=None,
@@ -253,9 +261,10 @@ def main(args=None):
     """Main function with configuration support"""
     parsed_args = parse_arguments(args)
     
-    # Configure framework (Imed / MORL)
-    framework_name = "mo" if parsed_args.framework == "morl" else parsed_args.framework
+    # Configure framework (constrained / morl / unified)
+    framework_name = parsed_args.framework
     set_framework(framework_name)
+    spec = get_framework_spec()
     
     if parsed_args.show_config:
         print_config()
@@ -274,7 +283,7 @@ def main(args=None):
             budget_options = [int(b.strip()) for b in parsed_args.budgets.split(',')]
             print(f"Using custom budgets: {budget_options}")
         
-        if framework_name == "mo":
+        if framework_name == "morl":
             train_agent_mo(
                 parsed_args.dataset,
                 embeddings,
@@ -303,13 +312,17 @@ def main(args=None):
                 lambda_env=parsed_args.lambda_env,
                 lambda_kl=parsed_args.lambda_kl,
                 policy_variant=parsed_args.policy_variant,
+                pref_mode=spec["pref_mode"],
             )
 
     # ─────────────────────────────── TEST ─────────────────────────────
     elif mode == "test":
+        if framework_name == "morl":
+            print("The 'test' command supports --framework constrained or unified only.")
+            sys.exit(1)
         embeddings, tokenizer = load_embeddings_from_config(parsed_args.tokenizer_type)
 
-        agent_zip = parsed_args.model if parsed_args.model else get_model_path("agent_model")
+        agent_zip = parsed_args.model if parsed_args.model else get_model_path(spec["model_key"])
 
         test_budgets = None
         if parsed_args.budgets:
@@ -337,13 +350,16 @@ def main(args=None):
 
     # ─────────────────────────────── RUN ──────────────────────────────
     elif mode == "run":
-        if framework_name == "mo":
-            agent_zip = get_model_path("mo_agent_model")
+        if framework_name == "morl":
+            agent_zip = parsed_args.model or get_model_path(spec["model_key"])
             from .run_mo import run_agent_mo
             embeddings, tokenizer = load_embeddings_from_config(parsed_args.tokenizer_type)
             run_agent_mo(parsed_args.input_expr_file, embeddings, agent_zip, parsed_args.output_vector_file, w_ops=parsed_args.w_ops, w_keys=parsed_args.w_keys)
         else:
-            agent_zip = get_model_path("agent_model")
+            agent_zip = parsed_args.model or get_model_path(spec["model_key"])
+            if framework_name == "constrained" and (parsed_args.w_ops, parsed_args.w_keys) != (1.0, 0.0):
+                print("WARNING: the constrained framework is single-objective (trained with w=(1,0)); "
+                      f"got w=({parsed_args.w_ops},{parsed_args.w_keys}).")
             embeddings, tokenizer = load_embeddings_from_config(parsed_args.tokenizer_type)
             
             noise_budget = parsed_args.noise_budget

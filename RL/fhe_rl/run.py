@@ -9,7 +9,6 @@ from stable_baselines3.common.monitor import Monitor
 from pytrs import NoiseEstimator
 from .utils import load_expressions, create_rules, parse_sexpr, calc_vec_sizes
 from .config import get_env_class, get_policy_class
-from .env import fheEnv
 
 
 def run_agent(expressions_file: str, embeddings_model, model_filepath: str,
@@ -24,7 +23,7 @@ def run_agent(expressions_file: str, embeddings_model, model_filepath: str,
         constraint_method = "lagrangian_od_ov" if "imed" in model_filepath.lower() else "lagrangian_pid"
 
     if budget_options is None:
-        budget_options = list(fheEnv.DEFAULT_BUDGET_OPTIONS)  # [230, 369, 9000]
+        budget_options = list(get_env_class().DEFAULT_BUDGET_OPTIONS)
 
     start_time = time.perf_counter()
     expressions = load_expressions(expressions_file)
@@ -60,7 +59,7 @@ def run_agent(expressions_file: str, embeddings_model, model_filepath: str,
             embeddings_model=embeddings_model,
             budget_options=budget_options,
             constraint_method=constraint_method,
-            pref_list=[pref] if hasattr(EnvCls, "pref_list") else None
+            pref_list=[pref],
         ))
     ])
 
