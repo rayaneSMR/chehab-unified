@@ -116,14 +116,19 @@ for exp in experiments:
         
     from pytrs.peak_ram import SEAL_CONFIG, LATTIGO_CONFIG
     params = FHEParams(poly_modulus_degree=exp['N'], coeff_modulus_num_primes=exp['L'])
-    lat_est = estimate_peak_ram(ast, params, keys_threshold=9999, backend_config=LATTIGO_CONFIG).total_bytes
     
-    seal_est = estimate_peak_ram(ast, params, keys_threshold=9999, backend_config=SEAL_CONFIG).total_bytes
+    lat_est_obj = estimate_peak_ram(ast, params, keys_threshold=9999, backend_config=LATTIGO_CONFIG)
+    lat_est_lo = lat_est_obj.total_bytes_lo
+    lat_est_hi = lat_est_obj.total_bytes_hi
     
-    seal_err = abs(seal_est - seal_ram) / seal_ram * 100 if seal_ram > 0 else 0
-    seal_dir = "OVER" if seal_est > seal_ram else "UNDER" if seal_est < seal_ram else "EXACT"
-    lat_err = abs(lat_est - lat_ram) / lat_ram * 100 if lat_ram > 0 else 0
-    lat_dir = "OVER" if lat_est > lat_ram else "UNDER" if lat_est < lat_ram else "EXACT"
+    seal_est_obj = estimate_peak_ram(ast, params, keys_threshold=9999, backend_config=SEAL_CONFIG)
+    seal_est_lo = seal_est_obj.total_bytes_lo
+    seal_est_hi = seal_est_obj.total_bytes_hi
+    
+    seal_err_lo = abs(seal_est_lo - seal_ram) / seal_ram * 100 if seal_ram > 0 else 0
+    seal_dir_lo = "OVER" if seal_est_lo > seal_ram else "UNDER" if seal_est_lo < seal_ram else "EXACT"
+    lat_err_lo = abs(lat_est_lo - lat_ram) / lat_ram * 100 if lat_ram > 0 else 0
+    lat_dir_lo = "OVER" if lat_est_lo > lat_ram else "UNDER" if lat_est_lo < lat_ram else "EXACT"
 
     res = {
         "Benchmark": exp['name'],
@@ -132,13 +137,15 @@ for exp in experiments:
         "L": exp['L'],
         "Total Keys": keys,
         "SEAL Actual (MB)": round(seal_ram / 1024**2, 2),
-        "SEAL Est (MB)": round(seal_est / 1024**2, 2),
-        "SEAL Error (%)": round(seal_err, 2),
-        "SEAL Dir": seal_dir,
+        "SEAL Est Lo (MB)": round(seal_est_lo / 1024**2, 2),
+        "SEAL Est Hi (MB)": round(seal_est_hi / 1024**2, 2),
+        "SEAL Error Lo (%)": round(seal_err_lo, 2),
+        "SEAL Dir Lo": seal_dir_lo,
         "Lattigo Actual (MB)": round(lat_ram / 1024**2, 2),
-        "Lattigo Est (MB)": round(lat_est / 1024**2, 2),
-        "Lattigo Error (%)": round(lat_err, 2),
-        "Lattigo Dir": lat_dir,
+        "Lattigo Est Lo (MB)": round(lat_est_lo / 1024**2, 2),
+        "Lattigo Est Hi (MB)": round(lat_est_hi / 1024**2, 2),
+        "Lattigo Error Lo (%)": round(lat_err_lo, 2),
+        "Lattigo Dir Lo": lat_dir_lo,
     }
     results.append(res)
 

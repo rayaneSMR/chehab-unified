@@ -52,13 +52,11 @@ class FHEParams:
     poly_modulus_degree: int = 2**14          # N
     coeff_modulus_num_primes: int = 8         # L (usually nQ + nP)
     
-    @property
-    def nQ(self) -> int:
-        return self.coeff_modulus_num_primes - 2
+    def nQ(self, backend: str) -> int:
+        return self.coeff_modulus_num_primes - (2 if backend.lower() == "lattigo" else 1)
         
-    @property
-    def nP(self) -> int:
-        return 2
+    def nP(self, backend: str) -> int:
+        return 2 if backend.lower() == "lattigo" else 1
 
 
 @dataclass(frozen=True)
@@ -279,7 +277,10 @@ class PeakRAMEstimate:
     inputs_bytes: int
     plaintexts_bytes: int
     intermediates_bytes: int
-    total_bytes: int
+    total_bytes_lo: int
+    total_bytes_hi: int
+    allocating_ops: int
+    total_bytes: int # Alias for lo for compatibility
     slots_fixed: int
     slots_min: int
     n_keys_raw: int
@@ -341,30 +342,44 @@ def estimate_peak_ram(node: Any, params: FHEParams,
 
     backend_name = backend_config.backend_name if backend_config else "lattigo"
     
-    key_b = key_bytes(backend_name, params.poly_modulus_degree, params.nQ, params.nP)
-    ct_b  = ct_bytes(backend_name, 0, params.poly_modulus_degree, params.nQ, params.nP)
-    sk_b  = sk_bytes(backend_name, params.poly_modulus_degree, params.nQ, params.nP)
-    pk_b  = pk_bytes(backend_name, params.poly_modulus_degree, params.nQ, params.nP)
-    pt_b  = pt_bytes(backend_name, 0, params.poly_modulus_degree, params.nQ, params.nP)
+    nQ = params.nQ(backend_name)
+    nP = params.nP(backend_name)
+    
+    key_b = key_bytes(backend_name, params.poly_modulus_degree, nQ, nP)
+    ct_b  = ct_bytes(backend_name, 0, params.poly_modulus_degree, nQ, nP)
+    sk_b  = sk_bytes(backend_name, params.poly_modulus_degree, nQ, nP)
+    pk_b  = pk_bytes(backend_name, params.poly_modulus_degree, nQ, nP)
+    pt_b  = pt_bytes(backend_name, 0, params.poly_modulus_degree, nQ, nP)
     
     mult = backend_config.allocator_multiplier if backend_config else 1.0
     base_b = backend_config.base_bytes_overhead(params.poly_modulus_degree, params.coeff_modulus_num_primes) if backend_config else 0
 
-    def get_unique_consts(nd, seen):
-        if isinstance(nd, Const) or getattr(nd, 'op', '') == 'const':
+    def get_unique_consts(nd, seen, is_rot_arg=False):
+        if (isinstance(nd, Const) or getattr(nd, 'op', '') == 'const') and not is_rot_arg:
             name = getattr(nd, 'value', str(nd))
             if name in seen: return 0
             seen.add(name)
             return 1
-        return sum(get_unique_consts(c, seen) for c in children(nd) if not isinstance(c, int))
+        count = 0
+        if isinstance(nd, Op) or hasattr(nd, 'args'):
+            for i, c in enumerate(children(nd)):
+                is_step = (getattr(nd, 'op', '') in ("<<", "rot") and i == 1)
+                if not isinstance(c, int):
+                    count += get_unique_consts(c, seen, is_step)
+        return count
+
+    # The number of ops that allocate a new ciphertext is exactly the number of inner DAG nodes.
+    # (Inputs and constants don't allocate during evaluation).
+    alloc_ops = 0
+    memo = {}
+    build_dag(node, memo)
+    for n in memo.values():
+        if not n["is_input"] and n["op"] not in ("const", "literal"):
+            alloc_ops += 1
 
     inputs_b  = int(get_unique_leaves(node, set()) * ct_b) if count_inputs else 0
     plaintexts_b = int(get_unique_consts(node, set()) * pt_b)
     
-    # Transient CopyNew logic: 
-    # For every Op that requires a fresh allocation in Lattigo (like operations not done in place initially)
-    # The DAG simulation currently just counts the peak of the live set.
-    # We will stick to the exact simulation of the live set `actual_slots`.
     actual_slots = s_dag
     inter_b   = int(actual_slots * ct_b * mult)
 
@@ -388,9 +403,18 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     # Adding Secret Key and Public Key to the keys pool
     keys_b = int(total_keys * key_b + sk_b + pk_b)
 
+    lo = base_b + keys_b + inputs_b + plaintexts_b + inter_b
+    
+    # GC garbage bound (hi). A = alloc_ops * ct_b.
+    # hi = lo + min(A, 1.6 * live_set)
+    live_set = keys_b + inputs_b + plaintexts_b + inter_b
+    A = alloc_ops * ct_b
+    garbage_bound = min(A, int(1.6 * live_set)) if backend_name == "lattigo" else 0
+    hi = lo + garbage_bound
+
     return PeakRAMEstimate(
         keys_bytes=keys_b, inputs_bytes=inputs_b, plaintexts_bytes=plaintexts_b, intermediates_bytes=inter_b,
-        total_bytes=base_b + keys_b + inputs_b + plaintexts_b + inter_b,
+        total_bytes_lo=lo, total_bytes_hi=hi, total_bytes=lo, allocating_ops=alloc_ops,
         slots_fixed=s_dag, slots_min=s_dag,
         n_keys_raw=total_keys, n_keys_reduced=total_keys, # Same now since it's the exact set
         relin_keys_count=relin_keys, galois_keys_count=galois_keys, bootstrap_keys_count=boot_keys,
@@ -399,14 +423,10 @@ def estimate_peak_ram(node: Any, params: FHEParams,
 def within_budget(est: PeakRAMEstimate, budget_bytes: int,
                   use_lower_bound: bool = False) -> bool:
     """Hard constraint check.
-    Default (fixed order): exact feasibility — if this fails, the candidate
-    truly exceeds the budget under the emitted schedule.
-    use_lower_bound=True: uses the SU minimum; if even that exceeds the
-    budget, the candidate is infeasible under EVERY possible schedule.
+    If use_lower_bound=True, we check against the 'lo' estimate (exact live set + base).
+    If False, we check against the 'hi' estimate (live set + GC garbage bound + base).
     """
-    total = est.total_bytes
-    if use_lower_bound:
-        total -= (est.slots_fixed - est.slots_min) * 0  # slots already chosen in est
+    total = est.total_bytes_lo if use_lower_bound else est.total_bytes_hi
     return total <= budget_bytes
 
 
@@ -423,6 +443,8 @@ if __name__ == "__main__":
     est = estimate_peak_ram(t, p, keys_threshold=9999)
     print(f"tree: {t}")
     print(f"slots simulated DAG = {est.slots_fixed}")
+    print(f"allocating ops (A) = {est.allocating_ops}")
     print(f"keys exact set = {est.n_keys_raw} (reduced pass applied)")
-    print(f"total = {est.total_mib:.1f} MiB  [{est.keys_bytes/2**20:.0f} keys + "
-          f"{est.inputs_bytes/2**20:.1f} inputs + {est.intermediates_bytes/2**20:.1f} inter]")
+    print(f"total lo = {est.total_bytes_lo/2**20:.1f} MiB  [{est.keys_bytes/2**20:.1f} keys + "
+          f"{est.inputs_bytes/2**20:.1f} inputs + {est.intermediates_bytes/2**20:.1f} inter + {est.plaintexts_bytes/2**20:.1f} pt]")
+    print(f"total hi = {est.total_bytes_hi/2**20:.1f} MiB")
