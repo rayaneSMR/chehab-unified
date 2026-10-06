@@ -13,7 +13,7 @@ func getRSSKB() int {
 	data, _ := os.ReadFile("/proc/self/status")
 	lines := strings.Split(string(data), "\n")
 	for _, line := range lines {
-		if strings.HasPrefix(line, "VmRSS:") {
+		if strings.HasPrefix(line, "VmHWM:") {
 			parts := strings.Fields(line)
 			if len(parts) >= 2 {
 				val, _ := strconv.Atoi(parts[1])
@@ -30,7 +30,7 @@ func main() {
 	params, _ := hefloat.NewParametersFromLiteral(hefloat.ParametersLiteral{
 		LogN:            14,
 		LogQ:            []int{60, 40, 40, 40, 40, 40, 40}, // nQ = 7
-		LogP:            []int{60},                         // nP = 1
+		LogP:            []int{60, 60},                     // nP = 2
 		LogDefaultScale: 40,
 	})
 	

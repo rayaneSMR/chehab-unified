@@ -54,36 +54,29 @@ class FHEParams:
     
     @property
     def nQ(self) -> int:
-        return self.coeff_modulus_num_primes - 1
+        return self.coeff_modulus_num_primes - 2
         
     @property
     def nP(self) -> int:
-        return 1
+        return 2
 
 
 @dataclass(frozen=True)
 class BackendConfig:
-    """Backend-specific footprint multiplier for memory estimation.
-    
-    The serialized size of a key/ciphertext is a mathematical property of the FHE parameters.
-    However, when loaded into a specific backend, we must account for base context size (tables)
-    and runtime allocator overhead (like Go's GC).
-    """
     backend_name: str
-    allocator_multiplier: float  # e.g., 2.0 for Go GC (GOGC=100) or 1.0 for C++ (SEAL)
-    base_bytes_overhead: int     # e.g., NTT tables and context (c_ctx)
+    allocator_multiplier: float
+    base_bytes_overhead: Any # callable(N, L) -> int
 
-# Calibrated overheads (Étape 4)
 SEAL_CONFIG = BackendConfig(
     backend_name="seal",
-    allocator_multiplier=1.01, # C++ has virtually no GC overhead, just std::vector capacity/alignment
-    base_bytes_overhead=45848 * 1024 # ~45 MB for SEALContext tables (N=16384, L=8)
+    allocator_multiplier=1.0, 
+    base_bytes_overhead=lambda N, L: int(45848 * 1024 * (N / 16384))
 )
 
 LATTIGO_CONFIG = BackendConfig(
     backend_name="lattigo",
-    allocator_multiplier=2.0, # Go GC heap bound (GOGC=100 -> up to 2x live heap). Enforce via GOMEMLIMIT.
-    base_bytes_overhead=5388 * 1024 # ~5.3 MB for Lattigo rlwe.Parameters (N=16384, nQ=7)
+    allocator_multiplier=1.0,
+    base_bytes_overhead=lambda N, L: 5388 * 1024
 )
 
 
@@ -326,36 +319,28 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     
     import sys
     import os
-    # Add RL dir to path if not there
     rl_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     if rl_dir not in sys.path:
         sys.path.append(rl_dir)
         
     try:
-        from fhe_rl.memory_layout import get_memory_layout
+        from fhe_rl.memory_layout import key_bytes, ct_bytes
     except ImportError:
-        # Fallback to naive calculation if run stand-alone outside the package
-        def get_memory_layout(backend, N, nQ, nP):
-            if backend == "seal":
-                ct = 2 * nQ * N * 8
-                key = nQ * 2 * (nQ + nP) * N * 8
-            else:
-                ct = 2 * nQ * N * 8
-                import math
-                key = math.ceil(nQ/nP) * 2 * (nQ + nP) * N * 8
-            return {"ct_bytes": ct, "key_bytes": key}
+        def key_bytes(backend, N, nQ, nP):
+            import math
+            return math.ceil(nQ/nP) * 2 * (nQ + nP) * N * 8 if backend == "lattigo" else nQ * 2 * (nQ + nP) * N * 8
+        def ct_bytes(backend, level, N, nQ, nP):
+            return 2 * nQ * N * 8
 
     backend_name = backend_config.backend_name if backend_config else "lattigo"
-    layout = get_memory_layout(backend_name, params.poly_modulus_degree, params.nQ, params.nP)
     
-    key_b = layout["key_bytes"]
-    ct_b  = layout["ct_bytes"]
+    key_b = key_bytes(backend_name, params.poly_modulus_degree, params.nQ, params.nP)
+    ct_b  = ct_bytes(backend_name, 0, params.poly_modulus_degree, params.nQ, params.nP)
     
     mult = backend_config.allocator_multiplier if backend_config else 1.0
-    base_b = backend_config.base_bytes_overhead if backend_config else 0
+    base_b = backend_config.base_bytes_overhead(params.poly_modulus_degree, params.coeff_modulus_num_primes) if backend_config else 0
 
-    inputs_b  = int(get_unique_leaves(node, set()) * ct_b * mult) if count_inputs else 0
-    # True liveness simulation over the hash-consed DAG matches codegen exactly.
+    inputs_b  = int(get_unique_leaves(node, set()) * ct_b) if count_inputs else 0
     actual_slots = s_dag
     inter_b   = int(actual_slots * ct_b * mult)
 
@@ -376,7 +361,7 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     galois_keys = len(step_set)
     
     total_keys = relin_keys + galois_keys + boot_keys
-    keys_b = int(total_keys * key_b * mult)
+    keys_b = int(total_keys * key_b)
 
     return PeakRAMEstimate(
         keys_bytes=keys_b, inputs_bytes=inputs_b, intermediates_bytes=inter_b,
@@ -410,8 +395,7 @@ if __name__ == "__main__":
     t = Op("*", [Op("<<", [Op("+", [a, b]), Const(7)]), Op("*", [c, d])])
 
     p = FHEParams()
-    est = estimate_peak_ram(t, p, keys_threshold=13)
-    print(f"ciphertext = {p.ciphertext_size/2**20:.2f} MiB, key = {p.galois_key_size/2**20:.1f} MiB")
+    est = estimate_peak_ram(t, p, keys_threshold=9999)
     print(f"tree: {t}")
     print(f"slots simulated DAG = {est.slots_fixed}")
     print(f"keys exact set = {est.n_keys_raw} (reduced pass applied)")

@@ -12,9 +12,9 @@ size_t get_rss_kb() {
     ifstream status_file("/proc/self/status");
     string line;
     while (getline(status_file, line)) {
-        if (line.compare(0, 6, "VmRSS:") == 0) {
+        if (line.compare(0, 6, "VmHWM:") == 0) {
             size_t rss;
-            sscanf(line.c_str(), "VmRSS: %zu kB", &rss);
+            sscanf(line.c_str(), "VmHWM: %zu kB", &rss);
             return rss;
         }
     }

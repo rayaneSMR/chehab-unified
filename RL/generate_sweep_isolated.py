@@ -116,10 +116,9 @@ for exp in experiments:
         
     from pytrs.peak_ram import SEAL_CONFIG, LATTIGO_CONFIG
     params = FHEParams(poly_modulus_degree=exp['N'], coeff_modulus_num_primes=exp['L'])
-    lat_est = estimate_peak_ram(ast, params, keys_threshold=13, backend_config=LATTIGO_CONFIG).total_bytes
+    lat_est = estimate_peak_ram(ast, params, keys_threshold=9999, backend_config=LATTIGO_CONFIG).total_bytes
     
-    seal_keys = 13
-    seal_est = estimate_peak_ram(ast, params, keys_threshold=seal_keys, backend_config=SEAL_CONFIG).total_bytes
+    seal_est = estimate_peak_ram(ast, params, keys_threshold=9999, backend_config=SEAL_CONFIG).total_bytes
     
     seal_err = abs(seal_est - seal_ram) / seal_ram * 100 if seal_ram > 0 else 0
     seal_dir = "OVER" if seal_est > seal_ram else "UNDER" if seal_est < seal_ram else "EXACT"
