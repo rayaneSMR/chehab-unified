@@ -143,7 +143,7 @@ class fheEnv(gym.Env):
             budget = options.get("budget", budget)
         self.set_noise_budget(budget)
         if self.constraint_mode == "memory":
-            noise = estimate_peak_ram(parse_sexpr(self.expression), self.fhe_params, order="fixed", keys="raw", backend_config=self.backend_config).total_bytes
+            noise = estimate_peak_ram(parse_sexpr(self.expression), self.fhe_params, backend_config=self.backend_config).total_bytes_hi
         else:
             noise = self.noise_estimator.estimate(self.expression)
 
@@ -214,7 +214,7 @@ class fheEnv(gym.Env):
             truncated = False
             reward = self.calculate_final_reward()
             if self.constraint_mode == "memory":
-                noise = estimate_peak_ram(parse_sexpr(self.expression), self.fhe_params, order="fixed", keys="raw", backend_config=self.backend_config).total_bytes
+                noise = estimate_peak_ram(parse_sexpr(self.expression), self.fhe_params, backend_config=self.backend_config).total_bytes_hi
             else:
                 noise = self.noise_estimator.estimate(self.expression)
         else:
@@ -237,7 +237,7 @@ class fheEnv(gym.Env):
             new_cost = self.get_cost(self.expression)
             new_ops, new_keys = self.get_split_costs(self.expression)
             if self.constraint_mode == "memory":
-                noise = estimate_peak_ram(parse_sexpr(self.expression), self.fhe_params, order="fixed", keys="raw", backend_config=self.backend_config).total_bytes
+                noise = estimate_peak_ram(parse_sexpr(self.expression), self.fhe_params, backend_config=self.backend_config).total_bytes_hi
             else:
                 noise = self.noise_estimator.estimate(self.expression)
 
@@ -429,7 +429,7 @@ class fheEnv(gym.Env):
                         try:
                             new_expr_tree = rule_obj.apply_rule(parsed, path=k)
                             if self.constraint_mode == "memory":
-                                noise_est = estimate_peak_ram(new_expr_tree, self.fhe_params, order="fixed", keys="raw", backend_config=self.backend_config).total_bytes
+                                noise_est = estimate_peak_ram(new_expr_tree, self.fhe_params, backend_config=self.backend_config).total_bytes_hi
                             else:
                                 noise_est = self.noise_estimator.estimate(new_expr_tree)
                             if noise_est <= self.budget:

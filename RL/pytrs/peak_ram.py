@@ -68,7 +68,7 @@ class BackendConfig:
 SEAL_CONFIG = BackendConfig(
     backend_name="seal",
     allocator_multiplier=1.0, 
-    base_bytes_overhead=lambda N, L: int(45848 * 1024 * (N / 16384))
+    base_bytes_overhead=lambda N, L: int(10 * 1024 * 1024 + 1.5 * N * L * 8) # better base scaling
 )
 
 LATTIGO_CONFIG = BackendConfig(
@@ -112,26 +112,48 @@ def rotation_step(node: Any) -> Optional[int]:
 # Core: peak simultaneously-live intermediate ciphertexts ("slots")
 # ---------------------------------------------------------------------------
 
-def build_dag(node: Any, memo: dict) -> dict:
-    if is_input(node):
-        key = ("input", getattr(node, 'name', str(getattr(node, 'value', 'const'))))
-        if key not in memo:
-            memo[key] = {"node": node, "op": "input", "args": [], "dep_count": 0, "is_input": True}
-        return memo[key]
-    elif isinstance(node, Const) or isinstance(node, int) or getattr(node, 'op', '') == 'const':
-        key = ("const", getattr(node, 'value', str(node)))
-        if key not in memo:
-            memo[key] = {"node": node, "op": "const", "args": [], "dep_count": 0, "is_input": False}
-        return memo[key]
-    else:
-        args = []
-        for c in children(node):
-            if not isinstance(c, int):
-                args.append(build_dag(c, memo))
-        key = (getattr(node, 'op', ''), tuple(id(a) for a in args))
-        if key not in memo:
-            memo[key] = {"node": node, "op": getattr(node, 'op', ''), "args": args, "dep_count": 0, "is_input": False}
-        return memo[key]
+def build_dag(root: Any, memo: dict) -> dict:
+    # Iterative post-order traversal to avoid RecursionError
+    stack = [root]
+    visited = set()
+    post_order = []
+    
+    while stack:
+        curr = stack[-1]
+        if id(curr) not in visited:
+            visited.add(id(curr))
+            if not (is_input(curr) or isinstance(curr, Const) or isinstance(curr, int) or getattr(curr, 'op', '') == 'const'):
+                for c in children(curr):
+                    if not isinstance(c, int):
+                        stack.append(c)
+        else:
+            stack.pop()
+            if not any(id(curr) == id(x) for x in post_order):
+                post_order.append(curr)
+            
+    for node in post_order:
+        if is_input(node):
+            key = ("input", getattr(node, 'name', str(getattr(node, 'value', 'const'))))
+            if key not in memo:
+                memo[key] = {"node": node, "op": "input", "args": [], "dep_count": 0, "is_input": True, "id": id(node)}
+            setattr(node, '_memo_key', key)
+        elif isinstance(node, Const) or isinstance(node, int) or getattr(node, 'op', '') == 'const':
+            key = ("const", getattr(node, 'value', str(node)))
+            if key not in memo:
+                memo[key] = {"node": node, "op": "const", "args": [], "dep_count": 0, "is_input": False, "id": id(node)}
+            setattr(node, '_memo_key', key)
+        else:
+            args = []
+            for c in children(node):
+                if not isinstance(c, int):
+                    k = getattr(c, '_memo_key')
+                    args.append(memo[k])
+            key = (getattr(node, 'op', ''), tuple(a["id"] for a in args))
+            if key not in memo:
+                memo[key] = {"node": node, "op": getattr(node, 'op', ''), "args": args, "dep_count": 0, "is_input": False, "id": id(node)}
+            setattr(node, '_memo_key', key)
+                
+    return memo[getattr(root, '_memo_key')]
 
 def _slots_dag(node: Any) -> int:
     """Exact liveness simulation on the CSE DAG in DFS post-order."""
@@ -143,17 +165,22 @@ def _slots_dag(node: Any) -> int:
         for arg in n["args"]:
             arg["dep_count"] += 1
             
-    # DFS post-order
+    # DFS post-order (iterative)
     schedule = []
-    visited = set()
-    def dfs(n):
-        if id(n) in visited: return
-        visited.add(id(n))
-        for a in n["args"]:
-            dfs(a)
-        schedule.append(n)
+    visited_sched = set()
+    stack = [root]
     
-    dfs(root)
+    while stack:
+        curr = stack[-1]
+        if curr["id"] not in visited_sched:
+            visited_sched.add(curr["id"])
+            for a in curr["args"]:
+                stack.append(a)
+        else:
+            stack.pop()
+            # Only append if not already in schedule (multiple parents might have pushed it)
+            if not any(curr["id"] == x["id"] for x in schedule):
+                schedule.append(curr)
     
     peak_live = 0
     live_set = set()
@@ -164,15 +191,15 @@ def _slots_dag(node: Any) -> int:
         elif step["op"] in ("const", "literal"):
             pass # plaintext constants don't take ciphertext space
         else:
-            live_set.add(id(step))
+            live_set.add(step["id"])
             
         peak_live = max(peak_live, len(live_set))
         
         for a in step["args"]:
-            if id(a) in live_set:
+            if a["id"] in live_set:
                 a["dep_count"] -= 1
                 if a["dep_count"] == 0:
-                    live_set.remove(id(a))
+                    live_set.remove(a["id"])
                     
     return peak_live
 
@@ -305,14 +332,19 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     steps_freq = get_rotation_freq(node)
     step_set = reduce_rotation_keys_pass(steps_freq, keys_threshold)
 
-    def get_unique_leaves(nd, seen):
-        if is_input(nd):
-            name = getattr(nd, 'name', str(getattr(nd, 'value', 'const')))
-            if name in seen:
-                return 0
-            seen.add(name)
-            return 1
-        return sum(get_unique_leaves(c, seen) for c in children(nd) if not isinstance(c, int))
+    def get_unique_leaves(nd):
+        seen = set()
+        stack = [nd]
+        while stack:
+            curr = stack.pop()
+            if is_input(curr):
+                name = getattr(curr, 'name', str(getattr(curr, 'value', 'const')))
+                seen.add(name)
+            elif isinstance(curr, Op) or hasattr(curr, 'args'):
+                for c in children(curr):
+                    if not isinstance(c, int):
+                        stack.append(c)
+        return len(seen)
 
     s_dag = _slots_dag(node)
 
@@ -354,19 +386,20 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     mult = backend_config.allocator_multiplier if backend_config else 1.0
     base_b = backend_config.base_bytes_overhead(params.poly_modulus_degree, params.coeff_modulus_num_primes) if backend_config else 0
 
-    def get_unique_consts(nd, seen, is_rot_arg=False):
-        if (isinstance(nd, Const) or getattr(nd, 'op', '') == 'const') and not is_rot_arg:
-            name = getattr(nd, 'value', str(nd))
-            if name in seen: return 0
-            seen.add(name)
-            return 1
-        count = 0
-        if isinstance(nd, Op) or hasattr(nd, 'args'):
-            for i, c in enumerate(children(nd)):
-                is_step = (getattr(nd, 'op', '') in ("<<", "rot") and i == 1)
-                if not isinstance(c, int):
-                    count += get_unique_consts(c, seen, is_step)
-        return count
+    def get_unique_consts(nd):
+        seen = set()
+        stack = [(nd, False)]
+        while stack:
+            curr, is_rot_arg = stack.pop()
+            if (isinstance(curr, Const) or getattr(curr, 'op', '') == 'const') and not is_rot_arg:
+                name = getattr(curr, 'value', str(curr))
+                seen.add(name)
+            elif isinstance(curr, Op) or hasattr(curr, 'args'):
+                for i, c in enumerate(children(curr)):
+                    is_step = (getattr(curr, 'op', '') in ("<<", "rot") and i == 1)
+                    if not isinstance(c, int):
+                        stack.append((c, is_step))
+        return len(seen)
 
     # The number of ops that allocate a new ciphertext is exactly the number of inner DAG nodes.
     # (Inputs and constants don't allocate during evaluation).
@@ -377,8 +410,8 @@ def estimate_peak_ram(node: Any, params: FHEParams,
         if not n["is_input"] and n["op"] not in ("const", "literal"):
             alloc_ops += 1
 
-    inputs_b  = int(get_unique_leaves(node, set()) * ct_b) if count_inputs else 0
-    plaintexts_b = int(get_unique_consts(node, set()) * pt_b)
+    inputs_b  = int(get_unique_leaves(node) * ct_b) if count_inputs else 0
+    plaintexts_b = int(get_unique_consts(node) * pt_b)
     
     actual_slots = s_dag
     inter_b   = int(actual_slots * ct_b * mult)
@@ -405,12 +438,12 @@ def estimate_peak_ram(node: Any, params: FHEParams,
 
     lo = base_b + keys_b + inputs_b + plaintexts_b + inter_b
     
-    # GC garbage bound (hi). A = alloc_ops * ct_b.
-    # hi = lo + min(A, 1.6 * live_set)
+    # GC garbage bound (hi).
+    # Since hi is an estimation and not a strict bound, we add a 10% safety margin.
     live_set = keys_b + inputs_b + plaintexts_b + inter_b
     A = alloc_ops * ct_b
     garbage_bound = min(A, int(1.6 * live_set)) if backend_name == "lattigo" else 0
-    hi = lo + garbage_bound
+    hi = int((lo + garbage_bound) * 1.1)
 
     return PeakRAMEstimate(
         keys_bytes=keys_b, inputs_bytes=inputs_b, plaintexts_bytes=plaintexts_b, intermediates_bytes=inter_b,
