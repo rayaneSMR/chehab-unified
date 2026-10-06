@@ -79,3 +79,14 @@ Durant la validation, l'estimateur a rapporté un pic parfait sur `Deep Poly`, m
 - [x] Formules de l'empreinte mathématique RNS différenciées (SEAL vs Lattigo).
 - [x] Extraction de `c_ctx` et `alpha` par de vraies mesures au lieu de fitting aveugle.
 - [x] Modèle algébrique verrouillé, plus de scission Train/Test.
+
+---
+
+## 5. Dernières Corrections et Améliorations
+
+Suite aux retours et analyses de validation :
+1. **Ordre DFS** : Le parcours post-ordre (`get_tree_peak_ram` / `_slots_dag`) a été corrigé pour visiter strictement de gauche à droite, alignant parfaitement le pic de vivacité de la simulation Python sur la passe de tri topologique C++ (résolvant les divergences sur les arbres asymétriques). Un test de non-régression a été ajouté.
+2. **Dédoublonnage O(1)** : La complexité quadratique (`any(...)`) du parcours a été éliminée, rendant l'analyse instantanée même pour des graphes de plus de 5000 nœuds.
+3. **Allocation Lattigo Réelle** : Les benchmarks synthétiques générés (sweep) encodent et chiffrent maintenant de vraies valeurs pour s'assurer que les pages mémoire des ciphertexts sont allouées et résidentes. L'écart `lo > actual` causé par le mapping paresseux des OS/Go est corrigé.
+4. **Sémantique des Scalaires (`Vec`)** : Les nœuds encapsulés sous une opération `Vec` sont maintenant reconnus comme appartenant à une seule séquence vectorisée, ce qui empêche l'estimateur de surestimer l'empreinte mémoire d'arbres scalaires pré-vectorisés.
+5. **Résilience de l'Évaluation** : Les évaluations du sweep incluent un timeout, remontent l'erreur `hi` et ses directions, et marquent proprement les échecs ("FAIL") au lieu de renvoyer 0 Mo (ce qui faussait les pourcentages d'erreurs).

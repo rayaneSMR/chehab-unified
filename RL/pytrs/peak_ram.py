@@ -117,18 +117,20 @@ def build_dag(root: Any, memo: dict) -> dict:
     stack = [root]
     visited = set()
     post_order = []
+    post_order_set = set()
     
     while stack:
         curr = stack[-1]
         if id(curr) not in visited:
             visited.add(id(curr))
             if not (is_input(curr) or isinstance(curr, Const) or isinstance(curr, int) or getattr(curr, 'op', '') == 'const'):
-                for c in children(curr):
+                for c in reversed(children(curr)):
                     if not isinstance(c, int):
                         stack.append(c)
         else:
             stack.pop()
-            if not any(id(curr) == id(x) for x in post_order):
+            if id(curr) not in post_order_set:
+                post_order_set.add(id(curr))
                 post_order.append(curr)
             
     for node in post_order:
@@ -167,6 +169,7 @@ def _slots_dag(node: Any) -> int:
             
     # DFS post-order (iterative)
     schedule = []
+    schedule_set = set()
     visited_sched = set()
     stack = [root]
     
@@ -174,12 +177,13 @@ def _slots_dag(node: Any) -> int:
         curr = stack[-1]
         if curr["id"] not in visited_sched:
             visited_sched.add(curr["id"])
-            for a in curr["args"]:
+            for a in reversed(curr["args"]):
                 stack.append(a)
         else:
             stack.pop()
             # Only append if not already in schedule (multiple parents might have pushed it)
-            if not any(curr["id"] == x["id"] for x in schedule):
+            if curr["id"] not in schedule_set:
+                schedule_set.add(curr["id"])
                 schedule.append(curr)
     
     peak_live = 0
@@ -329,7 +333,23 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     keys_threshold : The max number of keys allowed before reduce_rotation_keys 
                      decomposes them into NAF components. Matches codegen exactly.
     """
-    steps_freq = get_rotation_freq(node)
+    def normalize_ast(nd):
+        if isinstance(nd, Op) and getattr(nd, 'op', '') == 'Vec':
+            if len(nd.args) > 0:
+                return normalize_ast(nd.args[0])
+        elif isinstance(nd, Op) or hasattr(nd, 'args'):
+            new_args = [normalize_ast(c) if not isinstance(c, int) else c for c in children(nd)]
+            return Op(getattr(nd, 'op', ''), new_args)
+        elif is_input(nd):
+            name = getattr(nd, 'name', str(getattr(nd, 'value', 'const')))
+            if "_" in name and name.split("_")[-1].isdigit():
+                # strip lane index, e.g. v1_0 -> v1
+                return Var(name.rsplit("_", 1)[0])
+        return nd
+
+    normalized_node = normalize_ast(node)
+    
+    steps_freq = get_rotation_freq(normalized_node)
     step_set = reduce_rotation_keys_pass(steps_freq, keys_threshold)
 
     def get_unique_leaves(nd):
@@ -346,7 +366,7 @@ def estimate_peak_ram(node: Any, params: FHEParams,
                         stack.append(c)
         return len(seen)
 
-    s_dag = _slots_dag(node)
+    s_dag = _slots_dag(normalized_node)
 
     # RAM sizes: The mathematical footprint based on params, scaled by the backend's
     # known allocator/GC overhead multiplier.
@@ -405,13 +425,13 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     # (Inputs and constants don't allocate during evaluation).
     alloc_ops = 0
     memo = {}
-    build_dag(node, memo)
+    build_dag(normalized_node, memo)
     for n in memo.values():
-        if not n["is_input"] and n["op"] not in ("const", "literal"):
+        if not n["is_input"] and n["op"] not in ("const", "literal", "Vec"):
             alloc_ops += 1
 
-    inputs_b  = int(get_unique_leaves(node) * ct_b) if count_inputs else 0
-    plaintexts_b = int(get_unique_consts(node) * pt_b)
+    inputs_b  = int(get_unique_leaves(normalized_node) * ct_b) if count_inputs else 0
+    plaintexts_b = int(get_unique_consts(normalized_node) * pt_b)
     
     actual_slots = s_dag
     inter_b   = int(actual_slots * ct_b * mult)

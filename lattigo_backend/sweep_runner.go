@@ -18,7 +18,9 @@ func runDeepPoly(params ckks.Parameters, depth int) {
 	// For actual execution memory, ciphertexts also matter, but we'll just allocate keys and dummy ciphertexts.
 	
 	eval := ckks.NewEvaluator(params, rlwe.NewMemEvaluationKeySet(kgen.GenRelinearizationKeyNew(sk)))
-	c1 := ckks.NewCiphertext(params, 1, params.MaxLevel())
+	encryptor := rlwe.NewEncryptor(params, sk)
+	pt := ckks.NewPlaintext(params, params.MaxLevel())
+	c1, _ := encryptor.EncryptNew(pt)
 	for i := 0; i < depth; i++ {
 		c1, _ = eval.MulRelinNew(c1, c1)
 	}
@@ -30,14 +32,16 @@ func runDotProduct(params ckks.Parameters, size int) {
 	rlk := kgen.GenRelinearizationKeyNew(sk)
 	
 	eval := ckks.NewEvaluator(params, rlwe.NewMemEvaluationKeySet(rlk))
+	encryptor := rlwe.NewEncryptor(params, sk)
+	pt := ckks.NewPlaintext(params, params.MaxLevel())
 	
 	// Create size ciphertexts
 	cts := make([]*rlwe.Ciphertext, size)
 	for i := 0; i < size; i++ {
-		cts[i] = ckks.NewCiphertext(params, 1, params.MaxLevel())
+		cts[i], _ = encryptor.EncryptNew(pt)
 	}
 	
-	res := ckks.NewCiphertext(params, 1, params.MaxLevel())
+	res, _ := encryptor.EncryptNew(pt)
 	for i := 0; i < size/2; i++ {
 		m, _ := eval.MulRelinNew(cts[i*2], cts[i*2+1])
 		eval.Add(res, m, res)
@@ -70,9 +74,15 @@ func runConv(params ckks.Parameters, layers int) {
 	
 	gks := kgen.GenGaloisKeysNew(galEls, sk)
 	_ = gks
+	encryptor := rlwe.NewEncryptor(params, sk)
+	pt := ckks.NewPlaintext(params, params.MaxLevel())
+	
+	eval := ckks.NewEvaluator(params, rlwe.NewMemEvaluationKeySet(nil, gks...))
 	// Simulate ciphertexts
-	c := ckks.NewCiphertext(params, 1, params.MaxLevel())
-	_ = c
+	c, _ := encryptor.EncryptNew(pt)
+	for r := range rotSet {
+		eval.RotateNew(c, r)
+	}
 }
 
 func main() {

@@ -98,21 +98,26 @@ for exp in experiments:
     # Lattigo Subprocess
     cmd = f"/usr/bin/time -v ./sweep_runner {exp['type']} {logN} {exp['L']} {exp['arg']} 2>&1"
     try:
-        out = subprocess.check_output(cmd, shell=True, executable='/bin/bash').decode('utf-8')
-        lat_ram = 0
+        out = subprocess.check_output(cmd, shell=True, executable='/bin/bash', timeout=720).decode('utf-8')
+        lat_ram = -1
         for line in out.splitlines():
             if "Maximum resident set size" in line:
                 lat_ram = int(line.split(":")[1].strip()) * 1024
+    except subprocess.TimeoutExpired:
+        lat_ram = -1
     except Exception:
-        lat_ram = 0
+        lat_ram = -1
         
     # SEAL Subprocess (Isolates RAM pool per run)
     seal_cmd = f"/home/maroua/miniconda3/bin/python3 /mnt/c/Users/CC\\ USER/.gemini/antigravity-ide/brain/72d30e96-47dc-46c5-98b8-938eff1a973a/scratch/seal_worker.py {exp['N']} {exp['L']} {keys}"
     try:
-        out = subprocess.check_output(seal_cmd, shell=True, executable='/bin/bash').decode('utf-8')
+        out = subprocess.check_output(seal_cmd, shell=True, executable='/bin/bash', timeout=720).decode('utf-8')
         seal_ram = int(out.strip())
+        if seal_ram == 0: seal_ram = -1 # Treat 0 as failure
+    except subprocess.TimeoutExpired:
+        seal_ram = -1
     except Exception:
-        seal_ram = 0
+        seal_ram = -1
         
     from pytrs.peak_ram import SEAL_CONFIG, LATTIGO_CONFIG
     params = FHEParams(poly_modulus_degree=exp['N'], coeff_modulus_num_primes=exp['L'])
@@ -126,9 +131,16 @@ for exp in experiments:
     seal_est_hi = seal_est_obj.total_bytes_hi
     
     seal_err_lo = abs(seal_est_lo - seal_ram) / seal_ram * 100 if seal_ram > 0 else 0
-    seal_dir_lo = "OVER" if seal_est_lo > seal_ram else "UNDER" if seal_est_lo < seal_ram else "EXACT"
+    seal_dir_lo = "OVER" if seal_est_lo > seal_ram else "UNDER" if seal_est_lo < seal_ram else "EXACT" if seal_ram > 0 else "FAIL"
+    seal_err_hi = abs(seal_est_hi - seal_ram) / seal_ram * 100 if seal_ram > 0 else 0
+    seal_dir_hi = "OVER" if seal_est_hi > seal_ram else "UNDER" if seal_est_hi < seal_ram else "EXACT" if seal_ram > 0 else "FAIL"
+    seal_in_bounds = (seal_est_lo <= seal_ram <= seal_est_hi) if seal_ram > 0 else False
+    
     lat_err_lo = abs(lat_est_lo - lat_ram) / lat_ram * 100 if lat_ram > 0 else 0
-    lat_dir_lo = "OVER" if lat_est_lo > lat_ram else "UNDER" if lat_est_lo < lat_ram else "EXACT"
+    lat_dir_lo = "OVER" if lat_est_lo > lat_ram else "UNDER" if lat_est_lo < lat_ram else "EXACT" if lat_ram > 0 else "FAIL"
+    lat_err_hi = abs(lat_est_hi - lat_ram) / lat_ram * 100 if lat_ram > 0 else 0
+    lat_dir_hi = "OVER" if lat_est_hi > lat_ram else "UNDER" if lat_est_hi < lat_ram else "EXACT" if lat_ram > 0 else "FAIL"
+    lat_in_bounds = (lat_est_lo <= lat_ram <= lat_est_hi) if lat_ram > 0 else False
 
     res = {
         "Benchmark": exp['name'],
@@ -136,16 +148,22 @@ for exp in experiments:
         "N": exp['N'],
         "L": exp['L'],
         "Total Keys": keys,
-        "SEAL Actual (MB)": round(seal_ram / 1024**2, 2),
+        "SEAL Actual (MB)": round(seal_ram / 1024**2, 2) if seal_ram > 0 else "FAIL",
         "SEAL Est Lo (MB)": round(seal_est_lo / 1024**2, 2),
         "SEAL Est Hi (MB)": round(seal_est_hi / 1024**2, 2),
-        "SEAL Error Lo (%)": round(seal_err_lo, 2),
+        "SEAL Error Lo (%)": round(seal_err_lo, 2) if seal_ram > 0 else "FAIL",
         "SEAL Dir Lo": seal_dir_lo,
-        "Lattigo Actual (MB)": round(lat_ram / 1024**2, 2),
+        "SEAL Error Hi (%)": round(seal_err_hi, 2) if seal_ram > 0 else "FAIL",
+        "SEAL Dir Hi": seal_dir_hi,
+        "SEAL In Bounds": seal_in_bounds if seal_ram > 0 else "FAIL",
+        "Lattigo Actual (MB)": round(lat_ram / 1024**2, 2) if lat_ram > 0 else "FAIL",
         "Lattigo Est Lo (MB)": round(lat_est_lo / 1024**2, 2),
         "Lattigo Est Hi (MB)": round(lat_est_hi / 1024**2, 2),
-        "Lattigo Error Lo (%)": round(lat_err_lo, 2),
+        "Lattigo Error Lo (%)": round(lat_err_lo, 2) if lat_ram > 0 else "FAIL",
         "Lattigo Dir Lo": lat_dir_lo,
+        "Lattigo Error Hi (%)": round(lat_err_hi, 2) if lat_ram > 0 else "FAIL",
+        "Lattigo Dir Hi": lat_dir_hi,
+        "Lattigo In Bounds": lat_in_bounds if lat_ram > 0 else "FAIL",
     }
     results.append(res)
 
