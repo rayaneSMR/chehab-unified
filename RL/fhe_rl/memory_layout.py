@@ -33,6 +33,19 @@ def ct_bytes(backend: str, level: int, N: int, nQ: int, nP: int) -> int:
     else:
         raise ValueError(f"Unknown backend: {backend}")
 
+def sk_bytes(backend: str, N: int, nQ: int, nP: int) -> int:
+    # Lattigo SK is one polynomial in Q and P
+    return (nQ + nP) * N * 8
+
+def pk_bytes(backend: str, N: int, nQ: int, nP: int) -> int:
+    # Lattigo PK is two polynomials in Q and P
+    return 2 * (nQ + nP) * N * 8
+
+def pt_bytes(backend: str, level: int, N: int, nQ: int, nP: int) -> int:
+    # Plaintext is one polynomial in Q (at the given level)
+    remaining_primes = nQ - level if level < nQ else 1
+    return remaining_primes * N * 8
+
 def test_lattigo_key_size():
     # Test unitaire : une clé à N=2¹⁴, |Q|=4, |P|=2 Lattigo doit donner 
     # 2 × 2 × 6 × 16384 × 8 = 3145728 bytes (3.14 MB)

@@ -277,6 +277,7 @@ def reduce_rotation_keys_pass(steps_freq: dict, keys_threshold: int) -> set:
 class PeakRAMEstimate:
     keys_bytes: int
     inputs_bytes: int
+    plaintexts_bytes: int
     intermediates_bytes: int
     total_bytes: int
     slots_fixed: int
@@ -324,23 +325,46 @@ def estimate_peak_ram(node: Any, params: FHEParams,
         sys.path.append(rl_dir)
         
     try:
-        from fhe_rl.memory_layout import key_bytes, ct_bytes
+        from fhe_rl.memory_layout import key_bytes, ct_bytes, sk_bytes, pk_bytes, pt_bytes
     except ImportError:
         def key_bytes(backend, N, nQ, nP):
             import math
             return math.ceil(nQ/nP) * 2 * (nQ + nP) * N * 8 if backend == "lattigo" else nQ * 2 * (nQ + nP) * N * 8
         def ct_bytes(backend, level, N, nQ, nP):
             return 2 * nQ * N * 8
+        def sk_bytes(backend, N, nQ, nP):
+            return (nQ + nP) * N * 8
+        def pk_bytes(backend, N, nQ, nP):
+            return 2 * (nQ + nP) * N * 8
+        def pt_bytes(backend, level, N, nQ, nP):
+            return nQ * N * 8
 
     backend_name = backend_config.backend_name if backend_config else "lattigo"
     
     key_b = key_bytes(backend_name, params.poly_modulus_degree, params.nQ, params.nP)
     ct_b  = ct_bytes(backend_name, 0, params.poly_modulus_degree, params.nQ, params.nP)
+    sk_b  = sk_bytes(backend_name, params.poly_modulus_degree, params.nQ, params.nP)
+    pk_b  = pk_bytes(backend_name, params.poly_modulus_degree, params.nQ, params.nP)
+    pt_b  = pt_bytes(backend_name, 0, params.poly_modulus_degree, params.nQ, params.nP)
     
     mult = backend_config.allocator_multiplier if backend_config else 1.0
     base_b = backend_config.base_bytes_overhead(params.poly_modulus_degree, params.coeff_modulus_num_primes) if backend_config else 0
 
+    def get_unique_consts(nd, seen):
+        if isinstance(nd, Const) or getattr(nd, 'op', '') == 'const':
+            name = getattr(nd, 'value', str(nd))
+            if name in seen: return 0
+            seen.add(name)
+            return 1
+        return sum(get_unique_consts(c, seen) for c in children(nd) if not isinstance(c, int))
+
     inputs_b  = int(get_unique_leaves(node, set()) * ct_b) if count_inputs else 0
+    plaintexts_b = int(get_unique_consts(node, set()) * pt_b)
+    
+    # Transient CopyNew logic: 
+    # For every Op that requires a fresh allocation in Lattigo (like operations not done in place initially)
+    # The DAG simulation currently just counts the peak of the live set.
+    # We will stick to the exact simulation of the live set `actual_slots`.
     actual_slots = s_dag
     inter_b   = int(actual_slots * ct_b * mult)
 
@@ -361,11 +385,12 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     galois_keys = len(step_set)
     
     total_keys = relin_keys + galois_keys + boot_keys
-    keys_b = int(total_keys * key_b)
+    # Adding Secret Key and Public Key to the keys pool
+    keys_b = int(total_keys * key_b + sk_b + pk_b)
 
     return PeakRAMEstimate(
-        keys_bytes=keys_b, inputs_bytes=inputs_b, intermediates_bytes=inter_b,
-        total_bytes=base_b + keys_b + inputs_b + inter_b,
+        keys_bytes=keys_b, inputs_bytes=inputs_b, plaintexts_bytes=plaintexts_b, intermediates_bytes=inter_b,
+        total_bytes=base_b + keys_b + inputs_b + plaintexts_b + inter_b,
         slots_fixed=s_dag, slots_min=s_dag,
         n_keys_raw=total_keys, n_keys_reduced=total_keys, # Same now since it's the exact set
         relin_keys_count=relin_keys, galois_keys_count=galois_keys, bootstrap_keys_count=boot_keys,
