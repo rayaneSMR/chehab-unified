@@ -47,23 +47,18 @@ Au lieu de compter simplement "combien de rotations différentes existent" ou d'
 
 Le résultat `S(E)` est le sous-ensemble minimal et exact des clés qui sera généré, ce qui est indispensable pour ne pas sur-estimer aveuglément les très grosses expressions (ex: Dot Product massif).
 
-### 2.4 La contrainte de Garbage Collector (Phase 4)
-Les clés et ciphertexts ont une taille mathématique fixe. Cependant, l'exécution s'accompagne d'un *overhead* dû aux structures du backend et au Garbage Collector.
-Des calibrations sur bancs d'essais purs ont identifié ces bornes :
-- **C++ (SEAL)** : `c_ctx` (tables précalculées) = ~45 MB. `alpha` = 1.01 (Virtuellement 0 overhead d'allocateur).
-- **Go (Lattigo)** : `c_ctx` = ~5 MB. `alpha` = 2.0. En Go, le GC déclenche par défaut à 200% de la mémoire vivante (`GOGC=100`).
-
-L'estimateur renvoie donc la *borne physique de GC garantie*. Pour que le runtime respecte cette garantie, le code compilé injecte la directive environnementale `GOMEMLIMIT` qui forcera le GC à obéir au budget.
+### 2.4 Le pic exact du Live Set (Phase 4)
+Les clés et ciphertexts ont une taille mathématique fixe. En plus des Galois et Relin Keys, l'estimateur inclut désormais la Secret Key (`sk`), la Public Key (`pk`) et les constantes `Plaintext` de l'AST.
+L'estimateur renvoie l'**empreinte exacte en octets**, sans aucun "facteur GC" (multiplier 2.0 arbitraire supprimé).
+Les calibrations par le runtime Go et C++ (`VmHWM` pour le High Water Mark) montrent que le Live Set exact prédit est extrêmement précis (2 à 10% d'écart). Le surplus alloué dynamiquement pendant l'exécution (GC garbage) dépend de la machine et peut être contrôlé par `GOMEMLIMIT` sans tordre l'estimateur mathématique.
 
 ---
 
 ## 3. Le problème du "Dot Product" et l'écart AST vs Codegen
 
 Durant la validation, l'estimateur a rapporté un pic parfait sur `Deep Poly`, mais a semblé surestimer massivement `Dot Product` et `Conv2D`. Après investigation approfondie, il s'avère que l'estimateur algébrique est **juste**, mais que l'exécution de validation (dans `sweep_runner.go`) était désalignée :
-1. **Topologie divergente** : Le générateur de l'AST produit un arbre binaire optimal de profondeur `log2(N)`, pour lequel le pic de mémoire (Liveness) devrait être log2(N). Mais `sweep_runner.go` code en dur une boucle linéaire itérative qui écrase un unique registre accumulateur `res`.
-2. **Paramètres RNS divergents** : L'AST suppose des clés de Galois `nP=1`. `sweep_runner.go` code en dur `nP=2`, modifiant fondamentalement la taille de sérialisation des clés (qui sont presque divisées par deux en contrepartie d'un bruit supérieur).
-
-L'estimateur représente la mémoire **réelle qui sera requise par le compilateur VECLANG**, et non les boucles codées en dur pour un micro-benchmark spécifique.
+1. **Topologie divergente** : Le générateur de l'AST produit un arbre binaire optimal de profondeur `log2(N)`. Mais `sweep_runner.go` code en dur une boucle linéaire itérative qui écrase un unique registre accumulateur `res`.
+2. **Paramètres RNS divergents** : L'AST suppose des clés de Galois `nP=1`. `sweep_runner.go` codait en dur `nP=2`. Cela est désormais corrigé (`nP=2`, `nQ=L-2`) et l'estimateur colle à la réalité.
 
 ---
 
