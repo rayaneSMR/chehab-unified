@@ -1,0 +1,2 @@
+(mul (mul x x) (mul x x))
+1 1 1 0

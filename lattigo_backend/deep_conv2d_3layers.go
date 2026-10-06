@@ -2,8 +2,7 @@ package main
 
 import (
 	"fmt"
-	"math"
-
+	
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
 	"github.com/tuneinsight/lattigo/v5/he/hefloat"
 )

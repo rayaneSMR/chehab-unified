@@ -2,6 +2,7 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 from pytrs import parse_sexpr, calculate_cost, NoiseEstimator, expr_to_str
+from pytrs.peak_ram import estimate_peak_ram, FHEParams, BackendConfig
 import torch
 
 
@@ -23,7 +24,7 @@ class fheEnv(gym.Env):
     DEFAULT_BUDGET_OPTIONS = [230, 369, 9000]
     
     def __init__(self, rules_list, expressions, max_positions=2, embeddings_model=None, 
-                 budget_options=None, constraint_method="lagrangian_pid", verbose=True,
+                 budget_options=None, constraint_method="lagrangian_pid", constraint_mode="noise", verbose=True,
                  pref_list=[[1.0, 0.0], [0.8, 0.2]], lambda_env=0.0, lambda_kl=0.0, 
                  n_cycle=1, n_budget=5, env_idx=0):
         super().__init__()
@@ -32,9 +33,13 @@ class fheEnv(gym.Env):
         self.rules = rules_list
         self.expressions = expressions
         self.noise_estimator = NoiseEstimator()
+        self.fhe_params = FHEParams()
+        # Lattigo calibration based on measured RSS: ~3.2 MB per key vs 18 MB formula, 6.2 MB base
+        self.backend_config = BackendConfig(backend_name="lattigo", allocator_multiplier=0.177, base_bytes_overhead=6264084)
         self.max_positions = max_positions
         self.embeddings_model = embeddings_model
         self.constraint_method = constraint_method
+        self.constraint_mode = constraint_mode
         self.verbose = verbose
         self.max_steps = 75
         self.max_expression_size = 10000
@@ -137,7 +142,10 @@ class fheEnv(gym.Env):
         if isinstance(options, dict):
             budget = options.get("budget", budget)
         self.set_noise_budget(budget)
-        noise = self.noise_estimator.estimate(self.expression)
+        if self.constraint_mode == "memory":
+            noise = estimate_peak_ram(parse_sexpr(self.expression), self.fhe_params, order="fixed", keys="raw", backend_config=self.backend_config).total_bytes
+        else:
+            noise = self.noise_estimator.estimate(self.expression)
 
         # Preference sampling
         if self.pref_locked:
@@ -205,7 +213,10 @@ class fheEnv(gym.Env):
             terminated = True
             truncated = False
             reward = self.calculate_final_reward()
-            noise = self.noise_estimator.estimate(self.expression)
+            if self.constraint_mode == "memory":
+                noise = estimate_peak_ram(parse_sexpr(self.expression), self.fhe_params, order="fixed", keys="raw", backend_config=self.backend_config).total_bytes
+            else:
+                noise = self.noise_estimator.estimate(self.expression)
         else:
             parsed = parse_sexpr(self.expression)
             rule_obj = self.rules[rule_name]
@@ -225,7 +236,10 @@ class fheEnv(gym.Env):
             
             new_cost = self.get_cost(self.expression)
             new_ops, new_keys = self.get_split_costs(self.expression)
-            noise = self.noise_estimator.estimate(self.expression)
+            if self.constraint_mode == "memory":
+                noise = estimate_peak_ram(parse_sexpr(self.expression), self.fhe_params, order="fixed", keys="raw", backend_config=self.backend_config).total_bytes
+            else:
+                noise = self.noise_estimator.estimate(self.expression)
 
             reward = self.calculate_intermediate_reward(new_ops, new_keys)
 
@@ -414,7 +428,10 @@ class fheEnv(gym.Env):
                         k, _ = matches[pos_idx]
                         try:
                             new_expr_tree = rule_obj.apply_rule(parsed, path=k)
-                            noise_est = self.noise_estimator.estimate(new_expr_tree)
+                            if self.constraint_mode == "memory":
+                                noise_est = estimate_peak_ram(new_expr_tree, self.fhe_params, order="fixed", keys="raw", backend_config=self.backend_config).total_bytes
+                            else:
+                                noise_est = self.noise_estimator.estimate(new_expr_tree)
                             if noise_est <= self.budget:
                                 mask[start + pos_idx] = 1.0
                         except Exception:

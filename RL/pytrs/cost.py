@@ -42,6 +42,8 @@ def _operations_cost_constrained(expr: Expr) -> int:
         if visit_all_children:
             for child in expr.args:
                 node_cost += _operations_cost_constrained(child)
+        elif op == "<<":
+            node_cost += _operations_cost_constrained(expr.args[0])
     else:
         node_cost = 0
     return node_cost

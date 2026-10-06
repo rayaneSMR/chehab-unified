@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"runtime"
 	"time"
 
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
@@ -361,6 +362,7 @@ func main() {
 		// Suppress unused variable warning
 		_ = outputData
 		_ = math.Abs(0)
+t	runtime.GC()
 	}
 
 	// Summary table
