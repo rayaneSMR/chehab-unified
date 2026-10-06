@@ -24,8 +24,9 @@ Peak_RAM = Base_Ctx + \alpha * (Keys_RAM + Inputs_RAM + Intermediates_RAM)
 
 ### 2.1 La taille RNS mathématique (Phase 1)
 Nous ne calculons plus avec des "multiplicateurs magiques" (comme 0.177). La taille d'une clé ou d'un ciphertext dépend de la base RNS (Residue Number System) choisie pour le schéma CKKS, soit `(N, L)`.
-- En SEAL, les clés de Galois utilisent l'intégralité des modules restants.
-- En Lattigo, les clés utilisent une décomposition en base `nP` sur les `nQ` modules, ce qui donne un nombre de digits mathématiquement exact : `ceil(nQ / nP)`.
+L'estimateur adapte dynamiquement les paramètres internes `nQ` et `nP` selon le backend :
+- **Lattigo** : `nP=2` et `nQ=L-2`. La taille des clés est mathématiquement exacte : `ceil(nQ / nP)`.
+- **SEAL** : `nP=1` et `nQ=L-1`.
 
 L'estimateur utilise désormais `RL/fhe_rl/memory_layout.py` pour dériver la **taille mathématique exacte** au bit près.
 
@@ -40,17 +41,21 @@ Le pic du nombre de `slots` (variables simultanément en vie) correspond **exact
 
 ### 2.3 L'ensemble exact des clés de rotation (Phase 3)
 Au lieu de compter simplement "combien de rotations différentes existent" ou d'appliquer la forme non-adjacente (NAF) partout, l'estimateur porte **exactement** l'algorithme C++ de `src/fheco/passes/reduce_rotation_keys.cpp`.
-1. Extraction des fréquences d'utilisation des rotations sur le DAG.
+1. Extraction des fréquences d'utilisation des rotations sur le DAG. Les constantes opérandes de rotations ne sont pas comptées comme des plaintexts.
 2. Décomposition en puissances de deux (NAF).
 3. Tri glouton basé sur un score de coût `(freq * (taille_NAF - 1))`.
 4. Respect de la limite fixée par `--keys` (`keys_threshold`).
 
 Le résultat `S(E)` est le sous-ensemble minimal et exact des clés qui sera généré, ce qui est indispensable pour ne pas sur-estimer aveuglément les très grosses expressions (ex: Dot Product massif).
 
-### 2.4 Le pic exact du Live Set (Phase 4)
-Les clés et ciphertexts ont une taille mathématique fixe. En plus des Galois et Relin Keys, l'estimateur inclut désormais la Secret Key (`sk`), la Public Key (`pk`) et les constantes `Plaintext` de l'AST.
-L'estimateur renvoie l'**empreinte exacte en octets**, sans aucun "facteur GC" (multiplier 2.0 arbitraire supprimé).
-Les calibrations par le runtime Go et C++ (`VmHWM` pour le High Water Mark) montrent que le Live Set exact prédit est extrêmement précis (2 à 10% d'écart). Le surplus alloué dynamiquement pendant l'exécution (GC garbage) dépend de la machine et peut être contrôlé par `GOMEMLIMIT` sans tordre l'estimateur mathématique.
+### 2.4 Le pic exact du Live Set et le Garbage Bound (Phase 4)
+Les clés et ciphertexts ont une taille mathématique fixe. En plus des Galois et Relin Keys, l'estimateur inclut désormais la Secret Key (`sk`), la Public Key (`pk`) et les constantes arithmétiques `Plaintext` de l'AST.
+
+Puisque les ramasses-miettes (Garbage Collector de Go pour Lattigo) allouent de la mémoire dynamiquement, l'estimateur renvoie un intervalle `[lo, hi]` :
+- `lo` (Live Set exact) : La taille exacte de toutes les clés, inputs, constantes et ciphertexts vivants au pic.
+- `hi` (Garbage Bound) : `lo + min(A, 1.6 * live_set)` où `A` est la taille cumulée allouée par toutes les opérations (AddNew, RotateNew).
+
+L'empreinte exacte `lo` garantit la base physique, tandis que le surplus `hi` modélise le GC. Le tout peut être contrôlé par `GOMEMLIMIT` sans tordre l'estimateur mathématique (qui n'utilise plus de multiplicateur arbitraire).
 
 ---
 
@@ -58,7 +63,7 @@ Les calibrations par le runtime Go et C++ (`VmHWM` pour le High Water Mark) mont
 
 Durant la validation, l'estimateur a rapporté un pic parfait sur `Deep Poly`, mais a semblé surestimer massivement `Dot Product` et `Conv2D`. Après investigation approfondie, il s'avère que l'estimateur algébrique est **juste**, mais que l'exécution de validation (dans `sweep_runner.go`) était désalignée :
 1. **Topologie divergente** : Le générateur de l'AST produit un arbre binaire optimal de profondeur `log2(N)`. Mais `sweep_runner.go` code en dur une boucle linéaire itérative qui écrase un unique registre accumulateur `res`.
-2. **Paramètres RNS divergents** : L'AST suppose des clés de Galois `nP=1`. `sweep_runner.go` codait en dur `nP=2`. Cela est désormais corrigé (`nP=2`, `nQ=L-2`) et l'estimateur colle à la réalité.
+2. **Paramètres RNS divergents** : L'AST supposait des clés de Galois `nP=1`. `sweep_runner.go` codait en dur `nP=2`. Cela est désormais dynamique par backend (`nP=2`, `nQ=L-2` pour Lattigo) et l'estimateur colle à la réalité.
 
 ---
 
