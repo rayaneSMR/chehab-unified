@@ -1,0 +1,9 @@
+split,estimate_set,estimate_target,median_ape_percent,mean_signed_error_percent,p90_ape_percent,note
+development,old_saved,hi,16.101700675295675,16.720278551149217,28.711407436391355,added after seeing results
+development,new_reestimated,hi,16.725058168711485,16.75998154692864,28.711405676698416,added after seeing results
+development,old_saved,midpoint,6.844139596012274,-3.830932847572637,17.871157887480422,added after seeing results
+development,new_reestimated,midpoint,6.583992929344756,-3.783735202643522,17.871158270075572,added after seeing results
+holdout,old_saved,hi,8.644247682140978,5.03871601424208,16.76760855172278,added after seeing results
+holdout,new_reestimated,hi,8.644247682140978,6.330082388271924,14.681347475637024,added after seeing results
+holdout,old_saved,midpoint,10.470014734407867,-13.29360669642624,20.74621520442975,added after seeing results
+holdout,new_reestimated,midpoint,10.470014734407867,-12.287803469829024,20.52073110649445,added after seeing results
