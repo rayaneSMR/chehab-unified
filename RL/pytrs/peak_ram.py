@@ -10,25 +10,15 @@ Model
 -----
     peak_ram(E)  =  keys_ram(E)  +  inputs_ram(E)  +  intermediates_ram(E)
 
-    keys_ram(E)         = |step_set(E)| * galois_key_size        EXACT under the
-                          current runtime: every Galois key is generated up
-                          front (GenGaloisKeysNew) and stays resident for the
-                          whole computation. No eviction, no on-demand load.
-    inputs_ram(E)       = |input leaves| * ciphertext_size       EXACT for
-                          encrypted inputs (they are never freed in codegen);
-                          constants are smaller, so treating them as full
-                          ciphertexts is a mild UPPER BOUND.
-    intermediates_ram(E)= (peak number of simultaneously-live intermediate
-                          ciphertexts) * ciphertext_size.
-                          Two variants:
-                          order="fixed" : EXACT peak for the evaluation order
-                                          the compiler emits (left-to-right
-                                          over children; codegen frees a value
-                                          after its last consumer — dep_count).
-                          order="min"   : Sethi-Ullman number: the PROVEN
-                                          MINIMUM over all evaluation orders
-                                          for trees (exact there; for DAGs it
-                                          is a LOWER bound on any fixed order).
+    keys_ram(E)          = modeled resident keys plus any backend-specific
+                           generation transient.
+    inputs_ram(E)        = modeled input ciphertexts (packed vectors count as
+                           one ciphertext each).
+    intermediates_ram(E) = modeled peak of simultaneously-live ciphertexts
+                           on the codegen-ordered CSE DAG.
+
+These are logical size estimates; backend runtimes, temporary buffers, and
+allocator retention can make measured RSS differ substantially.
 
 Vector containers are structural: every Vec element is retained and visited,
 and lane-specific variable names remain distinct inputs. They do not allocate
@@ -257,7 +247,7 @@ def build_dag(root: Any, memo: dict) -> dict:
     return memo[getattr(root, '_memo_key')]
 
 def _slots_dag(node: Any) -> int:
-    """Exact liveness simulation on the CSE DAG in DFS post-order."""
+    """Simulate modeled ciphertext liveness on the CSE DAG in DFS post-order."""
     memo = {}
     root = build_dag(node, memo)
     
@@ -421,6 +411,7 @@ def reduce_rotation_keys_pass(steps_freq: dict, keys_threshold: int) -> set:
 @dataclass
 class PeakRAMEstimate:
     keys_bytes: int
+    keygen_transient_bytes: int
     inputs_bytes: int
     plaintexts_bytes: int
     intermediates_bytes: int
@@ -574,11 +565,6 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     actual_slots = s_dag
     inter_b   = int(actual_slots * ct_b * mult)
 
-    labels = {
-        "keys": "exact simulated key set (after reduce_rotation_keys pass)",
-        "intermediates": "exact simulated over CSE DAG",
-    }
-    
     # Analyze the AST for Bootstrapping
     # TODO: In Étape 3, Kimi said "pas de clés bootstrap inventées". 
     # For now, if the user codegen does not explicitly enable bootstrap, we should NOT add bootstrap keys.
@@ -603,18 +589,30 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     total_keys = relin_keys + galois_keys + boot_keys
     # Adding Secret Key and Public Key to the keys pool
     keys_b = int(total_keys * key_b + sk_b + pk_b)
+    keygen_transient_b = (
+        key_b if backend_name == "seal" and galois_keys > 0 else 0
+    )
+    labels = {
+        "keys": "simulated key set (after reduce_rotation_keys pass)",
+        "keygen_transient": (
+            "one additional in-flight Galois key during SEAL key generation"
+            if keygen_transient_b
+            else "not modeled"
+        ),
+        "intermediates": "simulated over CSE DAG",
+    }
 
-    lo = base_b + keys_b + inputs_b + plaintexts_b + inter_b
-    
-    # GC garbage bound (hi).
-    # Since hi is an estimation and not a strict bound, we add a 10% safety margin.
-    live_set = keys_b + inputs_b + plaintexts_b + inter_b
+    lo = base_b + keys_b + keygen_transient_b + inputs_b + plaintexts_b + inter_b
+
+    # Estimated garbage allowance for Lattigo; this is not a physical bound.
+    live_set = keys_b + keygen_transient_b + inputs_b + plaintexts_b + inter_b
     A = alloc_ops * ct_b
     garbage_bound = min(A, int(1.6 * live_set)) if backend_name == "lattigo" else 0
     est_hi = int((lo + garbage_bound) * 1.1)
 
     return PeakRAMEstimate(
-        keys_bytes=keys_b, inputs_bytes=inputs_b, plaintexts_bytes=plaintexts_b, intermediates_bytes=inter_b,
+        keys_bytes=keys_b, keygen_transient_bytes=keygen_transient_b,
+        inputs_bytes=inputs_b, plaintexts_bytes=plaintexts_b, intermediates_bytes=inter_b,
         estimated_bytes_lo=lo, estimated_bytes_hi=est_hi, total_bytes=lo, allocating_ops=alloc_ops,
         slots_fixed=s_dag, slots_min=s_dag,
         n_keys_raw=total_keys, n_keys_reduced=total_keys, # Same now since it's the exact set
@@ -623,10 +621,7 @@ def estimate_peak_ram(node: Any, params: FHEParams,
 
 def within_budget(est: PeakRAMEstimate, budget_bytes: int,
                   use_lower_bound: bool = False) -> bool:
-    """Hard constraint check.
-    If use_lower_bound=True, we check against the 'lo' estimate (exact live set + base).
-    If False, we check against the 'hi' estimate (live set + GC garbage bound + base).
-    """
+    """Compare an estimate to budget; neither estimate is a physical RSS bound."""
     total = (
         est.estimated_bytes_lo
         if use_lower_bound

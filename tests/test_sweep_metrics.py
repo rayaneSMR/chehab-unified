@@ -11,12 +11,14 @@ from generate_sweep_isolated import (
     ast_addition,
     ast_batched_multiplications,
     ast_dot_product,
+    ast_high_churn,
     metric_columns,
     phase_peaks,
 )
 from pytrs.peak_ram import (
     FHEParams,
     NotEstimable,
+    SEAL_CONFIG,
     expand_compiler_vector_ops,
     estimate_peak_ram,
     estimate_vectorized_peak_ram,
@@ -24,6 +26,7 @@ from pytrs.peak_ram import (
 )
 from pytrs.expr import Const, Op, Var
 from pytrs.parser import parse_sexpr
+from fhe_rl.memory_layout import key_bytes
 
 
 class TestSweepMetrics(unittest.TestCase):
@@ -100,6 +103,22 @@ class TestSweepMetrics(unittest.TestCase):
         self.assertEqual(dot_product_keys, 3)
         self.assertEqual(dot_estimate.relin_keys_count, 1)
         self.assertEqual(dot_estimate.galois_keys_count, 2)
+        self.assertEqual(dot_estimate.keygen_transient_bytes, 0)
+
+        params = FHEParams()
+        seal_dot_estimate = estimate_vectorized_peak_ram(
+            dot_product, params, backend_config=SEAL_CONFIG
+        )
+        self.assertGreater(seal_dot_estimate.keygen_transient_bytes, 0)
+        self.assertEqual(
+            seal_dot_estimate.keygen_transient_bytes,
+            key_bytes(
+                "seal",
+                params.poly_modulus_degree,
+                params.nQ("seal"),
+                params.nP("seal"),
+            ),
+        )
 
     def test_vectorized_estimator_rejects_scalar_and_partial_expressions(self):
         self.assertFalse(is_fully_vectorized(Op("Vec", [Op("+", [Var("a"), Var("b")])])))
@@ -131,6 +150,16 @@ class TestSweepMetrics(unittest.TestCase):
         estimate = estimate_vectorized_peak_ram(expression, FHEParams())
         one_vector = estimate_vectorized_peak_ram(left, FHEParams())
         self.assertEqual(estimate.inputs_bytes, one_vector.inputs_bytes)
+
+    def test_high_churn_live_set_stays_at_two_intermediates(self):
+        expression, _ = ast_high_churn(128)
+        estimate = estimate_vectorized_peak_ram(
+            expression,
+            FHEParams(poly_modulus_degree=8192, coeff_modulus_num_primes=4),
+        )
+
+        self.assertEqual(estimate.slots_fixed, 2)
+        self.assertEqual(estimate.allocating_ops, 129)
 
     def test_vectorized_estimator_turns_unreachable_key_threshold_into_status(self):
         expression = Op(

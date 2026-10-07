@@ -1,0 +1,6 @@
+Width,N,L,Estimated Lo (MiB),Estimated Hi (MiB),Measured RSS (MiB),Signed Lo Error (%),In Interval
+2,16384,6,17.51,22.56,41.60,-57.91,False
+4,16384,6,21.51,31.36,53.73,-59.96,False
+8,16384,6,29.51,48.96,70.95,-58.40,False
+16,16384,6,45.51,84.16,99.15,-54.10,False
+32,16384,6,77.51,154.56,159.84,-51.51,False

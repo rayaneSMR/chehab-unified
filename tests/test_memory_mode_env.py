@@ -59,6 +59,25 @@ class TestMemoryModeEnv(unittest.TestCase):
         self.assertGreater(observation["memory_estimate_mib"][0], 0)
         self.assertTrue(env.observation_space.contains(observation))
 
+    def test_memory_mask_logs_and_masks_rule_application_errors(self):
+        class BrokenRule:
+            def find_matching_subexpressions(self, expression):
+                return [((), expression)]
+
+            def apply_rule(self, expression, path):
+                raise ValueError("malformed fused vector operation")
+
+        env = self.make_env("(VecAdd (Vec a_0) (Vec b_0))")
+        env.constraint_method = "noise_masking"
+        env.rules = {"BROKEN": BrokenRule(), "END": None}
+        env.reset(seed=1)
+
+        with self.assertLogs("fhe_rl.env", level="WARNING") as logs:
+            mask = env.get_action_mask()
+
+        self.assertEqual(mask[0], 0.0)
+        self.assertIn("malformed fused vector operation", logs.output[0])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,3 +1,5 @@
+import logging
+
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
@@ -8,6 +10,8 @@ from pytrs.peak_ram import (
     NotEstimable,
     estimate_vectorized_peak_ram,
 )
+
+logger = logging.getLogger(__name__)
 
 
 RESET   = "\033[0m"
@@ -570,19 +574,28 @@ class fheEnv(gym.Env):
                 if use_noise_mask or use_memory_mask:
                     for pos_idx in range(valid_positions):
                         k, _ = matches[pos_idx]
-                        new_expr_tree = rule_obj.apply_rule(parsed, path=k)
-                        if use_memory_mask:
-                            memory_result = estimate_vectorized_peak_ram(
-                                new_expr_tree,
-                                self.fhe_params,
-                                backend_config=self.backend_config,
+                        try:
+                            new_expr_tree = rule_obj.apply_rule(parsed, path=k)
+                            if use_memory_mask:
+                                memory_result = estimate_vectorized_peak_ram(
+                                    new_expr_tree,
+                                    self.fhe_params,
+                                    backend_config=self.backend_config,
+                                )
+                                if isinstance(memory_result, NotEstimable):
+                                    mask[start + pos_idx] = 1.0
+                                elif memory_result.estimated_bytes_hi <= self.budget:
+                                    mask[start + pos_idx] = 1.0
+                            elif self.noise_estimator.estimate(new_expr_tree) <= self.budget:
+                                mask[start + pos_idx] = 1.0
+                        except Exception as error:
+                            logger.warning(
+                                "Masking action %s at position %s: candidate "
+                                "could not be evaluated (%s)",
+                                rule_name,
+                                pos_idx,
+                                error,
                             )
-                            if isinstance(memory_result, NotEstimable):
-                                mask[start + pos_idx] = 1.0
-                            elif memory_result.estimated_bytes_hi <= self.budget:
-                                mask[start + pos_idx] = 1.0
-                        elif self.noise_estimator.estimate(new_expr_tree) <= self.budget:
-                            mask[start + pos_idx] = 1.0
                 else:
                     mask[start:start + valid_positions] = 1.0
         return mask
