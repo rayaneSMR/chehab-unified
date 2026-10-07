@@ -1,0 +1,146 @@
+Program,Error
+matrix_mul/width=16/scalar,"Command '['/usr/bin/time', '-f', 'peak_rss_kib=%M', '/home/maroua/chehab-unified/build/benchmarks/chehab-matrix_mul-16-scalar-auohdgzs/compiled_fhe']' timed out after 180 seconds"
+matrix_mul/width=16/vectorized,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-matrix_mul-16-vectorized-e0efzbr6/matrix_mul', '1', '16', 'constrained', '0', '0', '0', '1', '1', '1']' timed out after 180 seconds"
+poly_derivative/width=4/vectorized,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-poly_derivative-4-vectorized-bxsz6i9t/poly_derivative', '1', '4', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>.
+stdout:  window is 0
+
+stderr:     Finished `release` profile [optimized] target(s) in 0.42s
+     Running `/home/maroua/chehab-unified/egraphs/target/release/egraphs-vectorization ../expression.txt 2 0`
+****************************************************
+****************************************************
+Running egg with timeout 300s, width: 2 
+
+*********************Iterations******************************* 
+
+===> Initial e-graph size: 17
+Best cost at iteration 1: 85052 
+===> Initial e-graph size: 17
+Best cost at iteration 2: 85052 
+===> Initial e-graph size: 17
+Best cost at iteration 3: 29252 
+===> Initial e-graph size: 17
+Best cost at iteration 4: 21253 
+===> Initial e-graph size: 19
+Best cost at iteration 5: 21253 
+===> Initial e-graph size: 19
+Best cost at iteration 6: 13353 
+===> Initial e-graph size: 20
+Best cost at iteration 7: 13353 
+===> Initial e-graph size: 20
+Best cost at iteration 8: 13353 
+****************************************************************
+****************************************************************
+===> Final_Cost: 13353 
+
+===> Vectorized Expression : (VecAdd (Vec p0 p1) (VecAddRot (VecMul (VecAdd (VecMul (Vec x p3 p3 x) (Vec 1 1 x 1)) (Vec 0 0 p2 0)) (VecMul (Vec p1 x x p2) (Vec 1 x x 1))) 2)) 
+
+****************************************************************
+****************************************************************
+
+terminate called after throwing an instance of 'std::invalid_argument'
+  what():  key : x Not found in ciphertexts and plaintexts map 
+
+"
+poly_derivative/width=8/vectorized,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-poly_derivative-8-vectorized-4u9o7mck/poly_derivative', '1', '8', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>.
+stdout:  window is 0
+
+stderr:     Finished `release` profile [optimized] target(s) in 0.12s
+     Running `/home/maroua/chehab-unified/egraphs/target/release/egraphs-vectorization ../expression.txt 2 0`
+****************************************************
+****************************************************
+Running egg with timeout 300s, width: 2 
+
+*********************Iterations******************************* 
+
+===> Initial e-graph size: 17
+Best cost at iteration 1: 85052 
+===> Initial e-graph size: 17
+Best cost at iteration 2: 85052 
+===> Initial e-graph size: 17
+Best cost at iteration 3: 29252 
+===> Initial e-graph size: 17
+Best cost at iteration 4: 21253 
+===> Initial e-graph size: 19
+Best cost at iteration 5: 21253 
+===> Initial e-graph size: 19
+Best cost at iteration 6: 13353 
+===> Initial e-graph size: 20
+Best cost at iteration 7: 13353 
+===> Initial e-graph size: 20
+Best cost at iteration 8: 13353 
+****************************************************************
+****************************************************************
+===> Final_Cost: 13353 
+
+===> Vectorized Expression : (VecAdd (Vec p0 p1) (VecAddRot (VecMul (VecAdd (VecMul (Vec x p3 p3 x) (Vec 1 1 x 1)) (Vec 0 0 p2 0)) (VecMul (Vec p1 x x p2) (Vec 1 x x 1))) 2)) 
+
+****************************************************************
+****************************************************************
+
+terminate called after throwing an instance of 'std::invalid_argument'
+  what():  key : x Not found in ciphertexts and plaintexts map 
+
+"
+poly_derivative/width=16/vectorized,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-poly_derivative-16-vectorized-x2qxo846/poly_derivative', '1', '16', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>.
+stdout:  window is 0
+
+stderr:     Finished `release` profile [optimized] target(s) in 0.07s
+     Running `/home/maroua/chehab-unified/egraphs/target/release/egraphs-vectorization ../expression.txt 2 0`
+****************************************************
+****************************************************
+Running egg with timeout 300s, width: 2 
+
+*********************Iterations******************************* 
+
+===> Initial e-graph size: 17
+Best cost at iteration 1: 85052 
+===> Initial e-graph size: 17
+Best cost at iteration 2: 85052 
+===> Initial e-graph size: 17
+Best cost at iteration 3: 29252 
+===> Initial e-graph size: 17
+Best cost at iteration 4: 21253 
+===> Initial e-graph size: 19
+Best cost at iteration 5: 21253 
+===> Initial e-graph size: 19
+Best cost at iteration 6: 13353 
+===> Initial e-graph size: 20
+Best cost at iteration 7: 13353 
+===> Initial e-graph size: 20
+Best cost at iteration 8: 13353 
+****************************************************************
+****************************************************************
+===> Final_Cost: 13353 
+
+===> Vectorized Expression : (VecAdd (Vec p0 p1) (VecAddRot (VecMul (VecAdd (VecMul (Vec x p3 p3 x) (Vec 1 1 x 1)) (Vec 0 0 p2 0)) (VecMul (Vec p1 x x p2) (Vec 1 x x 1))) 2)) 
+
+****************************************************************
+****************************************************************
+
+terminate called after throwing an instance of 'std::invalid_argument'
+  what():  key : x Not found in ciphertexts and plaintexts map 
+
+"
+sort/width=4/scalar,Unknown generated operand: c195
+sort/width=8/scalar,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-sort-8-scalar-bu3s9_gu/sort', '0', '8', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>.
+stdout: File copied successfully.
+
+stderr: terminate called after throwing an instance of 'std::invalid_argument'
+  what():  object not defined
+"
+sort/width=8/vectorized,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-sort-8-vectorized-rqf3tfp3/sort', '1', '8', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>.
+stdout: 
+stderr: terminate called after throwing an instance of 'std::invalid_argument'
+  what():  object not defined
+"
+sort/width=16/scalar,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-sort-16-scalar-ke6ib9la/sort', '0', '16', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>.
+stdout: File copied successfully.
+
+stderr: terminate called after throwing an instance of 'std::invalid_argument'
+  what():  object not defined
+"
+sort/width=16/vectorized,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-sort-16-vectorized-qhpzfm89/sort', '1', '16', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>.
+stdout: 
+stderr: terminate called after throwing an instance of 'std::invalid_argument'
+  what():  object not defined
+"

@@ -8,17 +8,20 @@ peak-memory model. No dataset, no training, no profiling.
 
 Model
 -----
-    peak_ram(E)  =  keys_ram(E)  +  inputs_ram(E)  +  intermediates_ram(E)
+The legacy v1 configuration is retained to reproduce prior measurements.
+Lattigo v2 includes source-derived parameter/helper buffers and the measured
+empty-process baseline:
 
-    keys_ram(E)          = modeled resident keys plus any backend-specific
-                           generation transient.
-    inputs_ram(E)        = modeled input ciphertexts (packed vectors count as
-                           one ciphertext each).
-    intermediates_ram(E) = modeled peak of simultaneously-live ciphertexts
-                           on the codegen-ordered CSE DAG.
+    live = parameters + helper buffers + keys + inputs + plaintexts
+           + intermediates + harness scratch
+    lo = process baseline + live
+    hi = process baseline + live * development_calibrated_multiplier
 
-These are logical size estimates; backend runtimes, temporary buffers, and
-allocator retention can make measured RSS differ substantially.
+The v2 high estimate includes transient input plaintext allocations observed in
+the generated Go harness, plus a development-calibrated GC/RSS headroom factor.
+Neither term makes it a Go heap-target guarantee or an RSS bound.
+The fixed baseline is measured on an empty Lattigo worker; program-dependent
+objects remain analytic.
 
 Vector containers are structural: every Vec element is retained and visited,
 and lane-specific variable names remain distinct inputs. They do not allocate
@@ -32,7 +35,7 @@ with N = poly_modulus_degree, L = number of primes in the coefficient modulus.
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 # ---------------------------------------------------------------------------
 # FHE parameter sizes
@@ -57,7 +60,9 @@ class FHEParams:
 class BackendConfig:
     backend_name: str
     allocator_multiplier: float
-    base_bytes_overhead: Any # callable(N, L) -> int
+    base_bytes_overhead: Callable[[int, int], int]
+    gc_headroom_factor: float | None = None
+    model_lattigo_runtime_components: bool = False
 
 SEAL_CONFIG = BackendConfig(
     backend_name="seal",
@@ -65,10 +70,22 @@ SEAL_CONFIG = BackendConfig(
     base_bytes_overhead=lambda N, L: int(10 * 1024 * 1024 + 1.5 * N * L * 8) # better base scaling
 )
 
+# Rounded median baseline RSS of the four-pair empty-worker microbenchmark.
+LATTIGO_EMPTY_WORKER_BASELINE_BYTES = 8 * 1024 * 1024
+LATTIGO_DEV_P95_GC_HEADROOM_FACTOR = 0.48789950971366136
+
 LATTIGO_CONFIG = BackendConfig(
     backend_name="lattigo",
     allocator_multiplier=1.0,
-    base_bytes_overhead=lambda N, L: 5388 * 1024
+    base_bytes_overhead=lambda N, L: LATTIGO_EMPTY_WORKER_BASELINE_BYTES,
+    gc_headroom_factor=LATTIGO_DEV_P95_GC_HEADROOM_FACTOR,
+    model_lattigo_runtime_components=True,
+)
+
+LATTIGO_CONFIG_V1 = BackendConfig(
+    backend_name="lattigo",
+    allocator_multiplier=1.0,
+    base_bytes_overhead=lambda N, L: 5388 * 1024,
 )
 
 
@@ -417,6 +434,16 @@ class PeakRAMEstimate:
     intermediates_bytes: int
     estimated_bytes_lo: int
     estimated_bytes_hi: int
+    base_overhead_bytes: int
+    high_growth_bytes: int
+    allocation_bytes: int
+    parameter_bytes: int
+    helper_buffers_bytes: int
+    rotation_index_bytes: int
+    input_staging_bytes: int
+    postprocess_bytes: int
+    input_plaintext_transient_bytes: int
+    managed_live_bytes: int
     allocating_ops: int
     total_bytes: int # Alias for lo for compatibility
     slots_fixed: int
@@ -503,7 +530,17 @@ def estimate_peak_ram(node: Any, params: FHEParams,
         sys.path.append(rl_dir)
         
     try:
-        from fhe_rl.memory_layout import key_bytes, ct_bytes, sk_bytes, pk_bytes, pt_bytes
+        from fhe_rl.memory_layout import (
+            key_bytes,
+            ct_bytes,
+            sk_bytes,
+            pk_bytes,
+            pt_bytes,
+            lattigo_parameter_bytes,
+            lattigo_helper_buffer_bytes,
+            lattigo_input_staging_bytes,
+            lattigo_postprocess_bytes,
+        )
     except ImportError:
         def key_bytes(backend, N, nQ, nP):
             import math
@@ -516,6 +553,23 @@ def estimate_peak_ram(node: Any, params: FHEParams,
             return 2 * (nQ + nP) * N * 8
         def pt_bytes(backend, level, N, nQ, nP):
             return nQ * N * 8
+        def lattigo_parameter_bytes(N, nQ, nP):
+            return (nQ + nP) * 2 * N * 8
+        def lattigo_helper_buffer_bytes(N, nQ, nP):
+            q_poly = nQ * N * 8
+            p_poly = nP * N * 8
+            qp_poly = q_poly + p_poly
+            return (
+                3 * q_poly + 6 * qp_poly + q_poly + nQ * qp_poly + N * 8
+                + 2 * q_poly + 3 * p_poly + qp_poly
+                + q_poly + 2 * qp_poly
+                + q_poly + N * 8 + (N // 2) * 8
+                + (2 * N + 1) * 16 + (N // 2) * 16
+            )
+        def lattigo_input_staging_bytes(N):
+            return (N // 2) * 8
+        def lattigo_postprocess_bytes(N, nQ):
+            return nQ * N * 8 + (N // 2) * 8
 
     backend_name = backend_config.backend_name if backend_config else "lattigo"
     
@@ -530,6 +584,27 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     
     mult = backend_config.allocator_multiplier if backend_config else 1.0
     base_b = backend_config.base_bytes_overhead(params.poly_modulus_degree, params.coeff_modulus_num_primes) if backend_config else 0
+    parameter_b = 0
+    helper_buffers_b = 0
+    input_staging_b = 0
+    postprocess_b = 0
+    if (
+        backend_name == "lattigo"
+        and backend_config is not None
+        and backend_config.model_lattigo_runtime_components
+    ):
+        parameter_b = lattigo_parameter_bytes(
+            params.poly_modulus_degree, nQ, nP
+        )
+        helper_buffers_b = lattigo_helper_buffer_bytes(
+            params.poly_modulus_degree, nQ, nP
+        )
+        input_staging_b = lattigo_input_staging_bytes(
+            params.poly_modulus_degree
+        )
+        postprocess_b = lattigo_postprocess_bytes(
+            params.poly_modulus_degree, nQ
+        )
 
     def get_unique_consts(nd):
         seen = set()
@@ -561,6 +636,7 @@ def estimate_peak_ram(node: Any, params: FHEParams,
         input_count, plaintext_count = get_unique_leaves(node), get_unique_consts(node)
     inputs_b  = int(input_count * ct_b) if count_inputs else 0
     plaintexts_b = int(plaintext_count * pt_b)
+    input_plaintext_transient_b = int(input_count * pt_b) if count_inputs else 0
     
     actual_slots = s_dag
     inter_b   = int(actual_slots * ct_b * mult)
@@ -587,6 +663,14 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     galois_keys = len(step_set)
     
     total_keys = relin_keys + galois_keys + boot_keys
+    rotation_index_b = (
+        galois_keys * params.poly_modulus_degree * 8
+        if (
+            backend_config is not None
+            and backend_config.model_lattigo_runtime_components
+        )
+        else 0
+    )
     # Adding Secret Key and Public Key to the keys pool
     keys_b = int(total_keys * key_b + sk_b + pk_b)
     keygen_transient_b = (
@@ -602,18 +686,54 @@ def estimate_peak_ram(node: Any, params: FHEParams,
         "intermediates": "simulated over CSE DAG",
     }
 
-    lo = base_b + keys_b + keygen_transient_b + inputs_b + plaintexts_b + inter_b
+    live_set = (
+        keys_b
+        + keygen_transient_b
+        + inputs_b
+        + plaintexts_b
+        + inter_b
+        + parameter_b
+        + helper_buffers_b
+        + rotation_index_b
+        + input_staging_b
+        + postprocess_b
+    )
+    lo = base_b + live_set
 
-    # Estimated garbage allowance for Lattigo; this is not a physical bound.
-    live_set = keys_b + keygen_transient_b + inputs_b + plaintexts_b + inter_b
+    # Generated Go encodes each encrypted input through a temporary plaintext.
+    # The ciphertext remains live; the plaintext can remain in the heap until GC.
     A = alloc_ops * ct_b
-    garbage_bound = min(A, int(1.6 * live_set)) if backend_name == "lattigo" else 0
-    est_hi = int((lo + garbage_bound) * 1.1)
+    if backend_config is not None and backend_config.gc_headroom_factor is not None:
+        high_growth_bytes = int(
+            live_set * max(0.0, backend_config.gc_headroom_factor)
+        )
+        est_hi = (
+            base_b
+            + live_set
+            + input_plaintext_transient_b
+            + high_growth_bytes
+        )
+    else:
+        high_growth_bytes = (
+            min(A, int(1.6 * live_set))
+            if backend_name == "lattigo"
+            else 0
+        )
+        est_hi = int((lo + high_growth_bytes) * 1.1)
 
     return PeakRAMEstimate(
         keys_bytes=keys_b, keygen_transient_bytes=keygen_transient_b,
         inputs_bytes=inputs_b, plaintexts_bytes=plaintexts_b, intermediates_bytes=inter_b,
-        estimated_bytes_lo=lo, estimated_bytes_hi=est_hi, total_bytes=lo, allocating_ops=alloc_ops,
+        estimated_bytes_lo=lo, estimated_bytes_hi=est_hi,
+        base_overhead_bytes=base_b, high_growth_bytes=high_growth_bytes,
+        allocation_bytes=A, parameter_bytes=parameter_b,
+        helper_buffers_bytes=helper_buffers_b,
+        rotation_index_bytes=rotation_index_b,
+        input_staging_bytes=input_staging_b,
+        postprocess_bytes=postprocess_b,
+        input_plaintext_transient_bytes=input_plaintext_transient_b,
+        managed_live_bytes=live_set,
+        total_bytes=lo, allocating_ops=alloc_ops,
         slots_fixed=s_dag, slots_min=s_dag,
         n_keys_raw=total_keys, n_keys_reduced=total_keys, # Same now since it's the exact set
         relin_keys_count=relin_keys, galois_keys_count=galois_keys, bootstrap_keys_count=boot_keys,

@@ -6,20 +6,22 @@
 
 ## 1. Mission et Philosophie de l'Estimateur
 
-Dans la réécriture de l'optimiseur CHEHAB, nous avons remplacé le "modèle de bruit" appris (Machine Learning) par un estimateur **100% algébrique et mathématique** de la consommation maximale de mémoire RAM (Peak RAM). 
+Dans la réécriture de l'optimiseur CHEHAB, nous avons remplacé le "modèle de bruit" appris (Machine Learning) par un estimateur **analytique et interprétable** de la consommation mémoire. Il ne contient pas de modèle entraîné ni de coefficient ajusté par programme; la baseline fixe du worker Lattigo est mesurée par microbenchmark et un facteur environnemental global pour `hi` est calibré sur le développement.
 
 L'objectif est d'avoir un estimateur :
-- **Algébrique et déterministe** : Pas de modèle appris, pas de régression linéaire, pas de dataset d'entraînement.
+- **Analytique** : Pas de modèle appris ni de régression sur le corpus; les objets dépendant du programme sont calculés à partir de `(N,L)`, du DAG et des clés. Seul le facteur environnemental global de `hi` est calibré par quantile de résidu sur le développement.
 - **Aligné sur le compilateur** : Il suit l'ordre DFS de gauche à droite du tri topologique C++ et porte la logique de réduction des clés de rotation.
 - **Interprétable** : Il sépare les clés, les entrées, les plaintexts et les ciphertexts intermédiaires, puis produit une estimation basse et une estimation haute.
 
-Le modèle utilisé actuellement est :
+Le modèle Lattigo v2 utilisé par l'environnement RL est :
 ```python
-RAM_lo = Base_Backend + Keys_RAM + Keygen_Transient + Inputs_RAM
-        + Plaintexts_RAM + Intermediates_RAM
-RAM_hi = 1.1 * (RAM_lo + Garbage_Bound)
+live = Parameters + Helper_Buffers + Rotation_Indexes + Keys
+       + Inputs + Plaintexts + Intermediates + Harness_Scratch
+RAM_lo = Measured_Worker_Baseline + live
+RAM_hi = Measured_Worker_Baseline + live
+         + Input_Plaintext_Transient + live * 0.4878995...
 ```
-Ce sont des estimations analytiques, pas une borne physique garantie. Les mesures RSS des processus servent à comparer le modèle aux exécutions.
+Les programmes sont mesurés avec `GOGC=100`, mais le coefficient de `hi` est un facteur environnemental calibré sur le développement, pas une traduction directe de la cible théorique du GC. `[lo, hi]` reste une estimation, pas une borne physique; les mesures RSS isolées et les snapshots Go servent à tester séparément les objets résidents et les effets du GC.
 
 ---
 
@@ -52,23 +54,66 @@ Au lieu de compter simplement "combien de rotations différentes existent" ou d'
 
 Le résultat `S(E)` est le jeu de clés produit par cette passe de réduction. Les tests Python couvrent des jeux attendus, les pas sous le seuil et le cas d'un seuil impossible. Les rotations synthétiques ne font pas partie des workloads du sweep actuel.
 
-### 2.4 Le pic modélisé du Live Set et le Garbage Bound (Phase 4)
+### 2.4 Modèle historique v1 : pic du Live Set et Garbage Bound
 Les clés et ciphertexts ont une taille mathématique fixe. En plus des Galois et Relin Keys, l'estimateur inclut désormais la Secret Key (`sk`), la Public Key (`pk`) et les constantes arithmétiques `Plaintext` de l'AST.
 
-L'estimateur renvoie un intervalle `[lo, hi]` :
-- `lo` (empreinte modélisée) : La somme de la base backend, des clés, des inputs, des constantes et des ciphertexts vivants au pic simulé.
-- `hi` (marge de déchets) : `1.1 * (lo + min(A, 1.6 * live_set))`, où `A` est l'estimation des allocations d'opérations et `live_set` la somme modélisée des clés, inputs, plaintexts et intermédiaires.
+La configuration `LATTIGO_CONFIG_V1` conserve l'ancienne formule pour reproduire les résultats publiés précédemment :
+- `lo` : base backend + clés + entrées + plaintexts + intermédiaires vivants au pic simulé.
+- `hi` : `1.1 * (lo + min(A, 1.6 * live_set))`, où `A` est l'estimation des allocations d'opérations.
 
-Dans l'implémentation actuelle, `hi = 1.1 * (lo + garbage_bound)`. Le terme de déchets est utilisé pour Lattigo; il est nul pour SEAL dans ce modèle. `lo` n'est pas un RSS minimum garanti et `hi` n'est pas un RSS maximum garanti. L'empreinte observée dépend également du runtime, de l'allocateur et des temporaires de chaque backend.
+Cette formule est conservée uniquement comme ligne de base v1, et ne constitue pas une estimation de la politique de GC de Go.
+
+### 2.5 Modèle structurel Lattigo v2
+
+La configuration RL `LATTIGO_CONFIG` utilise maintenant une décomposition v2 ancrée dans les allocations persistantes du worker et dans le protocole Go. Les tailles liées au candidat (clés, ciphertexts, entrées et live set du DAG) restent analytiques; aucun coefficient par benchmark, largeur ou forme vectorisée n'est ajusté au corpus.
+
+```text
+live_v2 = paramètres + buffers_helpers + index_rotations
+          + clés + inputs + plaintexts + intermédiaires
+          + staging_inputs + postprocess
+lo_v2 = baseline_worker + live_v2
+hi_v2 = baseline_worker + live_v2
+        + transient_plaintexts_inputs + live_v2 * 0.4878995...
+```
+
+Le worker de validation est mesuré avec `GOGC=100`; la cible documentée de Go autorise alors environ une croissance de tas égale au live set avant collecte, soit un facteur théorique 2. Les observations RSS, `HeapInuse` et live set ne coïncident pas : le facteur final **0,4878995097** est le 95e percentile du résidu développement `(RSS médian - baseline estimée - live_v2 - transient_plaintexts_inputs) / live_v2`, interpolé linéairement sur 74 programmes. Il s'agit d'une calibration environnementale, non d'une garantie RSS. `GOGC=off` n'a pas de plafond GC fini et n'est pas présenté comme une borne.
+
+La baseline fixe de **8 MiB** est mesurée, pas ajustée par régression. Le worker vide mesure une RSS médiane de 7,76–7,90 MiB aux quatre couples `(N,L)=(8192,5),(16384,6),(16384,8),(32768,10)`; `(16384,8)` et `(32768,10)` ne figurent pas dans les paramètres usuels du corpus. La valeur est arrondie à 8 MiB pour représenter le runtime/processus avant les paramètres.
+
+La mesure est reproductible depuis la racine avec `conda run -n chehabEnv python RL/measure_lattigo_empty.py --repeats 3`. Le worker prend un snapshot avant paramètres, puis après paramètres, clés, helpers et une entrée; il reporte aussi RSS, HWM, `HeapAlloc`, `HeapInuse`, `HeapSys`, `NumGC` et `TotalAlloc`. Les quatre couples sont par défaut, et le CSV brut est `RL/lattigo_empty_microbench.csv`.
+
+Les termes persistants sont dérivés des structures Lattigo v5 :
+- Les paramètres comprennent les tables NTT forward/backward des anneaux Q et P : `(nQ+nP) * 2 * N * 8` octets.
+- Les buffers CKKS incluent les 3 polynômes du `BuffCt` degré 2, les 6 polynômes QP et les buffers `BuffInvNTT`, `BuffDecompQP` (un polynôme QP par élément de la décomposition) et `BuffBitDecomp` de l'évaluateur.
+- Les helpers incluent les buffers de chiffrement (2 Q, 3 P et 1 QP), le buffer Q du déchiffreur, les buffers de deux `BasisExtender`, ainsi que le polynôme, les racines complexes, le groupe de rotations et le scratch de l'encodeur.
+- L'évaluateur conserve aussi une table d'index d'automorphisme de `N` mots `uint64` par clé Galois. Ce coût dépend du nombre de rotations réduit, et n'est pas caché dans une constante fixe.
+- Le harnais généré conserve un buffer `float64` de `MaxSlots` pendant l'encodage et alloue un plaintext déchiffré et un buffer de décodage au post-traitement.
+
+Aux quatre couples du microbenchmark, le modèle source-dérivé des buffers statiques vaut respectivement 6,09, 15,44, 22,69 et 61,88 MiB. Les deltas médians `HeapInuse` de la phase `keys -> helpers` mesurés sont 5,91, 15,03, 22,27 et 61,05 MiB. Le worker de mesure inclut en outre une clé Galois et son index d'automorphisme. Cet accord à quelques MiB près appuie les buffers persistants sans prouver l'égalité RSS/tas. À l'inverse, la phase `baseline -> parameters` dépasse les seules tables NTT de 2,47, 0,72, 0,02 et 0,46 MiB en `HeapInuse`; les allocations de construction des paramètres et le comportement du GC restent donc un poste distinct à diagnostiquer, et ne sont pas ajoutés arbitrairement au live set.
+
+La campagne de diagnostic **développement uniquement** a mesuré 72 programmes compilés, trois répétitions par politique GC; dix autres candidats échouent à la génération, au parsing ou au timeout, et restent dans le CSV d'échecs. À `GOGC=100`, les deltas médians de chaque phase sur ces 72 programmes sont :
+
+| Transition | RSS Δ (MiB) | HeapInuse Δ (MiB) | TotalAlloc Δ (MiB) |
+|---|---:|---:|---:|
+| baseline → paramètres | 5,22 | 2,20 | 4,50 |
+| paramètres → clés | 6,27 | 7,75 | 11,89 |
+| clés → helpers | 1,99 | 15,03 | 18,34 |
+| helpers → inputs | 28,09 | 23,99 | 36,30 |
+| inputs → évaluation | 14,94 | 5,51 | 19,25 |
+| évaluation → postprocess | 1,04 | 4,62 | 7,33 |
+
+La divergence entre RSS, `HeapInuse` et `TotalAlloc` est informative : le plus gros écart visible est l'entrée/encryption des inputs; l'évaluation alloue encore environ 19,25 MiB, mais n'en conserve que 5,51 MiB de plus dans `HeapInuse` à `GOGC=100`. À `GOGC=10`, les médianes des transitions `inputs → évaluation` et `évaluation → postprocess` en `HeapInuse` sont respectivement **−8,73** et **−18,67 MiB**; avec le GC désactivé elles sont **+19,24** et **+7,47 MiB**. Cela confirme une différence entre live set et déchets retenus. L'ancien estimateur v1 n'avait aucun terme pour les helpers ni une calibration de `hi` fondée sur le résidu environnemental, ce qui explique pourquoi son bon classement ne suffit pas pour une décision absolue de budget.
+
+Les fichiers v1 restent intacts. Les agrégats historiques v1 incluent déjà un score holdout vu précédemment; ils ne constituent pas un nouveau score indépendant. La comparaison v1/v2, la campagne GOGC et la précision du v2 sur le développement sont rapportées plus loin. Pour v2, le holdout reste interdit jusqu'au commit du modèle gelé, puis sera exécuté une seule fois; cette exposition historique doit être rappelée dans le rapport.
 
 ---
 
 ## 3. Workloads de validation actuels
 
-Le sweep reproductible est lancé depuis la racine du dépôt :
+Le sweep reproductible est lancé depuis la racine du dépôt avec l'environnement prévu :
 
 ```bash
-python3 RL/generate_sweep_isolated.py
+conda run -n chehabEnv python RL/generate_sweep_isolated.py
 ```
 
 Les programmes communs aux deux backends sont exécutés séparément dans TenSEAL/SEAL et Lattigo avec les paramètres `(N, L)` et les tailles définis dans le script :
@@ -86,7 +131,9 @@ Trois charges sont réservées à Lattigo, qui expose les opérations correspond
 
 Deep Poly n'est pas attribué à SEAL : les essais TenSEAL antérieurs échouaient par dépassement de scale. TenSEAL ne permet pas de choisir un sous-ensemble de clés Galois pour la réduction : son worker génère son jeu par défaut, plus large que les étapes du code CHEHAB; cette différence reste visible et interdit d'interpréter le dot product comme une comparaison exacte de taille de clés.
 
-Chaque worker mesure quatre points dans des processus isolés : baseline de démarrage, pic après génération/setup des clés, pic après préparation des inputs, et pic après évaluation. Les pics sont lus avec `/usr/bin/time -v` autour de chaque processus, pas avec le high-water mark du processus parent. Pour Lattigo, la baseline suit l'initialisation des paramètres; pour TenSEAL, elle suit les imports Python et précède la création du contexte, car TenSEAL encapsule l'initialisation des clés dans son constructeur de contexte. La colonne `Actual (MB)` vaut le pic d'évaluation moins la baseline. Les colonnes `Est Delta Lo/Hi` retirent la composante `base_bytes_overhead` de l'estimateur pour comparer des incréments aux incréments. Les pics bruts des phases restent présents dans le CSV. Tous les processus Lattigo utilisent `GOGC=100`; échecs et timeouts sont notés `FAIL`, jamais comme une mesure nulle. Une hausse nulle du high-water mark est rapportée comme incrément nul, distinct d'un échec.
+Le sweep isolé historique mesure quatre points dans des processus séparés : baseline, clés, inputs et évaluation. Sa baseline Lattigo suit l'initialisation des paramètres; celle de TenSEAL suit les imports Python et précède la création du contexte. La colonne `Actual (MB)` vaut le pic d'évaluation moins la baseline. Les colonnes `Est Delta Lo/Hi` retirent la base pour comparer des incréments aux incréments. Tous ces processus Lattigo utilisent `GOGC=100`; les échecs et timeouts sont notés `FAIL`.
+
+La nouvelle campagne corpus mesure dans chaque processus sept snapshots distincts : `baseline` (au début de `main`, avant les paramètres), `parameters`, `keys`, `helpers`, `inputs`, `evaluation` et `postprocess`. À chaque phase, elle conserve RSS/HWM, `HeapAlloc`, `HeapInuse`, `HeapSys`, `NumGC` et `TotalAlloc`; `/usr/bin/time` mesure le RSS maximal du processus entier. Les deltas adjacent-phases ne sont pas assimilés à des objets exacts (le GC peut s'exécuter entre snapshots), mais les deltas `HeapInuse` et `TotalAlloc` aident à distinguer résidents et allocations. Les trois politiques `GOGC=10`, `100` et `off` sont exécutées en processus isolés avec trois répétitions pour cette campagne de diagnostic.
 
 Le fichier `RL/sweep_results_isolated.csv` est le résultat du dernier sweep complet. Les colonnes Delta sont spécifiques à chaque backend; ne pas comparer Conv2D/Deep Poly/High-Churn à un faux résultat SEAL ni présenter les workloads différents comme une comparaison un-à-un.
 
@@ -96,7 +143,7 @@ Sur le sweep relancé après actualisation de l'estimateur, la couverture de `[E
 
 ### Contrôle de programmes CHEHAB compilés
 
-Les programmes proviennent de `benchmarks/dot_product/dot_product.cpp`, compilé par CHEHAB en source Go Lattigo, puis compilé par Go et exécuté. La campagne est reproductible avec `python3 RL/validate_compiled_programs.py` après construction de `build/benchmarks/dot_product/dot_product`. L'argument `vectorize_code=0` sélectionne la voie scalaire du benchmark; la validation porte donc sur des programmes réellement générés/exécutés, mais ne valide pas encore la voie vectorisée consommée par le mode mémoire de l'agent RL. Le script reconstruit l'AST depuis les opérations et affectations générées par le compilateur, extrait `(N,L)` du Go généré et estime ce DAG, plutôt qu'un AST synthétique ou une approximation indépendante du programme.
+Les programmes proviennent de `benchmarks/dot_product/dot_product.cpp`, compilé par CHEHAB en source Go Lattigo, puis compilé par Go et exécuté. La campagne est reproductible avec `conda run -n chehabEnv python RL/validate_compiled_programs.py` après construction de `build/benchmarks/dot_product/dot_product`. L'argument `vectorize_code=0` sélectionne la voie scalaire du benchmark; la validation porte donc sur des programmes réellement générés/exécutés, mais ne valide pas encore la voie vectorisée consommée par le mode mémoire de l'agent RL. Le script reconstruit l'AST depuis les opérations et affectations générées par le compilateur, extrait `(N,L)` du Go généré et estime ce DAG, plutôt qu'un AST synthétique ou une approximation indépendante du programme.
 
 Chaque binaire Go a été compilé puis exécuté avec `GOGC=100`; `/usr/bin/time` mesure son RSS maximal. `lo` et `hi` sont comparés au RSS absolu du programme, baseline du processus incluse, et l'erreur signée est `(lo - RSS) / RSS * 100`. Les résultats bruts sont dans `RL/compiled_program_results.csv`.
 
@@ -112,7 +159,7 @@ Couverture observée : **0/5**. L'erreur signée moyenne de `lo` est **-56.38 %*
 
 ### Protocole du corpus multi-benchmarks
 
-Le nouveau runner `RL/validate_benchmark_corpus.py` étend cette vérification aux programmes générés par les benchmarks CHEHAB. La commande reproductible est `python3 RL/validate_benchmark_corpus.py --repeats 5`; le protocole gelé avant la mesure est dans `RL/compiled_corpus_protocol.json`. Il couvre 108 candidats prévus : les formes scalaires et vectorisées par e-graph des benchmarks réguliers aux largeurs 4, 8 et 16, avec la largeur 32 ajoutée pour dot product, Hamming et L2; Conv2D compilé nativement aux largeurs prises en charge; et les modes polynomial, convolution et linéaire de Deep Network. Une génération ou une exécution en échec reste consignée dans `RL/compiled_corpus_failures.csv` et n'est jamais comptée comme programme mesuré.
+Le runner `RL/validate_benchmark_corpus.py` étend cette vérification aux programmes générés par les benchmarks CHEHAB. La commande de la campagne historique v1 était `conda run -n chehabEnv python RL/validate_benchmark_corpus.py --repeats 5`; le protocole est dans `RL/compiled_corpus_protocol.json`. Il couvre 108 candidats prévus : les formes scalaires et vectorisées par e-graph des benchmarks réguliers aux largeurs 4, 8 et 16, avec la largeur 32 ajoutée pour dot product, Hamming et L2; Conv2D compilé nativement aux largeurs prises en charge; et les modes polynomial, convolution et linéaire de Deep Network. Une génération ou une exécution en échec reste consignée dans un CSV d'échecs et n'est jamais comptée comme programme mesuré.
 
 Chaque candidat est exécuté cinq fois avec `GOGC=100`. Le RSS absolu maximal de `/usr/bin/time` est résumé par médiane, minimum et maximum; chaque exécution conserve aussi les snapshots baseline, clés, inputs et évaluation (RSS, HWM et tas Go). L'AST est reconstruit depuis le Go généré par CHEHAB, tous les ciphertexts affectés à `encryptedOutputs` sont conservés sous une racine `Vec`, et `(N,L)` est lu dans ce même fichier. Quand un plaintext d'entrée est absent, le runner encode des vecteurs déterministes de `1.0` uniquement pour permettre l'exécution : cela ne préserve pas les valeurs métier du benchmark. Il réécrit aussi `eval.NegNew(x)` en `eval.MulNew(x, -1.0)` pour la compatibilité avec Lattigo installé. Les fichiers `RL/compiled_corpus_runs.csv`, `RL/compiled_corpus_summary.csv` et `RL/compiled_corpus_metrics.csv` sont mis à jour pendant la campagne afin de garder les résultats partiels en cas d'arrêt.
 
@@ -126,9 +173,11 @@ Le holdout est fixé par benchmark avant la mesure : chaque quatrième nom, dans
 
 Cette différence limite les conclusions : les 93 mesures du corpus vérifient l'estimation sur 74 candidats de développement et 19 candidats holdout générés en modes scalaires, compiler-native ou e-graph. Elles ne démontrent **pas** la précision sur les expressions exactes que produira l'agent RL pendant un épisode. En particulier, elles ne valident ni la distribution des candidats RL, ni leurs transformations intermédiaires, ni le taux d'acceptation/rejet du masque mémoire face au RSS de ces mêmes candidats. L'e-graph ne peut donc pas servir de substitut à la campagne RL prévue.
 
-La voie de génération RL des benchmarks (`optimization_method=1`) n'a pas été mesurée dans cette campagne : son lancement échoue dans cet environnement avant de produire les candidats parce que `stable_baselines3` n'est pas installé (`ModuleNotFoundError`). Il faut rétablir cette dépendance et ajouter une collecte qui exporte chaque AST candidat réellement vu par l'environnement, puis le compiler/exécuter et mesurer son RSS avant de revendiquer une validation sur la voie RL. En attendant, les chiffres du corpus doivent être décrits comme une validation des estimateurs sur le sous-ensemble mesurable des programmes CHEHAB scalaires/e-graph/compiler-native, et non comme une validation de l'estimateur dans la boucle RL.
+La voie de génération RL des benchmarks (`optimization_method=1`) n'a pas été mesurée dans cette campagne. `stable_baselines3` est disponible dans l'environnement `chehabEnv`, mais le runner du corpus ne collecte pas encore les AST candidats réellement visités par l'agent ni ne les compile et mesure. Il faut ajouter ce chemin de collecte avant de revendiquer une validation sur la voie RL. En attendant, les chiffres du corpus doivent être décrits comme une validation des estimateurs sur le sous-ensemble mesurable des programmes CHEHAB scalaires/e-graph/compiler-native, et non comme une validation de l'estimateur dans la boucle RL.
 
 ### Résultats du corpus compilé
+
+Les chiffres ci-dessous sont la référence historique v1, mesurée avant la calibration v2. Son agrégat holdout a été consulté plus tôt dans le travail; il n'est donc ni un score holdout v2, ni une évaluation nouvellement aveugle. Le nouveau holdout v2 restera à exécuter une seule fois après le commit du modèle.
 
 La campagne a produit **93 programmes mesurés sur 108 prévus**, avec cinq exécutions chacun (**465 exécutions RSS**). Le seuil visé de 100 programmes complétés n'est donc pas atteint. Les 15 échecs restent dans `RL/compiled_corpus_failures.csv` : trois DCT vectorisés et trois `poly_derivative` vectorisés échouent sur des noms absents des maps; quatre variantes `max` et quatre `sort` terminent en erreur `object not defined`; `sort` scalaire largeur 4 échoue aussi au parsing sur l'opérande `c195`. Aucun échec n'a été transformé en mesure. Les paramètres générés couvrent six couples `(N,L)` : `(16384,6)`, `(16384,7)`, `(16384,8)`, `(16384,9)`, `(16384,10)` et `(32768,12)`.
 
@@ -146,6 +195,38 @@ Les métriques comparent la médiane RSS absolue au modèle non ajusté. Le hold
 En prenant `estimated_bytes_hi <= budget` comme décision « tient », le holdout a **4 faux positifs à 64 MiB**, contre le critère zéro; il n'en a aucun à 256 ni 1024 MiB. Le taux de faux rejets, calculé parmi les programmes dont le RSS mesuré tient réellement, est 0/5 à 64 MiB, 0/17 à 256 MiB et 1/19 (5.3 %) à 1024 MiB. Les taux de faux rejets respectent le seuil de 10 %, mais cela ne compense pas les faux positifs à 64 MiB. Le classement reste fort alors que les estimations absolues sont très sous-évaluées; **l'estimateur actuel ne doit pas être utilisé comme garantie de budget mémoire**. Aucun coefficient ni marge n'a été recalibré sur ce corpus ou son holdout.
 
 Les RSS de phase sont disponibles par répétition et sous forme médiane/minimum/maximum dans les CSV. Ce corpus utilise le RSS absolu du programme, baseline comprise; ses résultats ne sont pas fusionnés avec le sweep synthétique baseline-soustrait.
+
+#### Résultat développement v2 corrigé
+
+La campagne v2 corrigée est limitée au développement : le holdout v2 n'a pas été exécuté. Elle contient **74 candidats mesurés** à `GOGC=100`, trois répétitions chacun (**222 exécutions RSS**), et **8 échecs développement** consignés sans être convertis en mesures. Le facteur `gc_headroom_factor = 0.48789950971366136` vient uniquement de ces 74 lignes.
+
+| Mesure | Développement v2 |
+|---|---:|
+| Couverture de `[lo, hi]` | 91.9 % (68/74) |
+| Erreur absolue médiane de `lo` | 17.92 MiB |
+| MAPE médiane de `lo` | 24.25 % |
+| Biais signé moyen de `lo` | -24.38 % |
+| Spearman moyen intra-benchmark | 0.926 |
+| Classement paire à paire intra-benchmark | 92.59 % (175/189) |
+
+Aux budgets configurés, v2 ne produit aucun faux positif développement à 64, 256 ou 1024 MiB. En revanche, il rejette encore 13 programmes réellement sous 64 MiB (13/35 = 37.1 %), 3 sous 256 MiB (3/63 = 4.8 %) et aucun sous 1024 MiB (0/73). Le modèle est donc plus prudent que v1, mais coûteux au budget 64 MiB.
+
+Le contrôle LOBO développement réapprend le facteur sur tous les autres benchmarks puis teste le benchmark omis. Les couvertures LOBO vont de 66.7 % à 100 % selon le benchmark; les plus faibles sont `gy_kernel` (4/6), `box_blur` (5/6), `gx_kernel` (5/6), `lin_reg` (5/6) et `deep_network` (8/9). Cela indique que la marge globale transfère raisonnablement sur ce corpus développement, mais qu'elle n'est pas une borne physique.
+
+#### Correction ciblée du parseur et score holdout v2 corrigé
+
+Le parseur `parse_compiler_program` utilisait deux passes (binaires puis `NegNew`), ce qui corrompait les programmes réutilisant des noms de variables SSA (sous-arbres périmés conservés, vraie branche `-x` orpheline, entrées perdues). La correction passe en une seule passe dans l'ordre source avec `NegNew` traité en ligne, plus un test de non-régression `test_parser_preserves_ssa_values_when_names_are_reused`. Une régénération complète des 93 programmes prouve l'isolement : une seule ligne a un effet parseur non nul (`holdout max/4/scalar`, `lo` +13.75 MiB, dérive 0.00); les 9 autres lignes modifiées sont de la dérive non déterministe e-graph (effet parseur 0.00). Le développement ne nécessite aucune modification et le facteur gelé se recalcule à l'identique (0.48789951).
+
+Fichiers : `RL/compiled_corpus_v2_holdout_summary_fixed.csv` (identique au holdout gelé sauf la ligne `max/4/scalar` : `lo` 42.94 → 56.69, `hi` 61.23 → 86.69, `live` 34.94 → 48.69, entrées 2.5 → 12.5, feuilles 2 → 10; RSS médian mesuré 89.01 inchangé), `RL/compiled_corpus_v2_holdout_metrics_fixed.csv` (v2 seul) et `RL/compiled_corpus_v2_holdout_benchmark_metrics_fixed.csv` (v2 seul). Les CSV holdout d'origine sont conservés intacts; leurs colonnes v1 sont une référence gelée uniquement — les seuils v2 ne les lisent jamais.
+
+| Mesure | Holdout v2 corrigé | Critère préfixé |
+|---|---|---|
+| Couverture de `[lo, hi]` | 78.9 % (15/19) | ≥ 90 % — échec |
+| MAPE médiane de `lo` | 28.62 % | ≤ 20 % — échec |
+| Biais signé moyen de `lo` | -30.81 % | \|·\| ≤ 10 % — échec |
+| Classement paire à paire intra-benchmark | 100 % (42/42) | ≥ 80 % — passe |
+
+Aux budgets : **0 faux positif à 64 MiB** (la correction fait passer `hi` de `max/4/scalar` de 61.23 à 86.69, au-dessus du budget; 1 → 0), 0 à 256/1024 MiB; faux rejets 2/5 = 40 % à 64 MiB (échec), 0/17 à 256 MiB, 1/19 = 5.3 % à 1024 MiB. Les manques restants : `sobel` scalaire l4/l8 (queue churn d'allocation GC, résidus 0.55/0.58 contre p95 0.49) et `max/4/scalar` (écart étroit de -2.3 MiB après correction, seul cas `L=7` du holdout). **`hi` ne doit pas être décrit comme une borne RSS garantie**.
 
 #### Reproduire la campagne et lire les artefacts
 

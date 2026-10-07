@@ -1,0 +1,9 @@
+Benchmark,Width,Vectorization,Program,Error Summary
+poly_derivative,4,vectorized,poly_derivative/width=4/vectorized,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-poly_derivative-4-vectorized-gdkxpiii/poly_derivative', '1', '4', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>."
+poly_derivative,8,vectorized,poly_derivative/width=8/vectorized,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-poly_derivative-8-vectorized-wndvwe82/poly_derivative', '1', '8', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>."
+poly_derivative,16,vectorized,poly_derivative/width=16/vectorized,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-poly_derivative-16-vectorized-suu3lq84/poly_derivative', '1', '16', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>."
+sort,4,scalar,sort/width=4/scalar,Unknown generated operand: c195
+sort,8,scalar,sort/width=8/scalar,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-sort-8-scalar-bf34mjeh/sort', '0', '8', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>."
+sort,8,vectorized,sort/width=8/vectorized,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-sort-8-vectorized-iqoudg4i/sort', '1', '8', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>."
+sort,16,scalar,sort/width=16/scalar,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-sort-16-scalar-ylklzeb3/sort', '0', '16', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>."
+sort,16,vectorized,sort/width=16/vectorized,"Command '['/home/maroua/chehab-unified/build/benchmarks/chehab-sort-16-vectorized-aj57xz65/sort', '1', '16', 'constrained', '0', '0', '0', '1', '1', '1']' died with <Signals.SIGABRT: 6>."

@@ -9,7 +9,12 @@ import tempfile
 from pathlib import Path
 
 from pytrs.expr import Const, Op, Var
-from pytrs.peak_ram import FHEParams, LATTIGO_CONFIG, estimate_peak_ram
+from pytrs.peak_ram import (
+    FHEParams,
+    LATTIGO_CONFIG,
+    LATTIGO_CONFIG_V1,
+    estimate_peak_ram,
+)
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -47,7 +52,15 @@ REPEATS = 5
 COMPILER_TIMEOUT_SECONDS = 180
 BUILD_TIMEOUT_SECONDS = 300
 RUN_TIMEOUT_SECONDS = 180
-PHASE_NAMES = ("baseline", "keys", "inputs", "evaluation")
+PHASE_NAMES = (
+    "baseline",
+    "parameters",
+    "keys",
+    "helpers",
+    "inputs",
+    "evaluation",
+    "postprocess",
+)
 
 
 def parse_compiler_program(source: str):
@@ -81,37 +94,42 @@ def parse_compiler_program(source: str):
         "SubNew": "-",
         "RotateNew": "<<",
     }
-    pattern = re.compile(
-        r"^\s*(\w+),\s*_\s*=\s*eval\.(MulRelinNew|MulNew|AddNew|SubNew|RotateNew)"
-        r"\(([^,]+),\s*([^)]+)\)",
+    # Single source-order pass: generated code reuses Go variable names in SSA
+    # style, so a destination overwritten by a later op (e.g. NegNew) must not
+    # retroactively change an earlier op that already consumed the old value.
+    combined_pattern = re.compile(
+        r"^\s*(\w+),\s*_\s*=\s*eval\.(MulRelinNew|MulNew|AddNew|SubNew|RotateNew|NegNew)"
+        r"\(([^)]+)\)",
         flags=re.MULTILINE,
     )
-    for destination, method, left_text, right_text in pattern.findall(source):
-        left_name = left_text.strip()
+
+    def resolve_operand(name: str):
+        if name in variables:
+            return variables[name]
+        try:
+            return Const(int(name))
+        except ValueError:
+            try:
+                return Const(float(name))
+            except ValueError as error:
+                raise ValueError(f"Unknown generated operand: {name}") from error
+
+    for destination, method, args_text in combined_pattern.findall(source):
+        if method == "NegNew":
+            operand_name = args_text.strip()
+            if operand_name not in variables:
+                raise ValueError(f"Unknown generated operand: {operand_name}")
+            variables[destination] = Op("-", [Const(0), variables[operand_name]])
+            continue
+        parts = [part.strip() for part in args_text.split(",", 1)]
+        if len(parts) != 2 or not parts[0] or not parts[1]:
+            raise ValueError(f"Unknown generated operand: {args_text.strip()}")
+        left_name, right_name = parts
         if left_name not in variables:
             raise ValueError(f"Unknown generated operand: {left_name}")
-        right_name = right_text.strip()
-        if right_name in variables:
-            right = variables[right_name]
-        else:
-            try:
-                right = Const(int(right_name))
-            except ValueError:
-                try:
-                    right = Const(float(right_name))
-                except ValueError as error:
-                    raise ValueError(f"Unknown generated operand: {right_name}") from error
-        variables[destination] = Op(operations[method], [variables[left_name], right])
-
-    unary_pattern = re.compile(
-        r"^\s*(\w+),\s*_\s*=\s*eval\.NegNew\(([^)]+)\)",
-        flags=re.MULTILINE,
-    )
-    for destination, operand_text in unary_pattern.findall(source):
-        operand_name = operand_text.strip()
-        if operand_name not in variables:
-            raise ValueError(f"Unknown generated operand: {operand_name}")
-        variables[destination] = Op("-", [Const(0), variables[operand_name]])
+        variables[destination] = Op(
+            operations[method], [variables[left_name], resolve_operand(right_name)]
+        )
 
     output_names = re.findall(
         r'^\s*encryptedOutputs\["[^"]+"\]\s*=\s*(\w+)',
@@ -170,8 +188,9 @@ func reportMemoryPhase(name string) {
 	}
 	var stats runtime.MemStats
 	runtime.ReadMemStats(&stats)
-	fmt.Printf("MEM_PHASE %s vmrss=%s vmhwm=%s heap_alloc=%d heap_sys=%d\n",
-		name, rss, hwm, stats.HeapAlloc, stats.HeapSys)
+	fmt.Printf("MEM_PHASE %s vmrss=%s vmhwm=%s heap_alloc=%d heap_inuse=%d heap_sys=%d num_gc=%d total_alloc=%d\n",
+		name, rss, hwm, stats.HeapAlloc, stats.HeapInuse, stats.HeapSys,
+		stats.NumGC, stats.TotalAlloc)
 }
 '''
     main_start = source.find("func main() {")
@@ -181,12 +200,30 @@ func reportMemoryPhase(name string) {
     source = source.replace(
         "func main() {", "func main() {\n\treportMemoryPhase(\"baseline\")", 1
     )
+    parameters_anchor = "// Key Generation"
     keys_anchor = "// Encoder, Encryptor, Decryptor, Evaluator"
+    helpers_anchor = "// Input/Output maps"
     inputs_anchor = "// Run computation"
-    if source.count(keys_anchor) != 1 or source.count(inputs_anchor) != 1:
+    postprocess_anchor = "\t_ = encodedOutputs"
+    anchors = (
+        parameters_anchor,
+        keys_anchor,
+        helpers_anchor,
+        inputs_anchor,
+        postprocess_anchor,
+    )
+    if any(source.count(anchor) != 1 for anchor in anchors):
         raise ValueError("Generated main has unexpected key/input section markers")
     source = source.replace(
+        parameters_anchor,
+        'reportMemoryPhase("parameters")\n\t' + parameters_anchor,
+        1,
+    )
+    source = source.replace(
         keys_anchor, 'reportMemoryPhase("keys")\n\t' + keys_anchor, 1
+    )
+    source = source.replace(
+        helpers_anchor, 'reportMemoryPhase("helpers")\n\t' + helpers_anchor, 1
     )
     source = source.replace(
         inputs_anchor, 'reportMemoryPhase("inputs")\n\t' + inputs_anchor, 1
@@ -210,7 +247,7 @@ func reportMemoryPhase(name string) {
             )
         source = source.replace(
             'reportMemoryPhase("inputs")',
-            'reportMemoryPhase("inputs")\n' + "\n".join(encoded_lines),
+            "\n".join(encoded_lines) + '\n\treportMemoryPhase("inputs")',
             1,
         )
     source = re.sub(
@@ -227,21 +264,30 @@ func reportMemoryPhase(name string) {
         raise ValueError("Generated main has no evaluation completion marker")
     line = eval_elapsed.group(1)
     source = source.replace(line, line + '\n\treportMemoryPhase("evaluation")', 1)
+    source = source.replace(
+        postprocess_anchor,
+        'reportMemoryPhase("postprocess")\n' + postprocess_anchor,
+        1,
+    )
     return source
 
 
 def parse_phases(stderr: str):
     found = {}
     pattern = re.compile(
-        r"MEM_PHASE (baseline|keys|inputs|evaluation) "
-        r"vmrss=(\d+) kB vmhwm=(\d+) kB heap_alloc=(\d+) heap_sys=(\d+)"
+        rf"MEM_PHASE ({'|'.join(PHASE_NAMES)}) "
+        r"vmrss=(\d+) kB vmhwm=(\d+) kB heap_alloc=(\d+) "
+        r"heap_inuse=(\d+) heap_sys=(\d+) num_gc=(\d+) total_alloc=(\d+)"
     )
-    for phase, rss, hwm, alloc, heap_sys in pattern.findall(stderr):
+    for phase, rss, hwm, alloc, inuse, heap_sys, num_gc, total_alloc in pattern.findall(stderr):
         found[phase] = {
             "rss_kib": int(rss),
             "hwm_kib": int(hwm),
             "heap_alloc": int(alloc),
+            "heap_inuse": int(inuse),
             "heap_sys": int(heap_sys),
+            "num_gc": int(num_gc),
+            "total_alloc": int(total_alloc),
         }
     if set(found) != set(PHASE_NAMES):
         raise ValueError(f"Missing memory phase snapshots: {sorted(found)}")
@@ -251,14 +297,48 @@ def parse_phases(stderr: str):
 def phase_rss_summary(runs):
     summary = {}
     for phase in PHASE_NAMES:
-        values = [
-            run["Phases"][phase]["rss_kib"] / 1024
-            for run in runs
-        ]
         label = phase.capitalize()
+        values = [run["Phases"][phase]["rss_kib"] / 1024 for run in runs]
         summary[f"{label} RSS Median (MiB)"] = statistics.median(values)
         summary[f"{label} RSS Min (MiB)"] = min(values)
         summary[f"{label} RSS Max (MiB)"] = max(values)
+        summary[f"{label} Heap Inuse Median (MiB)"] = statistics.median(
+            run["Phases"][phase]["heap_inuse"] / 2**20 for run in runs
+        )
+        summary[f"{label} Total Alloc Median (MiB)"] = statistics.median(
+            run["Phases"][phase]["total_alloc"] / 2**20 for run in runs
+        )
+        summary[f"{label} NumGC Median"] = statistics.median(
+            run["Phases"][phase]["num_gc"] for run in runs
+        )
+    for before, after in zip(PHASE_NAMES, PHASE_NAMES[1:]):
+        deltas = [
+            (
+                run["Phases"][after]["rss_kib"]
+                - run["Phases"][before]["rss_kib"]
+            )
+            / 1024
+            for run in runs
+        ]
+        summary[
+            f"{before.capitalize()} To {after.capitalize()} RSS Delta Median (MiB)"
+        ] = statistics.median(deltas)
+        for metric, label in (
+            ("heap_inuse", "Heap Inuse"),
+            ("total_alloc", "Total Alloc"),
+        ):
+            phase_deltas = [
+                (
+                    run["Phases"][after][metric]
+                    - run["Phases"][before][metric]
+                )
+                / 2**20
+                for run in runs
+            ]
+            summary[
+                f"{before.capitalize()} To {after.capitalize()} "
+                f"{label} Delta Median (MiB)"
+            ] = statistics.median(phase_deltas)
     return summary
 
 
@@ -293,6 +373,16 @@ def holdout_benchmarks(benchmarks):
         for index, benchmark in enumerate(sorted(BENCHMARKS), start=1)
         if index % 4 == 0 and benchmark in benchmarks
     }
+
+
+def benchmarks_for_split(benchmarks, split):
+    selected = set(benchmarks)
+    holdout = holdout_benchmarks(BENCHMARKS)
+    if split == "development":
+        return sorted(selected - holdout)
+    if split == "holdout":
+        return sorted(selected & holdout)
+    raise ValueError(f"Unknown corpus split: {split}")
 
 
 def command_for(benchmark: str, binary: Path, width: int, vectorization: str):
@@ -365,7 +455,13 @@ def prepare_benchmark(benchmark: str, width: int, vectorization: str, working_di
     return generated
 
 
-def measure_program(benchmark: str, width: int, vectorization: str, repeat_count: int):
+def measure_program(
+    benchmark: str,
+    width: int,
+    vectorization: str,
+    repeat_count: int,
+    gogc_values,
+):
     with tempfile.TemporaryDirectory(
         prefix=f"chehab-{benchmark}-{width}-{vectorization}-",
         dir=BUILD_BENCHMARKS,
@@ -379,6 +475,9 @@ def measure_program(benchmark: str, width: int, vectorization: str, repeat_count
         params = parse_parameters(generated_source)
         estimate = estimate_peak_ram(
             ast, params, backend_config=LATTIGO_CONFIG
+        )
+        legacy_estimate = estimate_peak_ram(
+            ast, params, backend_config=LATTIGO_CONFIG_V1
         )
         instrumented = instrument_go_source(generated_source)
         instrumented_path = working_directory / "instrumented_fhe.go"
@@ -400,32 +499,36 @@ def measure_program(benchmark: str, width: int, vectorization: str, repeat_count
             timeout=BUILD_TIMEOUT_SECONDS,
         )
 
-        runs = []
-        for repeat in range(1, repeat_count + 1):
-            measured = subprocess.run(
-                ["/usr/bin/time", "-f", "peak_rss_kib=%M", str(executable)],
-                cwd=working_directory,
-                env={**os.environ, "GOGC": "100"},
-                check=True,
-                capture_output=True,
-                text=True,
-                timeout=RUN_TIMEOUT_SECONDS,
-            )
-            phases = parse_phases(measured.stdout)
-            peak = re.search(r"peak_rss_kib=(\d+)", measured.stderr)
-            if not peak:
-                raise RuntimeError("Missing /usr/bin/time peak RSS measurement")
-            runs.append(
-                {
-                    "Repeat": repeat,
-                    "Peak RSS (MiB)": int(peak.group(1)) / 1024,
-                    "Phases": phases,
-                }
-            )
-        return params, estimate, runs
+        runs_by_gogc = {}
+        for gogc in gogc_values:
+            runs = []
+            for repeat in range(1, repeat_count + 1):
+                measured = subprocess.run(
+                    ["/usr/bin/time", "-f", "peak_rss_kib=%M", str(executable)],
+                    cwd=working_directory,
+                    env={**os.environ, "GOGC": gogc},
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    timeout=RUN_TIMEOUT_SECONDS,
+                )
+                phases = parse_phases(measured.stdout)
+                peak = re.search(r"peak_rss_kib=(\d+)", measured.stderr)
+                if not peak:
+                    raise RuntimeError("Missing /usr/bin/time peak RSS measurement")
+                runs.append(
+                    {
+                        "Repeat": repeat,
+                        "GOGC": gogc,
+                        "Peak RSS (MiB)": int(peak.group(1)) / 1024,
+                        "Phases": phases,
+                    }
+                )
+            runs_by_gogc[gogc] = runs
+        return params, estimate, legacy_estimate, runs_by_gogc
 
 
-def rank_pairwise_accuracy(rows):
+def rank_pairwise_accuracy(rows, estimate_column="Estimated Lo (MiB)"):
     concordant = total = 0
     grouped = {}
     for row in rows:
@@ -434,16 +537,31 @@ def rank_pairwise_accuracy(rows):
         for index, left in enumerate(candidates):
             for right in candidates[index + 1 :]:
                 actual_difference = (
-                    left["Median RSS (MiB)"] - right["Median RSS (MiB)"]
+                    numeric_value(left, "Median RSS (MiB)")
+                    - numeric_value(right, "Median RSS (MiB)")
                 )
                 estimated_difference = (
-                    left["Estimated Lo (MiB)"] - right["Estimated Lo (MiB)"]
+                    numeric_value(left, estimate_column)
+                    - numeric_value(right, estimate_column)
                 )
                 if actual_difference == 0 or estimated_difference == 0:
                     continue
                 total += 1
                 concordant += actual_difference * estimated_difference > 0
     return concordant / total if total else float("nan"), total
+
+
+def numeric_value(row, column):
+    return float(row[column])
+
+
+def boolean_value(row, column):
+    value = row[column]
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() == "true"
+    return bool(value)
 
 
 def rank_values(values):
@@ -461,7 +579,7 @@ def rank_values(values):
     return ranks
 
 
-def spearman_rank_correlation(rows):
+def spearman_rank_correlation(rows, estimate_column="Estimated Lo (MiB)"):
     grouped = {}
     for row in rows:
         grouped.setdefault(row["Benchmark"], []).append(row)
@@ -470,10 +588,10 @@ def spearman_rank_correlation(rows):
         if len(candidates) < 2:
             continue
         estimated = rank_values(
-            [row["Estimated Lo (MiB)"] for row in candidates]
+            [numeric_value(row, estimate_column) for row in candidates]
         )
         measured = rank_values(
-            [row["Median RSS (MiB)"] for row in candidates]
+            [numeric_value(row, "Median RSS (MiB)") for row in candidates]
         )
         estimated_mean = statistics.mean(estimated)
         measured_mean = statistics.mean(measured)
@@ -488,36 +606,56 @@ def spearman_rank_correlation(rows):
     return statistics.mean(correlations) if correlations else float("nan")
 
 
-def evaluation_metrics(rows):
+def evaluation_metrics(rows, model_version="v2"):
     if not rows:
         return []
-    signed_errors = [row["Signed Lo Error (%)"] for row in rows]
+    if model_version == "v1":
+        lo_column = "V1 Estimated Lo (MiB)"
+        hi_column = "V1 Estimated Hi (MiB)"
+        interval_column = "V1 In Interval"
+        signed_error_column = "V1 Signed Lo Error (%)"
+    else:
+        lo_column = "Estimated Lo (MiB)"
+        hi_column = "Estimated Hi (MiB)"
+        interval_column = "In Interval"
+        signed_error_column = "Signed Lo Error (%)"
+    signed_errors = [numeric_value(row, signed_error_column) for row in rows]
     absolute_errors = [abs(error) for error in signed_errors]
-    rho, ranked_pairs = rank_pairwise_accuracy(rows)
+    rho, ranked_pairs = rank_pairwise_accuracy(rows, lo_column)
     metrics = [
         ("program_count", len(rows)),
-        ("interval_coverage", sum(row["In Interval"] for row in rows) / len(rows)),
+        (
+            "interval_coverage",
+            sum(boolean_value(row, interval_column) for row in rows) / len(rows),
+        ),
         ("median_absolute_error_mib", statistics.median(
-            abs(row["Estimated Lo (MiB)"] - row["Median RSS (MiB)"])
+            abs(
+                numeric_value(row, lo_column)
+                - numeric_value(row, "Median RSS (MiB)")
+            )
             for row in rows
         )),
         ("median_absolute_percentage_error", statistics.median(absolute_errors)),
         ("mean_signed_lo_error_percent", statistics.mean(signed_errors)),
-        ("mean_within_benchmark_spearman", spearman_rank_correlation(rows)),
+        (
+            "mean_within_benchmark_spearman",
+            spearman_rank_correlation(rows, lo_column),
+        ),
         ("within_benchmark_pairwise_rank_accuracy", rho),
         ("ranked_pair_count", ranked_pairs),
     ]
     for budget in (64, 256, 1024):
         false_accepts = false_rejects = measured_fit_count = 0
         for row in rows:
-            estimate_fits = row["Estimated Hi (MiB)"] <= budget
-            measured_fits = row["Median RSS (MiB)"] <= budget
+            estimate_fits = numeric_value(row, hi_column) <= budget
+            measured_fits = numeric_value(row, "Median RSS (MiB)") <= budget
             false_accepts += estimate_fits and not measured_fits
             false_rejects += not estimate_fits and measured_fits
             measured_fit_count += measured_fits
         metrics.extend(
             [
                 (f"false_accept_count_at_{budget}_mib", false_accepts),
+                (f"false_reject_count_at_{budget}_mib", false_rejects),
                 (f"measured_fit_count_at_{budget}_mib", measured_fit_count),
                 (
                     f"false_reject_rate_at_{budget}_mib",
@@ -530,6 +668,165 @@ def evaluation_metrics(rows):
     return metrics
 
 
+def benchmark_metrics(rows, model_version="v2"):
+    if model_version == "v1":
+        interval_column = "V1 In Interval"
+        signed_error_column = "V1 Signed Lo Error (%)"
+    else:
+        interval_column = "In Interval"
+        signed_error_column = "Signed Lo Error (%)"
+    grouped = {}
+    for row in rows:
+        grouped.setdefault(row["Benchmark"], []).append(row)
+
+    result = []
+    for benchmark, candidates in sorted(grouped.items()):
+        errors = [numeric_value(row, signed_error_column) for row in candidates]
+        absolute_errors = [abs(error) for error in errors]
+        result.append(
+            {
+                "Model": model_version,
+                "Benchmark": benchmark,
+                "Program Count": len(candidates),
+                "Interval Coverage": sum(
+                    boolean_value(row, interval_column) for row in candidates
+                ) / len(candidates),
+                "Median Absolute Percentage Error": statistics.median(
+                    absolute_errors
+                ),
+                "Mean Signed Lo Error (%)": statistics.mean(errors),
+                "Min Signed Lo Error (%)": min(errors),
+                "Max Signed Lo Error (%)": max(errors),
+                "Min Absolute Percentage Error": min(absolute_errors),
+                "Max Absolute Percentage Error": max(absolute_errors),
+            }
+        )
+    return result
+
+
+def interpolated_percentile(values, percentile):
+    if not values:
+        raise ValueError("percentile requires at least one value")
+    if not 0.0 <= percentile <= 1.0:
+        raise ValueError("percentile must be between 0 and 1")
+    ordered = sorted(values)
+    position = (len(ordered) - 1) * percentile
+    lower = int(position)
+    upper = min(lower + 1, len(ordered) - 1)
+    fraction = position - lower
+    return ordered[lower] + fraction * (ordered[upper] - ordered[lower])
+
+
+def gc_headroom_residual_ratios(rows):
+    return [
+        (
+            float(row["Median RSS (MiB)"])
+            - float(row["Estimated Base (MiB)"])
+            - float(row["Estimated Managed Live (MiB)"])
+            - float(
+                row.get(
+                    "Estimated Input Plaintext Transient (MiB)",
+                    float(row.get("Estimated Inputs (MiB)", 0.0)) * 0.5,
+                )
+            )
+        )
+        / float(row["Estimated Managed Live (MiB)"])
+        for row in rows
+        if row["Split"] == "development"
+        and str(row["GOGC"]) == "100"
+        and float(row["Estimated Managed Live (MiB)"]) > 0
+    ]
+
+
+def development_gc_headroom_factor(rows, percentile=0.95):
+    """Select additional GC/RSS headroom after source-derived input plaintexts."""
+    return max(
+        0.0,
+        interpolated_percentile(gc_headroom_residual_ratios(rows), percentile),
+    )
+
+
+def leave_one_benchmark_out_calibration(rows, percentile=0.95):
+    """Evaluate GC/RSS headroom while withholding each benchmark in turn."""
+    development = [
+        row
+        for row in rows
+        if row["Split"] == "development" and str(row["GOGC"]) == "100"
+    ]
+    grouped = {}
+    for row in development:
+        grouped.setdefault(row["Benchmark"], []).append(row)
+    results = []
+    for benchmark, test_rows in sorted(grouped.items()):
+        training_rows = [
+            row for row in development if row["Benchmark"] != benchmark
+        ]
+        ratios = gc_headroom_residual_ratios(training_rows)
+        if not ratios:
+            continue
+        gc_headroom_factor = max(
+            0.0, interpolated_percentile(ratios, percentile)
+        )
+        actuals = [float(row["Median RSS (MiB)"]) for row in test_rows]
+        lo_values = [float(row["Estimated Lo (MiB)"]) for row in test_rows]
+        hi_values = [
+            float(row["Estimated Base (MiB)"])
+            + float(row["Estimated Managed Live (MiB)"])
+            + float(
+                row.get(
+                    "Estimated Input Plaintext Transient (MiB)",
+                    float(row.get("Estimated Inputs (MiB)", 0.0)) * 0.5,
+                )
+            )
+            + float(row["Estimated Managed Live (MiB)"])
+            * gc_headroom_factor
+            for row in test_rows
+        ]
+        signed_errors = [
+            (lo - actual) / actual * 100
+            for lo, actual in zip(lo_values, actuals)
+        ]
+        result = {
+            "Benchmark": benchmark,
+            "Training Program Count": len(training_rows),
+            "Test Program Count": len(test_rows),
+            "Training P95 GC Headroom Factor": gc_headroom_factor,
+            "Interval Coverage": sum(
+                lo <= actual <= hi
+                for lo, actual, hi in zip(lo_values, actuals, hi_values)
+            ) / len(test_rows),
+            "Median Absolute Percentage Error": statistics.median(
+                abs(error) for error in signed_errors
+            ),
+            "Mean Signed Lo Error (%)": statistics.mean(signed_errors),
+            "Min Signed Lo Error (%)": min(signed_errors),
+            "Max Signed Lo Error (%)": max(signed_errors),
+            "Min Absolute Percentage Error": min(
+                abs(error) for error in signed_errors
+            ),
+            "Max Absolute Percentage Error": max(
+                abs(error) for error in signed_errors
+            ),
+        }
+        for budget in (64, 256, 1024):
+            result[f"False Accepts At {budget} MiB"] = sum(
+                hi <= budget and actual > budget
+                for hi, actual in zip(hi_values, actuals)
+            )
+            measured_fit = sum(actual <= budget for actual in actuals)
+            false_reject = sum(
+                hi > budget and actual <= budget
+                for hi, actual in zip(hi_values, actuals)
+            )
+            result[f"False Rejects At {budget} MiB"] = false_reject
+            result[f"Measured Fits At {budget} MiB"] = measured_fit
+            result[f"False Reject Rate At {budget} MiB"] = (
+                false_reject / measured_fit if measured_fit else float("nan")
+            )
+        results.append(result)
+    return results
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Compile and repeatedly measure CHEHAB benchmark programs."
@@ -537,21 +834,40 @@ def main():
     parser.add_argument("--benchmarks", nargs="+", default=BENCHMARKS)
     parser.add_argument("--widths", nargs="+", type=int, default=WIDTHS)
     parser.add_argument("--repeats", type=int, default=REPEATS)
+    parser.add_argument(
+        "--split", choices=("development", "holdout"), default="development"
+    )
+    parser.add_argument("--gogc-values", nargs="+", default=("100",))
     parser.add_argument("--raw-output", type=Path, default=DEFAULT_RAW_OUTPUT)
     parser.add_argument("--summary-output", type=Path, default=DEFAULT_SUMMARY_OUTPUT)
     parser.add_argument("--metrics-output", type=Path, default=DEFAULT_METRICS_OUTPUT)
+    parser.add_argument(
+        "--benchmark-metrics-output",
+        type=Path,
+        default=ROOT / "RL" / "compiled_corpus_benchmark_metrics.csv",
+    )
     parser.add_argument("--failures-output", type=Path, default=DEFAULT_FAILURES_OUTPUT)
     args = parser.parse_args()
     if args.repeats < 1:
         parser.error("--repeats must be positive")
+    invalid_gogc = [
+        value
+        for value in args.gogc_values
+        if value != "off" and (not value.isdigit() or int(value) < 0)
+    ]
+    if invalid_gogc:
+        parser.error(f"invalid GOGC value(s): {', '.join(invalid_gogc)}")
 
     # Hold out every fourth benchmark from the fixed sorted corpus before
     # collecting new results. No coefficients are fit by this runner.
-    ordered_benchmarks = sorted(args.benchmarks)
-    unknown_benchmarks = sorted(set(ordered_benchmarks) - set(BENCHMARKS))
+    selected_benchmarks = sorted(args.benchmarks)
+    unknown_benchmarks = sorted(set(selected_benchmarks) - set(BENCHMARKS))
     if unknown_benchmarks:
         parser.error(f"Unknown benchmark(s): {', '.join(unknown_benchmarks)}")
-    holdout = holdout_benchmarks(ordered_benchmarks)
+    ordered_benchmarks = benchmarks_for_split(
+        selected_benchmarks, args.split
+    )
+    splits_to_report = (args.split,)
     raw_rows, summary_rows, failures = [], [], []
     def persist_results():
         if raw_rows:
@@ -572,32 +888,75 @@ def main():
                 )
                 writer.writeheader()
                 writer.writerows(summary_rows)
-        if failures:
-            args.failures_output.parent.mkdir(parents=True, exist_ok=True)
-            with args.failures_output.open("w", newline="") as output:
-                writer = csv.DictWriter(
-                    output,
-                    fieldnames=("Program", "Error"),
-                    lineterminator="\n",
-                )
-                writer.writeheader()
-                writer.writerows(failures)
+        args.failures_output.parent.mkdir(parents=True, exist_ok=True)
+        with args.failures_output.open("w", newline="") as output:
+            writer = csv.DictWriter(
+                output,
+                fieldnames=("Program", "Error"),
+                lineterminator="\n",
+            )
+            writer.writeheader()
+            writer.writerows(failures)
         metric_rows = []
-        for split in ("development", "holdout"):
+        benchmark_metric_rows = []
+        for split in splits_to_report:
             split_rows = [row for row in summary_rows if row["Split"] == split]
-            for metric, value in evaluation_metrics(split_rows):
-                metric_rows.append(
-                    {"Split": split, "Metric": metric, "Value": value}
-                )
+            for gogc in args.gogc_values:
+                gc_rows = [row for row in split_rows if row["GOGC"] == gogc]
+                for model_version in ("v1", "v2"):
+                    for metric, value in evaluation_metrics(
+                        gc_rows, model_version
+                    ):
+                        metric_rows.append(
+                            {
+                                "Model": model_version,
+                                "Split": split,
+                                "GOGC": gogc,
+                                "Metric": metric,
+                                "Value": value,
+                            }
+                        )
+                    benchmark_metric_rows.extend(
+                        {
+                            **row,
+                            "Split": split,
+                            "GOGC": gogc,
+                        }
+                        for row in benchmark_metrics(gc_rows, model_version)
+                    )
         args.metrics_output.parent.mkdir(parents=True, exist_ok=True)
         with args.metrics_output.open("w", newline="") as output:
             writer = csv.DictWriter(
                 output,
-                fieldnames=("Split", "Metric", "Value"),
+                fieldnames=("Model", "Split", "GOGC", "Metric", "Value"),
                 lineterminator="\n",
             )
             writer.writeheader()
             writer.writerows(metric_rows)
+        args.benchmark_metrics_output.parent.mkdir(
+            parents=True, exist_ok=True
+        )
+        with args.benchmark_metrics_output.open("w", newline="") as output:
+            writer = csv.DictWriter(
+                output,
+                fieldnames=(
+                    "Model",
+                    "Split",
+                    "GOGC",
+                    "Benchmark",
+                    "Program Count",
+                    "Interval Coverage",
+                    "Median Absolute Percentage Error",
+                    "Mean Signed Lo Error (%)",
+                    "Min Signed Lo Error (%)",
+                    "Max Signed Lo Error (%)",
+                    "Min Absolute Percentage Error",
+                    "Max Absolute Percentage Error",
+                ),
+                lineterminator="\n",
+            )
+            writer.writeheader()
+            writer.writerows(benchmark_metric_rows)
 
     for benchmark in ordered_benchmarks:
         candidates = candidate_cases(benchmark, args.widths)
@@ -605,53 +964,88 @@ def main():
             key = f"{benchmark}/width={width}/{vectorization}"
             print(f"Measuring {key}", flush=True)
             try:
-                params, estimate, runs = measure_program(
-                    benchmark, width, vectorization, args.repeats
+                params, estimate, legacy_estimate, runs_by_gogc = measure_program(
+                    benchmark,
+                    width,
+                    vectorization,
+                    args.repeats,
+                    args.gogc_values,
                 )
-                actuals = [run["Peak RSS (MiB)"] for run in runs]
-                median_actual = statistics.median(actuals)
-                median_lo = estimate.estimated_bytes_lo / 2**20
-                median_hi = estimate.estimated_bytes_hi / 2**20
-                signed_error = (median_lo - median_actual) / median_actual * 100
-                row = {
-                    "Benchmark": benchmark,
-                    "Width": width,
-                    "Vectorization": vectorization,
-                    "N": params.poly_modulus_degree,
-                    "L": params.coeff_modulus_num_primes,
-                    "Split": "holdout" if benchmark in holdout else "development",
-                    "Estimated Lo (MiB)": median_lo,
-                    "Estimated Hi (MiB)": median_hi,
-                    "Median RSS (MiB)": median_actual,
-                    "Min RSS (MiB)": min(actuals),
-                    "Max RSS (MiB)": max(actuals),
-                    "Signed Lo Error (%)": signed_error,
-                    "In Interval": median_lo <= median_actual <= median_hi,
-                    "Repeat Count": len(runs),
-                }
-                row.update(phase_rss_summary(runs))
-                summary_rows.append(row)
-                for run in runs:
-                    phase_row = {
+                for gogc, runs in runs_by_gogc.items():
+                    actuals = [run["Peak RSS (MiB)"] for run in runs]
+                    median_actual = statistics.median(actuals)
+                    median_lo = estimate.estimated_bytes_lo / 2**20
+                    median_hi = estimate.estimated_bytes_hi / 2**20
+                    signed_error = (median_lo - median_actual) / median_actual * 100
+                    legacy_lo = legacy_estimate.estimated_bytes_lo / 2**20
+                    legacy_hi = legacy_estimate.estimated_bytes_hi / 2**20
+                    legacy_signed_error = (
+                        (legacy_lo - median_actual) / median_actual * 100
+                    )
+                    row = {
                         "Benchmark": benchmark,
                         "Width": width,
                         "Vectorization": vectorization,
+                        "GOGC": gogc,
                         "N": params.poly_modulus_degree,
                         "L": params.coeff_modulus_num_primes,
-                        "Split": row["Split"],
-                        "Repeat": run["Repeat"],
-                        "Peak RSS (MiB)": run["Peak RSS (MiB)"],
+                        "Split": args.split,
+                        "Estimated Base (MiB)": estimate.base_overhead_bytes / 2**20,
+                        "Estimated Parameters (MiB)": estimate.parameter_bytes / 2**20,
+                        "Estimated Helper Buffers (MiB)": estimate.helper_buffers_bytes / 2**20,
+                        "Estimated Rotation Indexes (MiB)": estimate.rotation_index_bytes / 2**20,
+                        "Estimated Input Staging (MiB)": estimate.input_staging_bytes / 2**20,
+                        "Estimated Postprocess (MiB)": estimate.postprocess_bytes / 2**20,
+                        "Estimated Keys (MiB)": estimate.keys_bytes / 2**20,
+                        "Keygen Transient (MiB)": estimate.keygen_transient_bytes / 2**20,
+                        "Estimated Inputs (MiB)": estimate.inputs_bytes / 2**20,
+                        "Estimated Plaintexts (MiB)": estimate.plaintexts_bytes / 2**20,
+                        "Estimated Input Plaintext Transient (MiB)": (
+                            estimate.input_plaintext_transient_bytes / 2**20
+                        ),
+                        "Estimated Intermediates (MiB)": estimate.intermediates_bytes / 2**20,
+                        "Estimated Managed Live (MiB)": estimate.managed_live_bytes / 2**20,
+                        "Estimated GC Growth (MiB)": estimate.high_growth_bytes / 2**20,
+                        "Estimated Allocation Budget (MiB)": estimate.allocation_bytes / 2**20,
+                        "V1 Garbage Term (MiB)": legacy_estimate.high_growth_bytes / 2**20,
+                        "Estimated Lo (MiB)": median_lo,
+                        "Estimated Hi (MiB)": median_hi,
+                        "V1 Estimated Lo (MiB)": legacy_lo,
+                        "V1 Estimated Hi (MiB)": legacy_hi,
+                        "Median RSS (MiB)": median_actual,
+                        "Min RSS (MiB)": min(actuals),
+                        "Max RSS (MiB)": max(actuals),
+                        "Signed Lo Error (%)": signed_error,
+                        "In Interval": median_lo <= median_actual <= median_hi,
+                        "V1 Signed Lo Error (%)": legacy_signed_error,
+                        "V1 In Interval": (
+                            legacy_lo <= median_actual <= legacy_hi
+                        ),
+                        "Repeat Count": len(runs),
                     }
-                    for phase, values in run["Phases"].items():
-                        phase_row[f"{phase} RSS (MiB)"] = values["rss_kib"] / 1024
-                        phase_row[f"{phase} HWM (MiB)"] = values["hwm_kib"] / 1024
-                        phase_row[f"{phase} Heap Alloc (MiB)"] = (
-                            values["heap_alloc"] / 2**20
-                        )
-                        phase_row[f"{phase} Heap Sys (MiB)"] = (
-                            values["heap_sys"] / 2**20
-                        )
-                    raw_rows.append(phase_row)
+                    row.update(phase_rss_summary(runs))
+                    summary_rows.append(row)
+                    for run in runs:
+                        phase_row = {
+                            "Benchmark": benchmark,
+                            "Width": width,
+                            "Vectorization": vectorization,
+                            "GOGC": gogc,
+                            "N": params.poly_modulus_degree,
+                            "L": params.coeff_modulus_num_primes,
+                            "Split": row["Split"],
+                            "Repeat": run["Repeat"],
+                            "Peak RSS (MiB)": run["Peak RSS (MiB)"],
+                        }
+                        for phase, values in run["Phases"].items():
+                            phase_row[f"{phase} RSS (MiB)"] = values["rss_kib"] / 1024
+                            phase_row[f"{phase} HWM (MiB)"] = values["hwm_kib"] / 1024
+                            phase_row[f"{phase} Heap Alloc (MiB)"] = values["heap_alloc"] / 2**20
+                            phase_row[f"{phase} Heap Inuse (MiB)"] = values["heap_inuse"] / 2**20
+                            phase_row[f"{phase} Heap Sys (MiB)"] = values["heap_sys"] / 2**20
+                            phase_row[f"{phase} NumGC"] = values["num_gc"]
+                            phase_row[f"{phase} Total Alloc (MiB)"] = values["total_alloc"] / 2**20
+                        raw_rows.append(phase_row)
             except Exception as error:
                 detail = str(error)
                 if isinstance(error, subprocess.CalledProcessError):
@@ -670,23 +1064,29 @@ def main():
     print(f"Summary: {args.summary_output}")
     print(f"Metrics: {args.metrics_output}")
     print(f"Failures: {args.failures_output}")
-    for split in ("development", "holdout"):
-        values = dict(
-            (metric, value)
-            for metric, value in evaluation_metrics(
-                [row for row in summary_rows if row["Split"] == split]
+    for split in splits_to_report:
+        for gogc in args.gogc_values:
+            values = dict(
+                (metric, value)
+                for metric, value in evaluation_metrics(
+                    [
+                        row
+                        for row in summary_rows
+                        if row["Split"] == split and row["GOGC"] == gogc
+                    ]
+                )
             )
-        )
-        if values:
-            print(
-                f"{split}: coverage={values['interval_coverage']:.3f}, "
-                f"median_APE={values['median_absolute_percentage_error']:.2f}%, "
-                f"signed_lo_bias={values['mean_signed_lo_error_percent']:.2f}%, "
-                "mean_within_benchmark_spearman="
-                f"{values['mean_within_benchmark_spearman']:.3f}, "
-                "pairwise_rank_accuracy="
-                f"{values['within_benchmark_pairwise_rank_accuracy']:.3f}"
-            )
+            if values:
+                print(
+                    f"{split} GOGC={gogc}: "
+                    f"coverage={values['interval_coverage']:.3f}, "
+                    f"median_APE={values['median_absolute_percentage_error']:.2f}%, "
+                    f"signed_lo_bias={values['mean_signed_lo_error_percent']:.2f}%, "
+                    "mean_within_benchmark_spearman="
+                    f"{values['mean_within_benchmark_spearman']:.3f}, "
+                    "pairwise_rank_accuracy="
+                    f"{values['within_benchmark_pairwise_rank_accuracy']:.3f}"
+                )
     if failures:
         print("Failures:")
         for failure in failures:

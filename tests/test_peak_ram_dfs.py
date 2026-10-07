@@ -8,7 +8,20 @@ if rl_dir not in sys.path:
     sys.path.append(rl_dir)
 
 from pytrs.expr import Const, Op, Var
-from pytrs.peak_ram import FHEParams, _slots_dag, estimate_peak_ram
+from pytrs.peak_ram import (
+    FHEParams,
+    LATTIGO_CONFIG,
+    LATTIGO_CONFIG_V1,
+    LATTIGO_DEV_P95_GC_HEADROOM_FACTOR,
+    _slots_dag,
+    estimate_peak_ram,
+)
+from fhe_rl.memory_layout import (
+    lattigo_helper_buffer_bytes,
+    lattigo_input_staging_bytes,
+    lattigo_parameter_bytes,
+    lattigo_postprocess_bytes,
+)
 
 
 def recursive_slots(root, reverse_children=False):
@@ -65,6 +78,94 @@ def recursive_slots(root, reverse_children=False):
 
 
 class TestPeakRAMDFSOrder(unittest.TestCase):
+    def test_v1_estimate_preserves_legacy_garbage_term(self):
+        estimate = estimate_peak_ram(
+            Op("+", [Var("left"), Var("right")]),
+            FHEParams(),
+            backend_config=LATTIGO_CONFIG_V1,
+        )
+
+        self.assertGreater(estimate.base_overhead_bytes, 0)
+        self.assertEqual(estimate.high_growth_bytes, min(
+            estimate.allocation_bytes,
+            int(1.6 * (
+                estimate.keys_bytes
+                + estimate.keygen_transient_bytes
+                + estimate.inputs_bytes
+                + estimate.plaintexts_bytes
+                + estimate.intermediates_bytes
+            )),
+        ))
+        self.assertEqual(
+            estimate.estimated_bytes_lo,
+            estimate.base_overhead_bytes
+            + estimate.keys_bytes
+            + estimate.keygen_transient_bytes
+            + estimate.inputs_bytes
+            + estimate.plaintexts_bytes
+            + estimate.intermediates_bytes,
+        )
+
+    def test_v2_models_lattigo_tables_helpers_and_calibrated_growth(self):
+        params = FHEParams(poly_modulus_degree=16384, coeff_modulus_num_primes=6)
+        estimate = estimate_peak_ram(
+            Op("+", [Var("left"), Var("right")]),
+            params,
+            backend_config=LATTIGO_CONFIG,
+        )
+
+        expected_parameters = lattigo_parameter_bytes(16384, 4, 2)
+        expected_helpers = lattigo_helper_buffer_bytes(16384, 4, 2)
+        expected_staging = lattigo_input_staging_bytes(16384)
+        expected_postprocess = lattigo_postprocess_bytes(16384, 4)
+        self.assertEqual(expected_parameters, int(1.5 * 2**20))
+        self.assertEqual(expected_helpers, 16187408)
+        self.assertEqual(estimate.base_overhead_bytes, 8 * 2**20)
+        self.assertEqual(estimate.parameter_bytes, expected_parameters)
+        self.assertEqual(estimate.helper_buffers_bytes, expected_helpers)
+        self.assertEqual(estimate.input_staging_bytes, expected_staging)
+        self.assertEqual(estimate.postprocess_bytes, expected_postprocess)
+        self.assertEqual(estimate.input_plaintext_transient_bytes, 1 * 2**20)
+        self.assertEqual(
+            estimate.managed_live_bytes,
+            estimate.keys_bytes
+            + estimate.keygen_transient_bytes
+            + estimate.inputs_bytes
+            + estimate.plaintexts_bytes
+            + estimate.intermediates_bytes
+            + expected_parameters
+            + expected_helpers
+            + estimate.rotation_index_bytes
+            + expected_staging
+            + expected_postprocess,
+        )
+        expected_growth = int(
+            estimate.managed_live_bytes
+            * LATTIGO_DEV_P95_GC_HEADROOM_FACTOR
+        )
+        self.assertEqual(estimate.high_growth_bytes, expected_growth)
+        self.assertEqual(
+            estimate.estimated_bytes_lo,
+            estimate.base_overhead_bytes + estimate.managed_live_bytes,
+        )
+        self.assertEqual(
+            estimate.estimated_bytes_hi,
+            estimate.base_overhead_bytes
+            + estimate.managed_live_bytes
+            + estimate.input_plaintext_transient_bytes
+            + expected_growth,
+        )
+
+    def test_v2_counts_lattigo_automorphism_index_per_rotation_key(self):
+        estimate = estimate_peak_ram(
+            Op("<<", [Var("input"), Const(1)]),
+            FHEParams(poly_modulus_degree=16384, coeff_modulus_num_primes=6),
+            backend_config=LATTIGO_CONFIG,
+        )
+
+        self.assertEqual(estimate.galois_keys_count, 1)
+        self.assertEqual(estimate.rotation_index_bytes, 16384 * 8)
+
     def test_cpp_left_to_right_order_for_asymmetric_tree(self):
         small = Op("+", [Var("a"), Var("b")])
         big = Op("+", [

@@ -46,6 +46,57 @@ def pt_bytes(backend: str, level: int, N: int, nQ: int, nP: int) -> int:
     remaining_primes = nQ - level if level < nQ else 1
     return remaining_primes * N * 8
 
+def lattigo_parameter_bytes(N: int, nQ: int, nP: int) -> int:
+    """Resident forward/backward NTT tables for the Q and P sub-rings."""
+    # Lattigo's standard ring has N entries in each uint64 NTT table.
+    return (nQ + nP) * 2 * N * 8
+
+
+def lattigo_helper_buffer_bytes(
+    N: int, nQ: int, nP: int, galois_key_count: int = 0
+) -> int:
+    """Polynomial, encoder, and rotation-index buffers in standard CKKS helpers."""
+    q_poly = nQ * N * 8
+    p_poly = nP * N * 8
+    qp_poly = q_poly + p_poly
+
+    evaluator = (
+        3 * q_poly
+        + 6 * qp_poly
+        + q_poly
+        + nQ * qp_poly
+        + N * 8
+    )
+    encryptor = 2 * q_poly + 3 * p_poly + qp_poly
+    decryptor = q_poly
+    basis_extenders = 2 * qp_poly
+    encoder = (
+        q_poly
+        + N * 8
+        + (N // 2) * 8
+        + (2 * N + 1) * 16
+        + (N // 2) * 16
+    )
+    rotation_indexes = galois_key_count * N * 8
+    return (
+        evaluator
+        + encryptor
+        + decryptor
+        + basis_extenders
+        + encoder
+        + rotation_indexes
+    )
+
+
+def lattigo_input_staging_bytes(N: int) -> int:
+    """One MaxSlots float64 buffer used while encoding generated inputs."""
+    return (N // 2) * 8
+
+
+def lattigo_postprocess_bytes(N: int, nQ: int) -> int:
+    """One decrypted plaintext and decoded MaxSlots float64 output buffer."""
+    return nQ * N * 8 + (N // 2) * 8
+
 def test_lattigo_key_size():
     # Test unitaire : une clé à N=2¹⁴, |Q|=4, |P|=2 Lattigo doit donner 
     # 2 × 2 × 6 × 16384 × 8 = 3145728 bytes (3.14 MB)
