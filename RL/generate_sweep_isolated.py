@@ -1,175 +1,293 @@
-import os
-import subprocess
+import argparse
 import csv
-from pytrs.peak_ram import estimate_peak_ram, FHEParams, BackendConfig
-from pytrs.expr import Op, Const, Var
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
 
-def ast_deep_poly(depth):
-    ast = Var("x")
-    for _ in range(depth):
-        ast = Op("*", [ast, ast])
-    return ast, 1
+from pytrs.peak_ram import (
+    FHEParams,
+    LATTIGO_CONFIG,
+    SEAL_CONFIG,
+    estimate_peak_ram,
+)
+from pytrs.expr import Op, Var
+
+
+RL_DIR = Path(__file__).resolve().parent
+LATTIGO_DIR = RL_DIR.parent / "lattigo_backend"
+SEAL_WORKER = RL_DIR / "seal_sweep_worker.py"
+DEFAULT_OUTPUT = RL_DIR / "sweep_results_isolated.csv"
+
+
+def ast_addition(size):
+    inputs = [Var(f"a{i}") for i in range(size)]
+    ast = inputs[0]
+    for operand in inputs[1:]:
+        ast = Op("+", [ast, operand])
+    return ast, 0
+
+
+def ast_batched_multiplications(count):
+    products = [
+        Op("*", [Var(f"a{i}"), Var(f"b{i}")])
+        for i in range(count)
+    ]
+    return Op("Vec", products), 1
+
 
 def ast_dot_product(size):
-    muls = [Op("*", [Var(f"c{i}"), Var(f"c{i+1}")]) for i in range(0, size, 2)]
-    if not muls:
-        return Var("x"), 1
-    while len(muls) > 1:
-        next_muls = []
-        for i in range(0, len(muls), 2):
-            if i+1 < len(muls):
-                next_muls.append(Op("+", [muls[i], muls[i+1]]))
-            else:
-                next_muls.append(muls[i])
-        muls = next_muls
-    return muls[0], 1
+    products = [
+        Op("*", [Var(f"c{i}"), Var(f"c{i + 1}")])
+        for i in range(0, size, 2)
+    ]
+    result = products[0] if products else Var("x")
+    for product in products[1:]:
+        result = Op("+", [result, product])
+    return result, 1
 
-def ast_conv(layers):
-    ast = Var("x")
-    rotations = set()
-    currentWidth = 32
-    for l in range(layers):
-        for ki in range(3):
-            for kj in range(3):
-                rot = ki*currentWidth + kj
-                if rot != 0:
-                    rotations.add(rot)
-        currentWidth -= 2
-    
-    for r in rotations:
-        ast = Op("+", [ast, Op("<<", [Var("x"), Const(r)])])
-    return ast, len(rotations)
 
-os.chdir("/home/maroua/chehab-unified/lattigo_backend")
-subprocess.run("go build -o sweep_runner sweep_runner.go", shell=True, executable='/bin/bash', check=True)
-
-experiments = [
-    {"type": 1, "name": "Deep Poly", "arg": 2, "N": 8192, "L": 4},
-    {"type": 1, "name": "Deep Poly", "arg": 4, "N": 8192, "L": 4},
-    {"type": 1, "name": "Deep Poly", "arg": 6, "N": 16384, "L": 6},
-    {"type": 1, "name": "Deep Poly", "arg": 8, "N": 16384, "L": 6},
-    {"type": 1, "name": "Deep Poly", "arg": 10, "N": 32768, "L": 8},
-    {"type": 1, "name": "Deep Poly", "arg": 12, "N": 32768, "L": 10},
-    {"type": 2, "name": "Dot Product", "arg": 4, "N": 8192, "L": 4},
-    {"type": 2, "name": "Dot Product", "arg": 8, "N": 8192, "L": 4},
-    {"type": 2, "name": "Dot Product", "arg": 16, "N": 16384, "L": 6},
-    {"type": 2, "name": "Dot Product", "arg": 32, "N": 16384, "L": 6},
-    {"type": 2, "name": "Dot Product", "arg": 64, "N": 16384, "L": 6},
-    {"type": 2, "name": "Dot Product", "arg": 128, "N": 32768, "L": 8},
-    {"type": 2, "name": "Dot Product", "arg": 256, "N": 32768, "L": 8},
-    {"type": 3, "name": "Conv2D", "arg": 1, "N": 8192, "L": 4},
-    {"type": 3, "name": "Conv2D", "arg": 2, "N": 16384, "L": 6},
-    {"type": 3, "name": "Conv2D", "arg": 3, "N": 16384, "L": 6},
-    {"type": 3, "name": "Conv2D", "arg": 4, "N": 32768, "L": 12},
-    {"type": 3, "name": "Conv2D", "arg": 5, "N": 32768, "L": 12},
-    {"type": 3, "name": "Conv2D", "arg": 6, "N": 32768, "L": 12},
+EXPERIMENTS = [
+    {"type": 1, "name": "Ciphertext Addition", "arg": 4, "N": 8192, "L": 4},
+    {"type": 1, "name": "Ciphertext Addition", "arg": 16, "N": 8192, "L": 4},
+    {"type": 1, "name": "Ciphertext Addition", "arg": 64, "N": 16384, "L": 6},
+    {"type": 1, "name": "Ciphertext Addition", "arg": 128, "N": 32768, "L": 8},
+    {"type": 2, "name": "Batched Ciphertext Multiplication", "arg": 2, "N": 8192, "L": 4},
+    {"type": 2, "name": "Batched Ciphertext Multiplication", "arg": 8, "N": 8192, "L": 4},
+    {"type": 2, "name": "Batched Ciphertext Multiplication", "arg": 16, "N": 16384, "L": 6},
+    {"type": 2, "name": "Batched Ciphertext Multiplication", "arg": 32, "N": 32768, "L": 8},
+    {"type": 3, "name": "Dot Product", "arg": 4, "N": 8192, "L": 4},
+    {"type": 3, "name": "Dot Product", "arg": 8, "N": 8192, "L": 4},
+    {"type": 3, "name": "Dot Product", "arg": 16, "N": 16384, "L": 6},
+    {"type": 3, "name": "Dot Product", "arg": 32, "N": 16384, "L": 6},
+    {"type": 3, "name": "Dot Product", "arg": 64, "N": 16384, "L": 6},
+    {"type": 3, "name": "Dot Product", "arg": 128, "N": 32768, "L": 8},
+    {"type": 3, "name": "Dot Product", "arg": 256, "N": 32768, "L": 8},
 ]
 
-# SEAL worker script content
-seal_worker_code = """import sys, resource, tenseal as ts
-try:
-    N, L, keys = int(sys.argv[1]), int(sys.argv[2]), int(sys.argv[3])
-    seal_primes = [40]*L
-    base_ram = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
-    context = ts.context(ts.SCHEME_TYPE.CKKS, poly_modulus_degree=N, coeff_mod_bit_sizes=seal_primes)
-    if keys > 1:
-        context.generate_galois_keys()
-    context.generate_relin_keys()
-    peak_ram = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss * 1024
-    print(max(0, peak_ram - base_ram))
-except Exception as e:
-    print(0)
-"""
-with open("/mnt/c/Users/CC USER/.gemini/antigravity-ide/brain/72d30e96-47dc-46c5-98b8-938eff1a973a/scratch/seal_worker.py", "w") as f:
-    f.write(seal_worker_code)
+CSV_FIELDS = [
+    "Benchmark",
+    "Variant",
+    "N",
+    "L",
+    "Total Keys",
+    "SEAL Actual (MB)",
+    "SEAL Est Lo (MB)",
+    "SEAL Est Hi (MB)",
+    "SEAL Error Lo (%)",
+    "SEAL Dir Lo",
+    "SEAL Error Hi (%)",
+    "SEAL Dir Hi",
+    "SEAL In Bounds",
+    "Lattigo Actual (MB)",
+    "Lattigo Est Lo (MB)",
+    "Lattigo Est Hi (MB)",
+    "Lattigo Error Lo (%)",
+    "Lattigo Dir Lo",
+    "Lattigo Error Hi (%)",
+    "Lattigo Dir Hi",
+    "Lattigo In Bounds",
+]
 
-results = []
-for exp in experiments:
-    print(f"Running {exp['name']} (Arg: {exp['arg']}, N: {exp['N']}, L: {exp['L']})...")
-    if exp['type'] == 1:
-        ast, keys = ast_deep_poly(exp['arg'])
-    elif exp['type'] == 2:
-        ast, keys = ast_dot_product(exp['arg'])
-    else:
-        ast, keys = ast_conv(exp['arg'])
-        
-    logN = {8192: 13, 16384: 14, 32768: 15}[exp['N']]
-    
-    # Lattigo Subprocess
-    cmd = f"/usr/bin/time -v ./sweep_runner {exp['type']} {logN} {exp['L']} {exp['arg']} 2>&1"
-    try:
-        out = subprocess.check_output(cmd, shell=True, executable='/bin/bash', timeout=720).decode('utf-8')
-        lat_ram = -1
-        for line in out.splitlines():
-            if "Maximum resident set size" in line:
-                lat_ram = int(line.split(":")[1].strip()) * 1024
-    except subprocess.TimeoutExpired:
-        lat_ram = -1
-    except Exception:
-        lat_ram = -1
-        
-    # SEAL Subprocess (Isolates RAM pool per run)
-    seal_cmd = f"/home/maroua/miniconda3/bin/python3 /mnt/c/Users/CC\\ USER/.gemini/antigravity-ide/brain/72d30e96-47dc-46c5-98b8-938eff1a973a/scratch/seal_worker.py {exp['N']} {exp['L']} {keys}"
-    try:
-        out = subprocess.check_output(seal_cmd, shell=True, executable='/bin/bash', timeout=720).decode('utf-8')
-        seal_ram = int(out.strip())
-        if seal_ram == 0: seal_ram = -1 # Treat 0 as failure
-    except subprocess.TimeoutExpired:
-        seal_ram = -1
-    except Exception:
-        seal_ram = -1
-        
-    from pytrs.peak_ram import SEAL_CONFIG, LATTIGO_CONFIG
-    params = FHEParams(poly_modulus_degree=exp['N'], coeff_modulus_num_primes=exp['L'])
-    
-    lat_est_obj = estimate_peak_ram(ast, params, keys_threshold=9999, backend_config=LATTIGO_CONFIG)
-    lat_est_lo = lat_est_obj.total_bytes_lo
-    lat_est_hi = lat_est_obj.total_bytes_hi
-    
-    seal_est_obj = estimate_peak_ram(ast, params, keys_threshold=9999, backend_config=SEAL_CONFIG)
-    seal_est_lo = seal_est_obj.total_bytes_lo
-    seal_est_hi = seal_est_obj.total_bytes_hi
-    
-    seal_err_lo = abs(seal_est_lo - seal_ram) / seal_ram * 100 if seal_ram > 0 else 0
-    seal_dir_lo = "OVER" if seal_est_lo > seal_ram else "UNDER" if seal_est_lo < seal_ram else "EXACT" if seal_ram > 0 else "FAIL"
-    seal_err_hi = abs(seal_est_hi - seal_ram) / seal_ram * 100 if seal_ram > 0 else 0
-    seal_dir_hi = "OVER" if seal_est_hi > seal_ram else "UNDER" if seal_est_hi < seal_ram else "EXACT" if seal_ram > 0 else "FAIL"
-    seal_in_bounds = (seal_est_lo <= seal_ram <= seal_est_hi) if seal_ram > 0 else False
-    
-    lat_err_lo = abs(lat_est_lo - lat_ram) / lat_ram * 100 if lat_ram > 0 else 0
-    lat_dir_lo = "OVER" if lat_est_lo > lat_ram else "UNDER" if lat_est_lo < lat_ram else "EXACT" if lat_ram > 0 else "FAIL"
-    lat_err_hi = abs(lat_est_hi - lat_ram) / lat_ram * 100 if lat_ram > 0 else 0
-    lat_dir_hi = "OVER" if lat_est_hi > lat_ram else "UNDER" if lat_est_hi < lat_ram else "EXACT" if lat_ram > 0 else "FAIL"
-    lat_in_bounds = (lat_est_lo <= lat_ram <= lat_est_hi) if lat_ram > 0 else False
 
-    res = {
-        "Benchmark": exp['name'],
-        "Variant": exp['arg'],
-        "N": exp['N'],
-        "L": exp['L'],
-        "Total Keys": keys,
-        "SEAL Actual (MB)": round(seal_ram / 1024**2, 2) if seal_ram > 0 else "FAIL",
-        "SEAL Est Lo (MB)": round(seal_est_lo / 1024**2, 2),
-        "SEAL Est Hi (MB)": round(seal_est_hi / 1024**2, 2),
-        "SEAL Error Lo (%)": round(seal_err_lo, 2) if seal_ram > 0 else "FAIL",
-        "SEAL Dir Lo": seal_dir_lo,
-        "SEAL Error Hi (%)": round(seal_err_hi, 2) if seal_ram > 0 else "FAIL",
-        "SEAL Dir Hi": seal_dir_hi,
-        "SEAL In Bounds": seal_in_bounds if seal_ram > 0 else "FAIL",
-        "Lattigo Actual (MB)": round(lat_ram / 1024**2, 2) if lat_ram > 0 else "FAIL",
-        "Lattigo Est Lo (MB)": round(lat_est_lo / 1024**2, 2),
-        "Lattigo Est Hi (MB)": round(lat_est_hi / 1024**2, 2),
-        "Lattigo Error Lo (%)": round(lat_err_lo, 2) if lat_ram > 0 else "FAIL",
-        "Lattigo Dir Lo": lat_dir_lo,
-        "Lattigo Error Hi (%)": round(lat_err_hi, 2) if lat_ram > 0 else "FAIL",
-        "Lattigo Dir Hi": lat_dir_hi,
-        "Lattigo In Bounds": lat_in_bounds if lat_ram > 0 else "FAIL",
+def run_peak_rss(command, timeout_seconds, cwd=None):
+    try:
+        result = subprocess.run(
+            ["/usr/bin/time", "-v", *command],
+            cwd=cwd,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as error:
+        print(f"Timed out after {timeout_seconds}s: {' '.join(command)}", file=sys.stderr)
+        if error.stderr:
+            print(error.stderr, file=sys.stderr)
+        return -1
+
+    if result.returncode:
+        print(f"Command failed ({result.returncode}): {' '.join(command)}", file=sys.stderr)
+        if result.stdout:
+            print(result.stdout, file=sys.stderr)
+        if result.stderr:
+            print(result.stderr, file=sys.stderr)
+        return -1
+
+    for line in result.stderr.splitlines():
+        if "Maximum resident set size" in line:
+            return int(line.split(":")[-1].strip()) * 1024
+
+    print(f"No peak RSS reported for: {' '.join(command)}", file=sys.stderr)
+    return -1
+
+
+def run_seal_worker(experiment, timeout_seconds):
+    command = [
+        sys.executable,
+        str(SEAL_WORKER),
+        str(experiment["type"]),
+        str(experiment["N"]),
+        str(experiment["L"]),
+        str(experiment["arg"]),
+    ]
+    try:
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as error:
+        print(f"Timed out after {timeout_seconds}s: {' '.join(command)}", file=sys.stderr)
+        if error.stderr:
+            print(error.stderr, file=sys.stderr)
+        return -1
+
+    if result.returncode:
+        print(f"SEAL worker failed ({result.returncode}): {' '.join(command)}", file=sys.stderr)
+        if result.stdout:
+            print(result.stdout, file=sys.stderr)
+        if result.stderr:
+            print(result.stderr, file=sys.stderr)
+        return -1
+
+    try:
+        peak_bytes = int(result.stdout.strip())
+    except ValueError:
+        print(f"SEAL worker returned invalid peak RSS: {result.stdout!r}", file=sys.stderr)
+        return -1
+    if peak_bytes <= 0:
+        print(f"SEAL worker returned non-positive peak RSS: {peak_bytes}", file=sys.stderr)
+        return -1
+    return peak_bytes
+
+
+def metric_columns(name, actual_bytes, estimate_lo, estimate_hi):
+    if actual_bytes <= 0:
+        return {
+            f"{name} Actual (MB)": "FAIL",
+            f"{name} Error Lo (%)": "FAIL",
+            f"{name} Dir Lo": "FAIL",
+            f"{name} Error Hi (%)": "FAIL",
+            f"{name} Dir Hi": "FAIL",
+            f"{name} In Bounds": "FAIL",
+        }
+
+    def error_and_direction(estimate):
+        error = abs(estimate - actual_bytes) / actual_bytes * 100
+        direction = "OVER" if estimate > actual_bytes else "UNDER" if estimate < actual_bytes else "EXACT"
+        return round(error, 2), direction
+
+    error_lo, direction_lo = error_and_direction(estimate_lo)
+    error_hi, direction_hi = error_and_direction(estimate_hi)
+    return {
+        f"{name} Actual (MB)": round(actual_bytes / 1024**2, 2),
+        f"{name} Error Lo (%)": error_lo,
+        f"{name} Dir Lo": direction_lo,
+        f"{name} Error Hi (%)": error_hi,
+        f"{name} Dir Hi": direction_hi,
+        f"{name} In Bounds": estimate_lo <= actual_bytes <= estimate_hi,
     }
-    results.append(res)
 
-csv_path = "/mnt/c/Users/CC USER/.gemini/antigravity-ide/brain/72d30e96-47dc-46c5-98b8-938eff1a973a/artifacts/sweep_results_isolated.csv"
-with open(csv_path, "w", newline="") as f:
-    writer = csv.DictWriter(f, fieldnames=results[0].keys())
-    writer.writeheader()
-    writer.writerows(results)
-print("Done! Results written to CSV.")
+
+def append_result(output_path, row):
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("a", newline="") as result_file:
+        writer = csv.DictWriter(result_file, fieldnames=CSV_FIELDS, lineterminator="\n")
+        writer.writerow(row)
+
+
+def main():
+    parser = argparse.ArgumentParser(description="Measure isolated SEAL and Lattigo peak RSS.")
+    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--timeout-seconds", type=int, default=720)
+    args = parser.parse_args()
+    output_path = args.output.resolve()
+
+    with tempfile.TemporaryDirectory(prefix="chehab-sweep-") as temp_dir:
+        runner = Path(temp_dir) / "sweep_runner"
+        subprocess.run(
+            ["go", "build", "-mod=readonly", "-o", str(runner), "sweep_runner.go"],
+            cwd=LATTIGO_DIR,
+            check=True,
+        )
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with output_path.open("w", newline="") as result_file:
+            csv.DictWriter(
+                result_file,
+                fieldnames=CSV_FIELDS,
+                lineterminator="\n",
+            ).writeheader()
+
+        for experiment in EXPERIMENTS:
+            print(
+                f"Running {experiment['name']} "
+                f"(Arg: {experiment['arg']}, N: {experiment['N']}, L: {experiment['L']})...",
+                flush=True,
+            )
+            if experiment["type"] == 1:
+                ast, keys = ast_addition(experiment["arg"])
+            elif experiment["type"] == 2:
+                ast, keys = ast_batched_multiplications(experiment["arg"])
+            else:
+                ast, keys = ast_dot_product(experiment["arg"])
+
+            log_n = {8192: 13, 16384: 14, 32768: 15}[experiment["N"]]
+            lattigo_actual = run_peak_rss(
+                [
+                    str(runner),
+                    str(experiment["type"]),
+                    str(log_n),
+                    str(experiment["L"]),
+                    str(experiment["arg"]),
+                ],
+                args.timeout_seconds,
+                cwd=LATTIGO_DIR,
+            )
+            seal_actual = run_seal_worker(experiment, args.timeout_seconds)
+
+            params = FHEParams(
+                poly_modulus_degree=experiment["N"],
+                coeff_modulus_num_primes=experiment["L"],
+            )
+            lattigo_estimate = estimate_peak_ram(
+                ast, params, keys_threshold=9999, backend_config=LATTIGO_CONFIG
+            )
+            seal_estimate = estimate_peak_ram(
+                ast, params, keys_threshold=9999, backend_config=SEAL_CONFIG
+            )
+
+            row = {
+                "Benchmark": experiment["name"],
+                "Variant": experiment["arg"],
+                "N": experiment["N"],
+                "L": experiment["L"],
+                "Total Keys": keys,
+                "SEAL Est Lo (MB)": round(seal_estimate.total_bytes_lo / 1024**2, 2),
+                "SEAL Est Hi (MB)": round(seal_estimate.total_bytes_hi / 1024**2, 2),
+                "Lattigo Est Lo (MB)": round(lattigo_estimate.total_bytes_lo / 1024**2, 2),
+                "Lattigo Est Hi (MB)": round(lattigo_estimate.total_bytes_hi / 1024**2, 2),
+            }
+            row.update(
+                metric_columns(
+                    "SEAL",
+                    seal_actual,
+                    seal_estimate.total_bytes_lo,
+                    seal_estimate.total_bytes_hi,
+                )
+            )
+            row.update(
+                metric_columns(
+                    "Lattigo",
+                    lattigo_actual,
+                    lattigo_estimate.total_bytes_lo,
+                    lattigo_estimate.total_bytes_hi,
+                )
+            )
+            append_result(output_path, row)
+
+    print(f"Results written to {output_path}")
+
+
+if __name__ == "__main__":
+    main()

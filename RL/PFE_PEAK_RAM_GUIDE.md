@@ -1,6 +1,6 @@
 # CHEHAB — L'Estimateur de RAM Algébrique
 
-## Rapport d'architecture et de validation (Version Finale)
+## Rapport d'architecture et de validation (état courant)
 
 ---
 
@@ -10,13 +10,15 @@ Dans la réécriture de l'optimiseur CHEHAB, nous avons remplacé le "modèle de
 
 L'objectif est d'avoir un estimateur :
 - **Algébrique et déterministe** : Pas de modèle appris, pas de régression linéaire, pas de dataset d'entraînement.
-- **Fidèle à la compilation réelle** : Il simule avec exactitude le comportement de la passe `reduce_rotation_keys` et du codegen Lattigo/SEAL.
-- **Précis et contraint physiquement** : Il repose sur les tailles mathématiques (RNS), plus une contrainte dure de Garbage Collection (`GOMEMLIMIT`) en Go.
+- **Aligné sur le compilateur** : Il suit l'ordre DFS de gauche à droite du tri topologique C++ et porte la logique de réduction des clés de rotation.
+- **Interprétable** : Il sépare les clés, les entrées, les plaintexts et les ciphertexts intermédiaires, puis produit une estimation basse et une estimation haute.
 
-La formule fondamentale est :
+Le modèle utilisé actuellement est :
 ```python
-Peak_RAM = Base_Ctx + \alpha * (Keys_RAM + Inputs_RAM + Intermediates_RAM)
+RAM_lo = Base_Backend + Keys_RAM + Inputs_RAM + Plaintexts_RAM + Intermediates_RAM
+RAM_hi = 1.1 * (RAM_lo + Garbage_Bound)
 ```
+Ce sont des estimations analytiques, pas une borne physique garantie. Les mesures RSS des processus servent à comparer le modèle aux exécutions.
 
 ---
 
@@ -28,16 +30,16 @@ L'estimateur adapte dynamiquement les paramètres internes `nQ` et `nP` selon le
 - **Lattigo** : `nP=2` et `nQ=L-2`. La taille des clés est mathématiquement exacte : `ceil(nQ / nP)`.
 - **SEAL** : `nP=1` et `nQ=L-1`.
 
-L'estimateur utilise désormais `RL/fhe_rl/memory_layout.py` pour dériver la **taille mathématique exacte** au bit près.
+L'estimateur utilise `RL/fhe_rl/memory_layout.py` pour calculer les tailles théoriques des objets RNS selon le backend. Ces tailles modélisées ne comprennent pas tous les détails des allocateurs ni les temporaires internes des bibliothèques.
 
 ### 2.2 La simulation de durée de vie sur le graphe DAG (Phase 2)
 Un modèle naïf (Sethi-Ullman sur arbre) surestime la mémoire en ignorant la réutilisation des expressions communes (Common Subexpression Elimination - CSE).
 Pour reproduire le comportement du compilateur CHEHAB :
-1. **Hash-Consing** : Le parseur transforme l'AST en un DAG (Directed Acyclic Graph) en identifiant les sous-arbres identiques.
+1. **DAG** : Le parcours travaille sur les nœuds partagés de l'AST (par exemple après CSE). Il ne fusionne pas de lui-même des sous-arbres distincts qui seraient seulement structurellement égaux.
 2. **Simulation de Codegen (`dep_count`)** : Chaque nœud reçoit un `dep_count` correspondant à son nombre de parents.
 3. **DFS Post-Order** : L'estimateur traverse le DAG exactement dans l'ordre du codegen (`get_top_sorted_terms`), allouant les variables. Lorsqu'une variable est lue, son `dep_count` diminue. À 0, sa mémoire est libérée.
 
-Le pic du nombre de `slots` (variables simultanément en vie) correspond **exactement** au pic observé dans le code `generated_fhe.go` (hors temporaires internes du backend).
+Le parcours est itératif, afin d'éviter les limites de récursion sur les expressions profondes. L'ordre des enfants est choisi pour reproduire le DFS gauche-à-droite du tri topologique dans `src/fheco/ir/expr.cpp`. Les tests le vérifient sur un arbre asymétrique, le comparent à une référence récursive sur 400 arbres déterministes et couvrent une chaîne de 5 000 opérations. Le nombre de slots décrit le modèle de durée de vie; il ne garantit pas à lui seul le RSS exact de la bibliothèque.
 
 ### 2.3 L'ensemble exact des clés de rotation (Phase 3)
 Au lieu de compter simplement "combien de rotations différentes existent" ou d'appliquer la forme non-adjacente (NAF) partout, l'estimateur porte **exactement** l'algorithme C++ de `src/fheco/passes/reduce_rotation_keys.cpp`.
@@ -46,47 +48,56 @@ Au lieu de compter simplement "combien de rotations différentes existent" ou d'
 3. Tri glouton basé sur un score de coût `(freq * (taille_NAF - 1))`.
 4. Respect de la limite fixée par `--keys` (`keys_threshold`).
 
-Le résultat `S(E)` est le sous-ensemble minimal et exact des clés qui sera généré, ce qui est indispensable pour ne pas sur-estimer aveuglément les très grosses expressions (ex: Dot Product massif).
+Le résultat `S(E)` est le jeu de clés produit par cette passe de réduction. Les tests Python couvrent des jeux attendus, les pas sous le seuil et le cas d'un seuil impossible. Les rotations synthétiques ne font pas partie des workloads du sweep actuel.
 
-### 2.4 Le pic exact du Live Set et le Garbage Bound (Phase 4)
+### 2.4 Le pic modélisé du Live Set et le Garbage Bound (Phase 4)
 Les clés et ciphertexts ont une taille mathématique fixe. En plus des Galois et Relin Keys, l'estimateur inclut désormais la Secret Key (`sk`), la Public Key (`pk`) et les constantes arithmétiques `Plaintext` de l'AST.
 
-Puisque les ramasses-miettes (Garbage Collector de Go pour Lattigo) allouent de la mémoire dynamiquement, l'estimateur renvoie un intervalle `[lo, hi]` :
-- `lo` (Live Set exact) : La taille exacte de toutes les clés, inputs, constantes et ciphertexts vivants au pic.
-- `hi` (Garbage Bound) : `lo + min(A, 1.6 * live_set)` où `A` est la taille cumulée allouée par toutes les opérations (AddNew, RotateNew).
+L'estimateur renvoie un intervalle `[lo, hi]` :
+- `lo` (empreinte modélisée) : La somme de la base backend, des clés, des inputs, des constantes et des ciphertexts vivants au pic simulé.
+- `hi` (marge de déchets) : `1.1 * (lo + min(A, 1.6 * live_set))`, où `A` est l'estimation des allocations d'opérations et `live_set` la somme modélisée des clés, inputs, plaintexts et intermédiaires.
 
-L'empreinte exacte `lo` garantit la base physique, tandis que le surplus `hi` modélise le GC. Le tout peut être contrôlé par `GOMEMLIMIT` sans tordre l'estimateur mathématique (qui n'utilise plus de multiplicateur arbitraire).
-
----
-
-## 3. Le problème du "Dot Product" et l'écart AST vs Codegen
-
-Durant la validation, l'estimateur a rapporté un pic parfait sur `Deep Poly`, mais a semblé surestimer massivement `Dot Product` et `Conv2D`. Après investigation approfondie, il s'avère que l'estimateur algébrique est **juste**, mais que l'exécution de validation (dans `sweep_runner.go`) était désalignée :
-1. **Topologie divergente** : Le générateur de l'AST produit un arbre binaire optimal de profondeur `log2(N)`. Mais `sweep_runner.go` code en dur une boucle linéaire itérative qui écrase un unique registre accumulateur `res`.
-2. **Paramètres RNS divergents** : L'AST supposait des clés de Galois `nP=1`. `sweep_runner.go` codait en dur `nP=2`. Cela est désormais dynamique par backend (`nP=2`, `nQ=L-2` pour Lattigo) et l'estimateur colle à la réalité.
+Dans l'implémentation actuelle, `hi = 1.1 * (lo + garbage_bound)`. Le terme de déchets est utilisé pour Lattigo; il est nul pour SEAL dans ce modèle. `lo` n'est pas un RSS minimum garanti et `hi` n'est pas un RSS maximum garanti. L'empreinte observée dépend également du runtime, de l'allocateur et des temporaires de chaque backend.
 
 ---
 
-## 4. Conclusion
+## 3. Workloads de validation actuels
 
-1. L'approche Machine Learning est entièrement éradiquée au profit d'un Cost Model algébrique `PeakRAMEstimate`.
-2. Toute la simulation est O(V+E) (rapide et intégrable en RL).
-3. L'erreur humaine sur la topologie RNS ou le Garbage Collector est contournée par l'intégration d'une configuration formelle `BackendConfig(LATTIGO_CONFIG)`.
+Le sweep reproductible est lancé depuis la racine du dépôt :
 
-### Check-list pour validation finale
-- [x] Remplacement Sethi-Ullman par simulation de liveness sur graphe CSE.
-- [x] Port C++ → Python exact de la passe `reduce_rotation_keys`.
-- [x] Formules de l'empreinte mathématique RNS différenciées (SEAL vs Lattigo).
-- [x] Extraction de `c_ctx` et `alpha` par de vraies mesures au lieu de fitting aveugle.
-- [x] Modèle algébrique verrouillé, plus de scission Train/Test.
+```bash
+python3 RL/generate_sweep_isolated.py
+```
+
+Il compare trois opérations CKKS directement exécutées dans les deux workers, aux paramètres `(N, L)` et tailles d'entrée définis dans le script :
+
+1. **Addition de ciphertexts** : chiffrement de plusieurs entrées, puis additions successives.
+2. **Multiplications indépendantes** : chiffrement de paires d'entrées et une multiplication ciphertext-ciphertext par paire, sans empiler les niveaux.
+3. **Dot product** : multiplications de paires suivies de l'addition des produits.
+
+Les variantes actuelles sont 4, 16, 64 et 128 entrées pour l'addition; 2, 8, 16 et 32 produits indépendants; et des dot products de 4 à 256 entrées. Les paramètres exacts sont définis dans `RL/generate_sweep_isolated.py`. Le résultat est enregistré dans `RL/sweep_results_isolated.csv`. Chaque backend s'exécute dans un processus séparé; les erreurs et délais dépassés sont inscrits `FAIL`, jamais comme une mesure de zéro.
+
+Les anciens cas **Deep Poly** et **Conv2D** ont été écartés :
+- Les profondeurs Deep Poly testées dépassaient la capacité d'échelle TenSEAL disponible dans ces configurations CKKS.
+- Les anciens workers Conv2D ne faisaient pas la même opération : le worker SEAL utilisait une approximation par multiplications matricielles denses, tandis que le worker Lattigo mesurait surtout rotations et clés de rotation. Ces valeurs n'étaient donc pas comparables.
+
+La mesure SEAL est le `ru_maxrss` du processus Python/TenSEAL et inclut l'interpréteur ainsi que ses dépendances. La mesure Lattigo est le RSS maximal du processus Go. Les frais de runtime sont particulièrement importants pour les petits cas. Ces données comparent des exécutions de processus complets, pas uniquement la mémoire interne des bibliothèques.
 
 ---
 
-## 5. Dernières Corrections et Améliorations
+## 4. Limites et interprétation
 
-Suite aux retours et analyses de validation :
-1. **Ordre DFS** : Le parcours post-ordre (`get_tree_peak_ram` / `_slots_dag`) a été corrigé pour visiter strictement de gauche à droite, alignant parfaitement le pic de vivacité de la simulation Python sur la passe de tri topologique C++ (résolvant les divergences sur les arbres asymétriques). Un test de non-régression a été ajouté.
-2. **Dédoublonnage O(1)** : La complexité quadratique (`any(...)`) du parcours a été éliminée, rendant l'analyse instantanée même pour des graphes de plus de 5000 nœuds.
-3. **Allocation Lattigo Réelle** : Les benchmarks synthétiques générés (sweep) encodent et chiffrent maintenant de vraies valeurs pour s'assurer que les pages mémoire des ciphertexts sont allouées et résidentes. L'écart `lo > actual` causé par le mapping paresseux des OS/Go est corrigé.
-4. **Sémantique des Scalaires (`Vec`)** : Les nœuds encapsulés sous une opération `Vec` sont maintenant reconnus comme appartenant à une seule séquence vectorisée, ce qui empêche l'estimateur de surestimer l'empreinte mémoire d'arbres scalaires pré-vectorisés.
-5. **Résilience de l'Évaluation** : Les évaluations du sweep incluent un timeout, remontent l'erreur `hi` et ses directions, et marquent proprement les échecs ("FAIL") au lieu de renvoyer 0 Mo (ce qui faussait les pourcentages d'erreurs).
+- L'estimateur modélise la taille des objets selon `(N, L)`, le jeu de clés et le pic de durée de vie logique; l'usage RSS réel comprend les frais des runtimes et les temporaires internes.
+- La sortie `[lo, hi]` est un intervalle du modèle, pas une garantie que chaque mesure RSS sera encadrée.
+- Les mesures du sweep sont des pics RSS de processus isolés. Pour SEAL/TenSEAL, l'initialisation Python est incluse; les tailles de petites charges doivent donc être interprétées avec prudence.
+- Les workloads sont conçus pour les opérations prises en charge directement par les deux workers. Ne pas ajouter de convolution ou de benchmark à rotations uniquement d'un côté sans implémenter le même calcul de l'autre côté.
+
+---
+
+## 5. Corrections et couverture des tests
+
+Les tests de non-régression couvrent l'ordre DFS (dont un arbre où l'ordre change le pic), la comparaison à une référence récursive sur 400 arbres, une chaîne de 5 000 opérations, la conservation de tous les éléments `Vec` et des noms d'entrées par lane, la réduction des clés de rotation et la cohérence des clés estimées pour les workloads actuels.
+
+Les conteneurs `Vec` sont conservés structurellement : aucun élément n'est supprimé et les noms de variables spécifiques aux lanes ne sont pas fusionnés. `Vec` lui-même n'est pas compté comme une opération qui alloue un ciphertext supplémentaire.
+
+La génération du sweep a un timeout configurable (`--timeout-seconds`, 720 secondes par défaut), écrit les colonnes basse/haute et marque explicitement les exécutions échouées.

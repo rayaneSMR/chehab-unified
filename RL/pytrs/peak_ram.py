@@ -30,6 +30,10 @@ Model
                                           for trees (exact there; for DAGs it
                                           is a LOWER bound on any fixed order).
 
+Vector containers are structural: every Vec element is retained and visited,
+and lane-specific variable names remain distinct inputs. They do not allocate
+an additional ciphertext themselves.
+
 Size formulas — identical to CHEHAB's Quantifier (src/fheco/util/quantifier.cpp):
     ciphertext_size = 2*(L-1)*N*8   bytes
     galois_key_size = 2*(L+1)*L*N*8 bytes
@@ -192,7 +196,7 @@ def _slots_dag(node: Any) -> int:
     for step in schedule:
         if step["is_input"]:
             pass # inputs managed separately
-        elif step["op"] in ("const", "literal"):
+        elif step["op"] in ("const", "literal", "Vec"):
             pass # plaintext constants don't take ciphertext space
         else:
             live_set.add(step["id"])
@@ -291,6 +295,11 @@ def reduce_rotation_keys_pass(steps_freq: dict, keys_threshold: int) -> set:
                 
         if keys_count <= keys_threshold:
             break
+
+    if keys_count > keys_threshold:
+        raise RuntimeError(
+            "could not go lower than the threshold; keys_threshold may be too low"
+        )
             
     for step in ordered_used_steps:
         used_steps.add(step)
@@ -333,23 +342,7 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     keys_threshold : The max number of keys allowed before reduce_rotation_keys 
                      decomposes them into NAF components. Matches codegen exactly.
     """
-    def normalize_ast(nd):
-        if isinstance(nd, Op) and getattr(nd, 'op', '') == 'Vec':
-            if len(nd.args) > 0:
-                return normalize_ast(nd.args[0])
-        elif isinstance(nd, Op) or hasattr(nd, 'args'):
-            new_args = [normalize_ast(c) if not isinstance(c, int) else c for c in children(nd)]
-            return Op(getattr(nd, 'op', ''), new_args)
-        elif is_input(nd):
-            name = getattr(nd, 'name', str(getattr(nd, 'value', 'const')))
-            if "_" in name and name.split("_")[-1].isdigit():
-                # strip lane index, e.g. v1_0 -> v1
-                return Var(name.rsplit("_", 1)[0])
-        return nd
-
-    normalized_node = normalize_ast(node)
-    
-    steps_freq = get_rotation_freq(normalized_node)
+    steps_freq = get_rotation_freq(node)
     step_set = reduce_rotation_keys_pass(steps_freq, keys_threshold)
 
     def get_unique_leaves(nd):
@@ -366,7 +359,7 @@ def estimate_peak_ram(node: Any, params: FHEParams,
                         stack.append(c)
         return len(seen)
 
-    s_dag = _slots_dag(normalized_node)
+    s_dag = _slots_dag(node)
 
     # RAM sizes: The mathematical footprint based on params, scaled by the backend's
     # known allocator/GC overhead multiplier.
@@ -425,13 +418,13 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     # (Inputs and constants don't allocate during evaluation).
     alloc_ops = 0
     memo = {}
-    build_dag(normalized_node, memo)
+    build_dag(node, memo)
     for n in memo.values():
         if not n["is_input"] and n["op"] not in ("const", "literal", "Vec"):
             alloc_ops += 1
 
-    inputs_b  = int(get_unique_leaves(normalized_node) * ct_b) if count_inputs else 0
-    plaintexts_b = int(get_unique_consts(normalized_node) * pt_b)
+    inputs_b  = int(get_unique_leaves(node) * ct_b) if count_inputs else 0
+    plaintexts_b = int(get_unique_consts(node) * pt_b)
     
     actual_slots = s_dag
     inter_b   = int(actual_slots * ct_b * mult)
@@ -449,7 +442,7 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     boot_keys = 0
     
     # Key Counts
-    relin_keys = 1 # Assuming at least 1 multiplication happens, standard CKKS needs it
+    relin_keys = int(any(n["op"] in ("*", "mul", "square") for n in memo.values()))
     galois_keys = len(step_set)
     
     total_keys = relin_keys + galois_keys + boot_keys
