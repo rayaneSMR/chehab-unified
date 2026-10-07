@@ -48,3 +48,6 @@ add_subdirectory(benchmarks/conv2d)
 add_subdirectory(benchmarks/deep_network)
 
 add_subdirectory(RL/veclang_runner)
+
+add_executable(rotation_keys_reference EXCLUDE_FROM_ALL tests/rotation_keys_cpp_reference.cpp)
+target_link_libraries(rotation_keys_reference PRIVATE fheco)

@@ -9,9 +9,12 @@ import (
 	"github.com/tuneinsight/lattigo/v5/schemes/ckks"
 )
 
-func runCiphertextAddition(params ckks.Parameters, size int) {
+func runCiphertextAddition(params ckks.Parameters, size int, phase string) {
 	kgen := rlwe.NewKeyGenerator(params)
 	sk := kgen.GenSecretKeyNew()
+	if phase == "keys" {
+		return
+	}
 	encryptor := rlwe.NewEncryptor(params, sk)
 	eval := ckks.NewEvaluator(params, rlwe.NewMemEvaluationKeySet(nil))
 	pt := ckks.NewPlaintext(params, params.MaxLevel())
@@ -22,6 +25,9 @@ func runCiphertextAddition(params ckks.Parameters, size int) {
 		if err != nil {
 			panic(err)
 		}
+	}
+	if phase == "inputs" {
+		return
 	}
 	result := ciphertexts[0]
 	for _, ciphertext := range ciphertexts[1:] {
@@ -34,10 +40,13 @@ func runCiphertextAddition(params ckks.Parameters, size int) {
 	_ = result
 }
 
-func runBatchedMultiplications(params ckks.Parameters, count int) {
+func runBatchedMultiplications(params ckks.Parameters, count int, phase string) {
 	kgen := rlwe.NewKeyGenerator(params)
 	sk := kgen.GenSecretKeyNew()
 	rlk := kgen.GenRelinearizationKeyNew(sk)
+	if phase == "keys" {
+		return
+	}
 	eval := ckks.NewEvaluator(params, rlwe.NewMemEvaluationKeySet(rlk))
 	encryptor := rlwe.NewEncryptor(params, sk)
 	pt := ckks.NewPlaintext(params, params.MaxLevel())
@@ -55,6 +64,9 @@ func runBatchedMultiplications(params ckks.Parameters, count int) {
 			panic(err)
 		}
 	}
+	if phase == "inputs" {
+		return
+	}
 
 	results := make([]*rlwe.Ciphertext, count)
 	for i := range results {
@@ -63,19 +75,37 @@ func runBatchedMultiplications(params ckks.Parameters, count int) {
 		if err != nil {
 			panic(err)
 		}
+		if err = eval.Rescale(results[i], results[i]); err != nil {
+			panic(err)
+		}
 	}
 	_ = results
 }
 
-func runDotProduct(params ckks.Parameters, size int) {
+func runDotProduct(params ckks.Parameters, size int, phase string) {
 	kgen := rlwe.NewKeyGenerator(params)
 	sk := kgen.GenSecretKeyNew()
 	rlk := kgen.GenRelinearizationKeyNew(sk)
-	eval := ckks.NewEvaluator(params, rlwe.NewMemEvaluationKeySet(rlk))
+	rotationSteps := make([]int, 0)
+	for step := 1; step < size; step *= 2 {
+		rotationSteps = append(rotationSteps, step)
+	}
+	galoisElements := make([]uint64, len(rotationSteps))
+	for i, step := range rotationSteps {
+		galoisElements[i] = params.GaloisElement(step)
+	}
+	galoisKeys := kgen.GenGaloisKeysNew(galoisElements, sk)
+	if phase == "keys" {
+		return
+	}
+	eval := ckks.NewEvaluator(
+		params,
+		rlwe.NewMemEvaluationKeySet(rlk, galoisKeys...),
+	)
 	encryptor := rlwe.NewEncryptor(params, sk)
 	pt := ckks.NewPlaintext(params, params.MaxLevel())
 
-	ciphertexts := make([]*rlwe.Ciphertext, size)
+	ciphertexts := make([]*rlwe.Ciphertext, 2)
 	for i := range ciphertexts {
 		var err error
 		ciphertexts[i], err = encryptor.EncryptNew(pt)
@@ -83,22 +113,147 @@ func runDotProduct(params ckks.Parameters, size int) {
 			panic(err)
 		}
 	}
+	if phase == "inputs" {
+		return
+	}
 
 	result, err := eval.MulRelinNew(ciphertexts[0], ciphertexts[1])
 	if err != nil {
 		panic(err)
 	}
-	for i := 2; i < size; i += 2 {
-		product, err := eval.MulRelinNew(ciphertexts[i], ciphertexts[i+1])
+	if err = eval.Rescale(result, result); err != nil {
+		panic(err)
+	}
+	for i := len(rotationSteps) - 1; i >= 0; i-- {
+		step := rotationSteps[i]
+		rotated, err := eval.RotateNew(result, step)
 		if err != nil {
 			panic(err)
 		}
-		result, err = eval.AddNew(result, product)
+		result, err = eval.AddNew(result, rotated)
 		if err != nil {
 			panic(err)
 		}
 	}
 	_ = result
+}
+
+func runDeepPolynomial(params ckks.Parameters, depth int, phase string) {
+	kgen := rlwe.NewKeyGenerator(params)
+	sk := kgen.GenSecretKeyNew()
+	rlk := kgen.GenRelinearizationKeyNew(sk)
+	if phase == "keys" {
+		return
+	}
+	eval := ckks.NewEvaluator(params, rlwe.NewMemEvaluationKeySet(rlk))
+	encryptor := rlwe.NewEncryptor(params, sk)
+	pt := ckks.NewPlaintext(params, params.MaxLevel())
+	ct, err := encryptor.EncryptNew(pt)
+	if err != nil {
+		panic(err)
+	}
+	if phase == "inputs" {
+		return
+	}
+	result := ct
+	for range depth {
+		result, err = eval.MulRelinNew(result, result)
+		if err != nil {
+			panic(err)
+		}
+		if err = eval.Rescale(result, result); err != nil {
+			panic(err)
+		}
+	}
+}
+
+func runRotationConvolution(params ckks.Parameters, imageSize int, phase string) {
+	kgen := rlwe.NewKeyGenerator(params)
+	sk := kgen.GenSecretKeyNew()
+	rotations := make([]int, 0, 9)
+	rotationKeyElements := make([]uint64, 0, 8)
+	for row := 0; row < 3; row++ {
+		for col := 0; col < 3; col++ {
+			step := row*imageSize + col
+			rotations = append(rotations, step)
+			if step != 0 {
+				rotationKeyElements = append(
+					rotationKeyElements,
+					params.GaloisElement(step),
+				)
+			}
+		}
+	}
+	galoisKeys := kgen.GenGaloisKeysNew(rotationKeyElements, sk)
+	if phase == "keys" {
+		return
+	}
+	eval := ckks.NewEvaluator(params, rlwe.NewMemEvaluationKeySet(nil, galoisKeys...))
+	encryptor := rlwe.NewEncryptor(params, sk)
+	pt := ckks.NewPlaintext(params, params.MaxLevel())
+	input, err := encryptor.EncryptNew(pt)
+	if err != nil {
+		panic(err)
+	}
+	if phase == "inputs" {
+		return
+	}
+	var result *rlwe.Ciphertext
+	for i, step := range rotations {
+		rotated := input
+		if step != 0 {
+			rotated, err = eval.RotateNew(input, step)
+			if err != nil {
+				panic(err)
+			}
+		}
+		term, err := eval.MulNew(rotated, 1.0/9.0)
+		if err != nil {
+			panic(err)
+		}
+		if i == 0 {
+			result = term
+		} else {
+			result, err = eval.AddNew(result, term)
+			if err != nil {
+				panic(err)
+			}
+		}
+	}
+	_ = result
+}
+
+func runHighChurn(params ckks.Parameters, operationCount int, phase string) {
+	kgen := rlwe.NewKeyGenerator(params)
+	sk := kgen.GenSecretKeyNew()
+	rlk := kgen.GenRelinearizationKeyNew(sk)
+	if phase == "keys" {
+		return
+	}
+	eval := ckks.NewEvaluator(params, rlwe.NewMemEvaluationKeySet(rlk))
+	encryptor := rlwe.NewEncryptor(params, sk)
+	pt := ckks.NewPlaintext(params, params.MaxLevel())
+	left, err := encryptor.EncryptNew(pt)
+	if err != nil {
+		panic(err)
+	}
+	right, err := encryptor.EncryptNew(pt)
+	if err != nil {
+		panic(err)
+	}
+	if phase == "inputs" {
+		return
+	}
+	result, err := eval.MulRelinNew(left, right)
+	if err != nil {
+		panic(err)
+	}
+	for range operationCount {
+		result, err = eval.AddNew(result, right)
+		if err != nil {
+			panic(err)
+		}
+	}
 }
 
 func main() {
@@ -110,6 +265,14 @@ func main() {
 	logN, _ := strconv.Atoi(os.Args[2])
 	L, _ := strconv.Atoi(os.Args[3])
 	paramArg, _ := strconv.Atoi(os.Args[4])
+	phase := "evaluation"
+	if len(os.Args) > 5 {
+		phase = os.Args[5]
+	}
+	if phase != "baseline" && phase != "keys" && phase != "inputs" && phase != "evaluation" {
+		fmt.Fprintf(os.Stderr, "unsupported measurement phase: %s\n", phase)
+		os.Exit(1)
+	}
 
 	if L < 3 {
 		L = 3
@@ -136,12 +299,21 @@ func main() {
 		os.Exit(1)
 	}
 
+	if phase == "baseline" {
+		return
+	}
 	if benchType == 1 {
-		runCiphertextAddition(params, paramArg)
+		runCiphertextAddition(params, paramArg, phase)
 	} else if benchType == 2 {
-		runBatchedMultiplications(params, paramArg)
+		runBatchedMultiplications(params, paramArg, phase)
 	} else if benchType == 3 {
-		runDotProduct(params, paramArg)
+		runDotProduct(params, paramArg, phase)
+	} else if benchType == 4 {
+		runDeepPolynomial(params, paramArg, phase)
+	} else if benchType == 5 {
+		runRotationConvolution(params, paramArg, phase)
+	} else if benchType == 6 {
+		runHighChurn(params, paramArg, phase)
 	} else {
 		fmt.Fprintf(os.Stderr, "unsupported benchmark type: %d\n", benchType)
 		os.Exit(1)

@@ -2,8 +2,12 @@ import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
 from pytrs import parse_sexpr, calculate_cost, NoiseEstimator, expr_to_str
-from pytrs.peak_ram import estimate_peak_ram, FHEParams, BackendConfig
-import torch
+from pytrs.peak_ram import (
+    FHEParams,
+    LATTIGO_CONFIG,
+    NotEstimable,
+    estimate_vectorized_peak_ram,
+)
 
 
 RESET   = "\033[0m"
@@ -22,6 +26,12 @@ UNCONSTRAINED_BUDGET_THRESHOLD = 100_000
 
 class fheEnv(gym.Env):
     DEFAULT_BUDGET_OPTIONS = [230, 369, 9000]
+    DEFAULT_MEMORY_BUDGET_OPTIONS = [
+        64 * 1024**2,
+        256 * 1024**2,
+        1024 * 1024**2,
+    ]
+    MEMORY_INFEASIBLE_PENALTY = -100.0
     
     def __init__(self, rules_list, expressions, max_positions=2, embeddings_model=None, 
                  budget_options=None, constraint_method="lagrangian_pid", constraint_mode="noise", verbose=True,
@@ -32,10 +42,14 @@ class fheEnv(gym.Env):
         # General parameters
         self.rules = rules_list
         self.expressions = expressions
-        self.noise_estimator = NoiseEstimator()
-        self.fhe_params = FHEParams()
-        # Lattigo calibration based on measured RSS: ~3.2 MB per key vs 18 MB formula, 6.2 MB base
-        self.backend_config = BackendConfig(backend_name="lattigo", allocator_multiplier=0.177, base_bytes_overhead=6264084)
+        self.noise_estimator = (
+            None if constraint_mode == "memory" else NoiseEstimator()
+        )
+        self.fhe_params = FHEParams(
+            poly_modulus_degree=2**14,
+            coeff_modulus_num_primes=6,
+        )
+        self.backend_config = LATTIGO_CONFIG
         self.max_positions = max_positions
         self.embeddings_model = embeddings_model
         self.constraint_method = constraint_method
@@ -46,7 +60,12 @@ class fheEnv(gym.Env):
         self.embedding_dim = 256
         
         # Budget parameters (Melzi)
-        self.budget_options = budget_options if budget_options is not None else self.DEFAULT_BUDGET_OPTIONS
+        if budget_options is not None:
+            self.budget_options = list(budget_options)
+        elif constraint_mode == "memory":
+            self.budget_options = self.DEFAULT_MEMORY_BUDGET_OPTIONS
+        else:
+            self.budget_options = self.DEFAULT_BUDGET_OPTIONS
         self.budget_dim = len(self.budget_options)
         self.active_budgets = list(self.budget_options)
         
@@ -68,6 +87,8 @@ class fheEnv(gym.Env):
         self.initial_keys = 0
         self.curr_ops = 0
         self.curr_keys = 0
+        self._last_valid_memory_estimate = None
+        self._current_memory_estimate = None
         
         self.action_space = spaces.Discrete(len(self.rules.keys()) * self.max_positions)
 
@@ -83,6 +104,13 @@ class fheEnv(gym.Env):
             
         # Always expose noise_ratio to the policy (needed for nato_sc and lagrangian_pid)
         obs_dict["noise_ratio"] = spaces.Box(low=0, high=20, shape=(1,), dtype=np.float32)
+        if self.constraint_mode == "memory":
+            obs_dict["memory_estimate_mib"] = spaces.Box(
+                low=0, high=np.inf, shape=(1,), dtype=np.float32
+            )
+            obs_dict["memory_estimable"] = spaces.Box(
+                low=0, high=1, shape=(1,), dtype=np.float32
+            )
         
         self.observation_space = spaces.Dict(obs_dict)
         # self.reset() called by SubprocVecEnv wrapper usually, omitted here to prevent double-reset
@@ -101,6 +129,27 @@ class fheEnv(gym.Env):
         ops = calculate_cost(parsed, w_keys=0.0)
         keys = calculate_cost(parsed, w_keys=1.0) - ops
         return ops, keys    
+
+    def _estimate_memory(self, expression):
+        result = estimate_vectorized_peak_ram(
+            parse_sexpr(expression),
+            self.fhe_params,
+            backend_config=self.backend_config,
+        )
+        self._current_memory_estimate = (
+            None if isinstance(result, NotEstimable) else result
+        )
+        if self._current_memory_estimate is not None:
+            self._last_valid_memory_estimate = self._current_memory_estimate
+        return result
+
+    def _memory_observation_value(self):
+        if self._last_valid_memory_estimate is None:
+            return 0.0
+        return self._last_valid_memory_estimate.estimated_bytes_hi / 1024**2
+
+    def _is_memory_estimable(self):
+        return self._current_memory_estimate is not None
 
     def _sample_preference(self) -> tuple[np.ndarray, str]:
         """
@@ -135,6 +184,8 @@ class fheEnv(gym.Env):
         self.initial_cost = self.current_cost = self.get_cost(self.expression)
         self.initial_ops, self.initial_keys = self.get_split_costs(self.expression)
         self.curr_ops, self.curr_keys = self.initial_ops, self.initial_keys
+        self._last_valid_memory_estimate = None
+        self._current_memory_estimate = None
 
         # Budget sampling
         # FIX: use the env's own seeded RNG (reproducible) instead of global np.random
@@ -143,7 +194,12 @@ class fheEnv(gym.Env):
             budget = options.get("budget", budget)
         self.set_noise_budget(budget)
         if self.constraint_mode == "memory":
-            noise = estimate_peak_ram(parse_sexpr(self.expression), self.fhe_params, backend_config=self.backend_config).total_bytes_hi
+            estimate_result = self._estimate_memory(self.expression)
+            noise = (
+                estimate_result.estimated_bytes_hi
+                if not isinstance(estimate_result, NotEstimable)
+                else None
+            )
         else:
             noise = self.noise_estimator.estimate(self.expression)
 
@@ -164,12 +220,24 @@ class fheEnv(gym.Env):
             "expression": self.expression,
             "budget": self.budget,
             "noise": noise,
+            "memory_estimable": self._is_memory_estimable(),
+            "memory_estimate_mib": (
+                self._memory_observation_value()
+                if self.constraint_mode == "memory"
+                else None
+            ),
+            "memory_not_estimable_reason": (
+                estimate_result.reason
+                if self.constraint_mode == "memory"
+                and isinstance(estimate_result, NotEstimable)
+                else None
+            ),
             "cost": self.current_cost,
             "c_exec": self.curr_ops,
             "c_keys": self.curr_keys
         }
 
-    def _get_obs(self, noise: float):
+    def _get_obs(self, noise: float | None):
         embedding = self._embed_expression(self.expression)
         if embedding is None:
             embedding = np.zeros(self.embedding_dim, dtype=np.float32)
@@ -184,15 +252,42 @@ class fheEnv(gym.Env):
         }
         
         if self.constraint_method == "margin_barrier":
-            margin = np.clip((self.budget - noise) / max(self.budget, 1), -1.0, 1.0)
+            observed_noise = (
+                self._memory_observation_value() * 1024**2
+                if self.constraint_mode == "memory"
+                else noise
+            )
+            margin = np.clip(
+                (self.budget - (observed_noise or 0.0)) / max(self.budget, 1),
+                -1.0,
+                1.0,
+            )
             obs["budget_margin"] = np.array([margin], dtype=np.float32)
             
-        obs["noise_ratio"] = np.array([noise / max(self.budget, 1)], dtype=np.float32)
+        if self.constraint_mode == "memory":
+            obs["memory_estimate_mib"] = np.array(
+                [self._memory_observation_value()], dtype=np.float32
+            )
+            obs["memory_estimable"] = np.array(
+                [float(self._is_memory_estimable())], dtype=np.float32
+            )
+            noise_ratio = (
+                self._memory_observation_value() * 1024**2 / max(self.budget, 1)
+            )
+        else:
+            noise_ratio = float(noise or 0.0) / max(self.budget, 1)
+        obs["noise_ratio"] = np.array(
+            [np.clip(noise_ratio, 0.0, 20.0)], dtype=np.float32
+        )
         return obs
 
     def step(self, action: int):
         # Prevent wasting steps on 100% key-reduction since scalar code has 0 keys
-        if self.current_w[0] == 0.0 and self.current_w[1] == 1.0:
+        if (
+            self.constraint_mode != "memory"
+            and self.current_w[0] == 0.0
+            and self.current_w[1] == 1.0
+        ):
             action = list(self.rules.keys()).index("END") * self.max_positions
             
         self.steps += 1
@@ -214,7 +309,12 @@ class fheEnv(gym.Env):
             truncated = False
             reward = self.calculate_final_reward()
             if self.constraint_mode == "memory":
-                noise = estimate_peak_ram(parse_sexpr(self.expression), self.fhe_params, backend_config=self.backend_config).total_bytes_hi
+                estimate_result = self._estimate_memory(self.expression)
+                noise = (
+                    estimate_result.estimated_bytes_hi
+                    if not isinstance(estimate_result, NotEstimable)
+                    else None
+                )
             else:
                 noise = self.noise_estimator.estimate(self.expression)
         else:
@@ -237,7 +337,12 @@ class fheEnv(gym.Env):
             new_cost = self.get_cost(self.expression)
             new_ops, new_keys = self.get_split_costs(self.expression)
             if self.constraint_mode == "memory":
-                noise = estimate_peak_ram(parse_sexpr(self.expression), self.fhe_params, backend_config=self.backend_config).total_bytes_hi
+                estimate_result = self._estimate_memory(self.expression)
+                noise = (
+                    estimate_result.estimated_bytes_hi
+                    if not isinstance(estimate_result, NotEstimable)
+                    else None
+                )
             else:
                 noise = self.noise_estimator.estimate(self.expression)
 
@@ -255,6 +360,18 @@ class fheEnv(gym.Env):
             "expression": self.expression,
             "budget": self.budget,
             "noise": noise,
+            "memory_estimable": self._is_memory_estimable(),
+            "memory_estimate_mib": (
+                self._memory_observation_value()
+                if self.constraint_mode == "memory"
+                else None
+            ),
+            "memory_not_estimable_reason": (
+                estimate_result.reason
+                if self.constraint_mode == "memory"
+                and isinstance(estimate_result, NotEstimable)
+                else None
+            ),
             "cost": self.current_cost,
             "c_exec": self.curr_ops,
             "c_keys": self.curr_keys
@@ -281,29 +398,50 @@ class fheEnv(gym.Env):
             reward = self.calculate_final_reward()
 
         # ── Margin barrier: override terminal reward with hard penalty + utilization ──
-        if self.constraint_method == "margin_barrier" and (terminated or truncated):
+        not_estimable_memory = (
+            self.constraint_mode == "memory"
+            and not self._is_memory_estimable()
+        )
+        if (
+            self.constraint_method == "margin_barrier"
+            and (terminated or truncated)
+            and not not_estimable_memory
+        ):
             if noise > self.budget:
                 reward = -100.0
             else:
                 cost_reward = self.calculate_final_reward()
-                if self.budget <= UNCONSTRAINED_BUDGET_THRESHOLD:
+                if (
+                    self.constraint_mode == "memory"
+                    or self.budget <= UNCONSTRAINED_BUDGET_THRESHOLD
+                ):
                     utilization = noise / max(self.budget, 1)
                     reward = cost_reward + utilization * 5.0
                 else:
                     reward = cost_reward
 
         # ── NATO-SC: quadratic terminal penalty, allows intermediate violations ──
-        if self.constraint_method == "nato_sc" and (terminated or truncated):
+        if (
+            self.constraint_method == "nato_sc"
+            and (terminated or truncated)
+            and not not_estimable_memory
+        ):
             cost_reward = self.calculate_final_reward()
             if noise > self.budget:
                 violation_ratio = (noise - self.budget) / max(self.budget, 1)
                 reward = cost_reward - 50.0 * (violation_ratio ** 2)
             else:
-                if self.budget <= UNCONSTRAINED_BUDGET_THRESHOLD:
+                if (
+                    self.constraint_mode == "memory"
+                    or self.budget <= UNCONSTRAINED_BUDGET_THRESHOLD
+                ):
                     utilization = noise / max(self.budget, 1)
                     reward = cost_reward + utilization * 5.0
                 else:
                     reward = cost_reward
+
+        if (terminated or truncated) and not_estimable_memory:
+            reward = self.MEMORY_INFEASIBLE_PENALTY
 
         if terminated or truncated:
             info["episode"] = {
@@ -413,6 +551,12 @@ class fheEnv(gym.Env):
             self.constraint_method == "noise_masking"
             and self.budget is not None
             and self.budget < UNCONSTRAINED_BUDGET_THRESHOLD
+            and self.constraint_mode != "memory"
+        )
+        use_memory_mask = (
+            self.constraint_method == "noise_masking"
+            and self.constraint_mode == "memory"
+            and self.budget is not None
         )
         for rule_idx, rule_name in enumerate(self.rules.keys()):
             if rule_name == "END":
@@ -423,19 +567,22 @@ class fheEnv(gym.Env):
             valid_positions = min(len(matches), self.max_positions)
             if valid_positions > 0:
                 start = rule_idx * self.max_positions
-                if use_noise_mask:
+                if use_noise_mask or use_memory_mask:
                     for pos_idx in range(valid_positions):
                         k, _ = matches[pos_idx]
-                        try:
-                            new_expr_tree = rule_obj.apply_rule(parsed, path=k)
-                            if self.constraint_mode == "memory":
-                                noise_est = estimate_peak_ram(new_expr_tree, self.fhe_params, backend_config=self.backend_config).total_bytes_hi
-                            else:
-                                noise_est = self.noise_estimator.estimate(new_expr_tree)
-                            if noise_est <= self.budget:
+                        new_expr_tree = rule_obj.apply_rule(parsed, path=k)
+                        if use_memory_mask:
+                            memory_result = estimate_vectorized_peak_ram(
+                                new_expr_tree,
+                                self.fhe_params,
+                                backend_config=self.backend_config,
+                            )
+                            if isinstance(memory_result, NotEstimable):
                                 mask[start + pos_idx] = 1.0
-                        except Exception:
-                            pass
+                            elif memory_result.estimated_bytes_hi <= self.budget:
+                                mask[start + pos_idx] = 1.0
+                        elif self.noise_estimator.estimate(new_expr_tree) <= self.budget:
+                            mask[start + pos_idx] = 1.0
                 else:
                     mask[start:start + valid_positions] = 1.0
         return mask

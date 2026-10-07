@@ -69,19 +69,41 @@ Le sweep reproductible est lancé depuis la racine du dépôt :
 python3 RL/generate_sweep_isolated.py
 ```
 
-Il compare trois opérations CKKS directement exécutées dans les deux workers, aux paramètres `(N, L)` et tailles d'entrée définis dans le script :
+Les programmes communs aux deux backends sont exécutés séparément dans TenSEAL/SEAL et Lattigo avec les paramètres `(N, L)` et les tailles définis dans le script :
 
 1. **Addition de ciphertexts** : chiffrement de plusieurs entrées, puis additions successives.
 2. **Multiplications indépendantes** : chiffrement de paires d'entrées et une multiplication ciphertext-ciphertext par paire, sans empiler les niveaux.
-3. **Dot product** : multiplications de paires suivies de l'addition des produits.
+3. **Dot product empaqueté** : multiplication de deux vecteurs chiffrés, puis réductions par rotations de puissances de deux et additions.
 
-Les variantes actuelles sont 4, 16, 64 et 128 entrées pour l'addition; 2, 8, 16 et 32 produits indépendants; et des dot products de 4 à 256 entrées. Les paramètres exacts sont définis dans `RL/generate_sweep_isolated.py`. Le résultat est enregistré dans `RL/sweep_results_isolated.csv`. Chaque backend s'exécute dans un processus séparé; les erreurs et délais dépassés sont inscrits `FAIL`, jamais comme une mesure de zéro.
+Les variantes communes sont 4, 16, 64 et 128 entrées pour l'addition; 2, 8, 16 et 32 produits indépendants; et des dot products empaquetés de 4 et 8 lanes. Multiplication inclut relinearisation et rescale dans les deux workers. Les dot products de 16 à 256 lanes sont réservés à Lattigo.
 
-Les anciens cas **Deep Poly** et **Conv2D** ont été écartés :
-- Les profondeurs Deep Poly testées dépassaient la capacité d'échelle TenSEAL disponible dans ces configurations CKKS.
-- Les anciens workers Conv2D ne faisaient pas la même opération : le worker SEAL utilisait une approximation par multiplications matricielles denses, tandis que le worker Lattigo mesurait surtout rotations et clés de rotation. Ces valeurs n'étaient donc pas comparables.
+Trois charges sont réservées à Lattigo, qui expose les opérations correspondantes de manière fiable dans ces configurations :
+- **Deep Polynomial** : trois multiplications ciphertext-ciphertext avec relinearisation et rescale en chaîne.
+- **Conv2D** : convolution 3×3 sur une entrée chiffrée aplatie, avec huit rotations non nulles, multiplication par poids plaintext et additions. Ce cas n'est pas comparé à SEAL : le précédent worker SEAL n'effectuait pas le même calcul.
+- **High-Churn Arithmetic** : une multiplication ciphertext-ciphertext suivie de 128 additions, pour stresser les allocations avec peu de clés.
 
-La mesure SEAL est le `ru_maxrss` du processus Python/TenSEAL et inclut l'interpréteur ainsi que ses dépendances. La mesure Lattigo est le RSS maximal du processus Go. Les frais de runtime sont particulièrement importants pour les petits cas. Ces données comparent des exécutions de processus complets, pas uniquement la mémoire interne des bibliothèques.
+Deep Poly n'est pas attribué à SEAL : les essais TenSEAL antérieurs échouaient par dépassement de scale. TenSEAL ne permet pas de choisir un sous-ensemble de clés Galois pour la réduction : son worker génère son jeu par défaut, plus large que les étapes du code CHEHAB; cette différence reste visible et interdit d'interpréter le dot product comme une comparaison exacte de taille de clés.
+
+Chaque worker mesure quatre points dans des processus isolés : baseline de démarrage, pic après génération/setup des clés, pic après préparation des inputs, et pic après évaluation. Les pics sont lus avec `/usr/bin/time -v` autour de chaque processus, pas avec le high-water mark du processus parent. Pour Lattigo, la baseline suit l'initialisation des paramètres; pour TenSEAL, elle suit les imports Python et précède la création du contexte, car TenSEAL encapsule l'initialisation des clés dans son constructeur de contexte. La colonne `Actual (MB)` vaut le pic d'évaluation moins la baseline. Les colonnes `Est Delta Lo/Hi` retirent la composante `base_bytes_overhead` de l'estimateur pour comparer des incréments aux incréments. Les pics bruts des phases restent présents dans le CSV. Tous les processus Lattigo utilisent `GOGC=100`; échecs et timeouts sont notés `FAIL`, jamais comme une mesure nulle. Une hausse nulle du high-water mark est rapportée comme incrément nul, distinct d'un échec.
+
+Le fichier `RL/sweep_results_isolated.csv` est le résultat du dernier sweep complet. Les colonnes Delta sont spécifiques à chaque backend; ne pas comparer Conv2D/Deep Poly/High-Churn à un faux résultat SEAL ni présenter les workloads différents comme une comparaison un-à-un.
+
+Sur ce sweep, la couverture de `[Est Delta Lo, Est Delta Hi]` est **0/10 pour SEAL** et **14/18 pour Lattigo**. L'erreur signée moyenne de `lo` est respectivement **-60.54 %** sur les 10 incréments RSS SEAL et **-25.97 %** sur les 18 incréments Lattigo. La corrélation de rang de Spearman vaut **0.915** pour SEAL et **0.977** pour Lattigo. Les deux dot products SEAL ont des incréments élevés dus à la génération des clés Galois. Quatre mesures Lattigo restent hors intervalle : addition 4, multiplication indépendante 2, Deep Polynomial et High-Churn. Aucun de ces chiffres n'est une garantie ni un résultat hold-out.
+
+### Premier contrôle sur des programmes CHEHAB compilés
+
+Le benchmark C++ officiel `benchmarks/dot_product/dot_product.cpp` a généré quatre programmes Lattigo réels (largeurs 4, 8, 16 et 32). L'expression vectorisée du compilateur, y compris `VecAddRot`, est convertie en rotations et additions avant estimation; chaque source Go générée a été compilée puis exécutée avec `GOGC=100`. Tous les cas utilisaient `N=16384`, `L=6`.
+
+| Largeur | Estimation lo (MiB) | Estimation hi (MiB) | RSS du programme (MiB) | Erreur signée lo | Dans l'intervalle |
+|---:|---:|---:|---:|---:|:---:|
+| 4  | 21.51 | 29.16 | 50.55 | -57.45 % | non |
+| 8  | 24.51 | 34.66 | 53.77 | -54.42 % | non |
+| 16 | 27.51 | 40.16 | 55.30 | -50.25 % | non |
+| 32 | 30.51 | 45.66 | 64.03 | -52.35 % | non |
+
+Couverture observée : **0/4**. L'erreur signée moyenne de `lo` est **-53.62 %** (sous-estimation); la corrélation de rang de Spearman est **1.000** sur ces quatre candidats. C'est un premier contrôle exploratoire, pas un hold-out : aucune marge n'a été ajustée sur ces points, et ces résultats montrent que l'intervalle actuel ne prédit pas encore fidèlement le RSS absolu des programmes compilés. Le bon classement ne compense pas cette erreur absolue.
+
+Le mode mémoire de l'environnement RL utilise comme paramètres fixes `N=16384`, `L=6`, cohérents avec ces programmes générés. Les autres paramètres ne sont pas automatiquement déduits pendant un épisode; il faut les fixer explicitement pour toute nouvelle campagne.
 
 ---
 
@@ -89,8 +111,10 @@ La mesure SEAL est le `ru_maxrss` du processus Python/TenSEAL et inclut l'interp
 
 - L'estimateur modélise la taille des objets selon `(N, L)`, le jeu de clés et le pic de durée de vie logique; l'usage RSS réel comprend les frais des runtimes et les temporaires internes.
 - La sortie `[lo, hi]` est un intervalle du modèle, pas une garantie que chaque mesure RSS sera encadrée.
-- Les mesures du sweep sont des pics RSS de processus isolés. Pour SEAL/TenSEAL, l'initialisation Python est incluse; les tailles de petites charges doivent donc être interprétées avec prudence.
-- Les workloads sont conçus pour les opérations prises en charge directement par les deux workers. Ne pas ajouter de convolution ou de benchmark à rotations uniquement d'un côté sans implémenter le même calcul de l'autre côté.
+- La baseline SEAL comprend l'interpréteur Python et les imports, avant création du contexte; celle de Lattigo comprend le runtime Go et les paramètres. Les mesures d'incrément réduisent cet effet, mais les pics de phases sont des processus distincts et ne décrivent pas les temporaires internes exacts d'une seule exécution.
+- `hi`/`estimated_bytes_hi` est une estimation avec marge, pas une borne supérieure physique. Les échecs de couverture doivent rester visibles et ne doivent pas être maquillés par un ajustement sur les mêmes points de test.
+- Les résultats communs permettent une comparaison backend à backend. Les charges réservées à Lattigo servent uniquement à étendre la couverture des opérations.
+- L'intégration RL n'estime que les AST complètement vectorisés. Les expressions scalaires ou partielles sont explicitement non estimables : elles ne sont pas filtrées par le masque mémoire et reçoivent une pénalité si l'épisode se termine sans estimation valide. L'observation conserve la dernière estimation valide, accompagnée d'un indicateur d'estimabilité.
 
 ---
 

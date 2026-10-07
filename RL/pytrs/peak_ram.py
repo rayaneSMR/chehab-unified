@@ -104,6 +104,101 @@ def children(node: Any) -> tuple:
         return tuple(node.args)
     return ()
 
+def is_fully_vectorized(node: Any) -> bool:
+    """Return whether an AST is composed only of packed vector expressions."""
+    stack = [node]
+    while stack:
+        curr = stack.pop()
+        if not isinstance(curr, Op):
+            return False
+        if curr.op == "Vec":
+            if not curr.args or any(
+                not isinstance(arg, (Var, Const)) for arg in curr.args
+            ):
+                return False
+        elif curr.op in ("VecAdd", "VecMinus", "VecMul"):
+            if len(curr.args) != 2:
+                return False
+            for index, argument in enumerate(curr.args):
+                if curr.op == "VecMul" and isinstance(argument, Const):
+                    if not isinstance(argument.value, (int, float)):
+                        return False
+                else:
+                    stack.append(argument)
+        elif curr.op == "<<":
+            if (
+                len(curr.args) != 2
+                or not isinstance(curr.args[1], Const)
+                or not isinstance(curr.args[1].value, int)
+            ):
+                return False
+            stack.append(curr.args[0])
+        else:
+            return False
+    return True
+
+
+def expand_compiler_vector_ops(node: Any) -> Any:
+    """Expand compiler-emitted fused rotation ops without dropping Vec lanes."""
+    expanded = {}
+    stack = [(node, False)]
+
+    while stack:
+        current, visited = stack.pop()
+        if not isinstance(current, Op):
+            expanded[id(current)] = current
+            continue
+        if not visited:
+            stack.append((current, True))
+            stack.extend((child, False) for child in reversed(current.args))
+            continue
+
+        args = [expanded[id(child)] for child in current.args]
+        fused_ops = {
+            "VecAddRot": "VecAdd",
+            "VecMinusRot": "VecMinus",
+            "VecMulRot": "VecMul",
+        }
+        if current.op in fused_ops:
+            if len(args) != 2 or not isinstance(args[1], Const):
+                raise ValueError(
+                    f"{current.op} expects an expression and an integer rotation"
+                )
+            rotated = Op("<<", [args[0], args[1]])
+            expanded[id(current)] = Op(fused_ops[current.op], [args[0], rotated])
+        else:
+            expanded[id(current)] = Op(current.op, args)
+
+    return expanded[id(node)]
+
+
+@dataclass(frozen=True)
+class NotEstimable:
+    reason: str
+
+
+def estimate_vectorized_peak_ram(
+    node: Any,
+    params: "FHEParams",
+    keys_threshold: int = 9999,
+    backend_config: "BackendConfig | None" = None,
+) -> "PeakRAMEstimate | NotEstimable":
+    """Estimate only a fully vectorized AST; otherwise return an explicit reason."""
+    node = expand_compiler_vector_ops(node)
+    if not is_fully_vectorized(node):
+        return NotEstimable("expression is scalar or only partially vectorized")
+    try:
+        return estimate_peak_ram(
+            node,
+            params,
+            keys_threshold=keys_threshold,
+            backend_config=backend_config,
+            packed_vector_inputs=True,
+        )
+    except RuntimeError as error:
+        return NotEstimable(str(error))
+
+
 def rotation_step(node: Any) -> Optional[int]:
     if isinstance(node, Op):
         if node.op in ("<<", "rot"):
@@ -247,6 +342,18 @@ def get_rotation_freq(node: Any) -> dict:
                 freq[step] += 1
     return dict(freq)
 
+
+def contains_encrypted_input(node: Any) -> bool:
+    stack = [node]
+    while stack:
+        current = stack.pop()
+        if isinstance(current, Var):
+            return True
+        if isinstance(current, Op):
+            stack.extend(current.args)
+    return False
+
+
 def reduce_rotation_keys_pass(steps_freq: dict, keys_threshold: int) -> set:
     ordered_used_steps = list(steps_freq.keys())
     keys_count = len(ordered_used_steps)
@@ -317,8 +424,8 @@ class PeakRAMEstimate:
     inputs_bytes: int
     plaintexts_bytes: int
     intermediates_bytes: int
-    total_bytes_lo: int
-    total_bytes_hi: int
+    estimated_bytes_lo: int
+    estimated_bytes_hi: int
     allocating_ops: int
     total_bytes: int # Alias for lo for compatibility
     slots_fixed: int
@@ -334,10 +441,19 @@ class PeakRAMEstimate:
     def total_mib(self) -> float:
         return self.total_bytes / 2**20
 
+    @property
+    def total_bytes_lo(self) -> int:
+        return self.estimated_bytes_lo
+
+    @property
+    def total_bytes_hi(self) -> int:
+        return self.estimated_bytes_hi
+
 def estimate_peak_ram(node: Any, params: FHEParams,
                       keys_threshold: int = 9999,
                       count_inputs: bool = True,
-                      backend_config: "BackendConfig | None" = None) -> PeakRAMEstimate:
+                      backend_config: "BackendConfig | None" = None,
+                      packed_vector_inputs: bool = False) -> PeakRAMEstimate:
     """
     keys_threshold : The max number of keys allowed before reduce_rotation_keys 
                      decomposes them into NAF components. Matches codegen exactly.
@@ -358,6 +474,31 @@ def estimate_peak_ram(node: Any, params: FHEParams,
                     if not isinstance(c, int):
                         stack.append(c)
         return len(seen)
+
+    def get_packed_vector_counts(nd):
+        seen_vectors = set()
+        stack = [nd]
+        input_vectors = 0
+        plaintext_vectors = 0
+        while stack:
+            curr = stack.pop()
+            if isinstance(curr, Op) and curr.op == "Vec":
+                vector_id = tuple(
+                    ("var", arg.name)
+                    if isinstance(arg, Var)
+                    else ("const", repr(arg.value))
+                    for arg in curr.args
+                )
+                if vector_id not in seen_vectors:
+                    seen_vectors.add(vector_id)
+                    if any(isinstance(arg, Var) for arg in curr.args):
+                        input_vectors += 1
+                    elif any(isinstance(arg, Const) for arg in curr.args):
+                        plaintext_vectors += 1
+                continue
+            if isinstance(curr, Op):
+                stack.extend(children(curr))
+        return input_vectors, plaintext_vectors
 
     s_dag = _slots_dag(node)
 
@@ -423,8 +564,12 @@ def estimate_peak_ram(node: Any, params: FHEParams,
         if not n["is_input"] and n["op"] not in ("const", "literal", "Vec"):
             alloc_ops += 1
 
-    inputs_b  = int(get_unique_leaves(node) * ct_b) if count_inputs else 0
-    plaintexts_b = int(get_unique_consts(node) * pt_b)
+    if packed_vector_inputs:
+        input_count, plaintext_count = get_packed_vector_counts(node)
+    else:
+        input_count, plaintext_count = get_unique_leaves(node), get_unique_consts(node)
+    inputs_b  = int(input_count * ct_b) if count_inputs else 0
+    plaintexts_b = int(plaintext_count * pt_b)
     
     actual_slots = s_dag
     inter_b   = int(actual_slots * ct_b * mult)
@@ -442,7 +587,17 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     boot_keys = 0
     
     # Key Counts
-    relin_keys = int(any(n["op"] in ("*", "mul", "square") for n in memo.values()))
+    relin_keys = int(
+        any(
+            n["op"] in ("*", "mul", "square", "VecMul")
+            and len(getattr(n["node"], "args", ())) >= 2
+            and all(
+                contains_encrypted_input(argument)
+                for argument in n["node"].args[:2]
+            )
+            for n in memo.values()
+        )
+    )
     galois_keys = len(step_set)
     
     total_keys = relin_keys + galois_keys + boot_keys
@@ -456,11 +611,11 @@ def estimate_peak_ram(node: Any, params: FHEParams,
     live_set = keys_b + inputs_b + plaintexts_b + inter_b
     A = alloc_ops * ct_b
     garbage_bound = min(A, int(1.6 * live_set)) if backend_name == "lattigo" else 0
-    hi = int((lo + garbage_bound) * 1.1)
+    est_hi = int((lo + garbage_bound) * 1.1)
 
     return PeakRAMEstimate(
         keys_bytes=keys_b, inputs_bytes=inputs_b, plaintexts_bytes=plaintexts_b, intermediates_bytes=inter_b,
-        total_bytes_lo=lo, total_bytes_hi=hi, total_bytes=lo, allocating_ops=alloc_ops,
+        estimated_bytes_lo=lo, estimated_bytes_hi=est_hi, total_bytes=lo, allocating_ops=alloc_ops,
         slots_fixed=s_dag, slots_min=s_dag,
         n_keys_raw=total_keys, n_keys_reduced=total_keys, # Same now since it's the exact set
         relin_keys_count=relin_keys, galois_keys_count=galois_keys, bootstrap_keys_count=boot_keys,
@@ -472,7 +627,11 @@ def within_budget(est: PeakRAMEstimate, budget_bytes: int,
     If use_lower_bound=True, we check against the 'lo' estimate (exact live set + base).
     If False, we check against the 'hi' estimate (live set + GC garbage bound + base).
     """
-    total = est.total_bytes_lo if use_lower_bound else est.total_bytes_hi
+    total = (
+        est.estimated_bytes_lo
+        if use_lower_bound
+        else est.estimated_bytes_hi
+    )
     return total <= budget_bytes
 
 
@@ -491,6 +650,6 @@ if __name__ == "__main__":
     print(f"slots simulated DAG = {est.slots_fixed}")
     print(f"allocating ops (A) = {est.allocating_ops}")
     print(f"keys exact set = {est.n_keys_raw} (reduced pass applied)")
-    print(f"total lo = {est.total_bytes_lo/2**20:.1f} MiB  [{est.keys_bytes/2**20:.1f} keys + "
+    print(f"total lo = {est.estimated_bytes_lo/2**20:.1f} MiB  [{est.keys_bytes/2**20:.1f} keys + "
           f"{est.inputs_bytes/2**20:.1f} inputs + {est.intermediates_bytes/2**20:.1f} inter + {est.plaintexts_bytes/2**20:.1f} pt]")
-    print(f"total hi = {est.total_bytes_hi/2**20:.1f} MiB")
+    print(f"estimated hi = {est.estimated_bytes_hi/2**20:.1f} MiB")

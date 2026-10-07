@@ -28,6 +28,18 @@ class CustomFeaturesExtractor(nn.Module):
         self._margin_dim = observation_space["budget_margin"].shape[0] if self._has_margin else 0
         self._has_noise_ratio = "noise_ratio" in observation_space.spaces
         self._noise_ratio_dim = observation_space["noise_ratio"].shape[0] if self._has_noise_ratio else 0
+        self._has_memory_estimate = "memory_estimate_mib" in observation_space.spaces
+        self._memory_estimate_dim = (
+            observation_space["memory_estimate_mib"].shape[0]
+            if self._has_memory_estimate
+            else 0
+        )
+        self._has_memory_estimable = "memory_estimable" in observation_space.spaces
+        self._memory_estimable_dim = (
+            observation_space["memory_estimable"].shape[0]
+            if self._has_memory_estimable
+            else 0
+        )
         
         # Added preference vector support for MORL (Imed's addition)
         self._has_pref = "preference_vector" in observation_space.spaces
@@ -90,6 +102,10 @@ class CustomFeaturesExtractor(nn.Module):
             parts.append(obs_dict["budget_margin"])
         if self._has_noise_ratio:
             parts.append(obs_dict["noise_ratio"])
+        if self._has_memory_estimate:
+            parts.append(obs_dict["memory_estimate_mib"])
+        if self._has_memory_estimable:
+            parts.append(obs_dict["memory_estimable"])
         if self._has_pref:
             parts.append(obs_dict["preference_vector"])
             
@@ -103,7 +119,14 @@ class CustomFeaturesExtractor(nn.Module):
             base = self._embed_dim + self._budget_dim
         else:  # "embed" or "film"
             base = self._embed_dim + self.BUDGET_EMBED_DIM
-        return base + self._margin_dim + self._noise_ratio_dim + self._pref_dim
+        return (
+            base
+            + self._margin_dim
+            + self._noise_ratio_dim
+            + self._memory_estimate_dim
+            + self._memory_estimable_dim
+            + self._pref_dim
+        )
 
 
 class HierarchicalMaskablePolicy(nn.Module):
