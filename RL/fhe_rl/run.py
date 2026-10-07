@@ -135,6 +135,9 @@ def run_agent(expressions_file: str, embeddings_model, model_filepath: str,
         if done:
             final_expr, final_exec, final_keys, final_noise = expr, c_exec, c_keys, noise
 
+    # --- extra metrics for the evaluation script (agent output BEFORE safety rollback) ---
+    agent_final_exec, agent_final_noise = final_exec, final_noise
+    rollback_applied = 0
     agent_violated = final_noise > noise_budget
     if agent_violated:
         if best_safe is not None:
@@ -145,6 +148,7 @@ def run_agent(expressions_file: str, embeddings_model, model_filepath: str,
             final_exec = best_safe["c_exec"]
             final_keys = best_safe["c_keys"]
             final_noise = best_safe["noise"]
+            rollback_applied = 1
         else:
             print(f"WARNING: no expression within budget {noise_budget} was found "
                   f"(final noise {final_noise:.1f}). Output may exceed the budget!")
@@ -162,3 +166,9 @@ def run_agent(expressions_file: str, embeddings_model, model_filepath: str,
     print(f"Final keys cost   : {final_keys}")
     print(f"Final noise (est) : {final_noise:.2f} / budget {noise_budget} "
           f"[{'OK' if final_noise <= noise_budget else 'VIOLATED'}]")
+    # parsed by evaluate_pfe_metrics.py / run_unified_benchmarks.py
+    print(f"Initial exec cost : {initial_ops}")
+    print(f"Initial noise (est) : {initial_noise:.2f}")
+    print(f"Agent final exec cost : {agent_final_exec}")
+    print(f"Agent final noise (est) : {agent_final_noise:.2f}")
+    print(f"Rollback applied : {rollback_applied}")

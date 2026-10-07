@@ -1,0 +1,4 @@
+benchmark,noise_budget,n_runs,IC,HV,SP,EU,Tmin,Tmax,Kmax,bounds_source,values_clipped
+dot_product_4,240,2,1,0.6785,0.0,0.1813,215,1756,3,manuscript Table 5.2,False
+dot_product_4,300,2,1,0.6785,0.0,0.1813,215,1756,3,manuscript Table 5.2,False
+dot_product_4,1000000,2,1,0.6785,0.0,0.1813,215,1756,3,manuscript Table 5.2,False

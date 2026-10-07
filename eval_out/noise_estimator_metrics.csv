@@ -1,0 +1,2 @@
+n,MAE,MSE,RMSE,R2,mean_signed_error(est-measured)
+6,0.597,0.495,0.703,-2.5633,-0.597

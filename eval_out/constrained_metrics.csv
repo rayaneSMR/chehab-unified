@@ -1,0 +1,4 @@
+agent,noise_budget,n,safe_violations,safe_viol_rate_%,safe_CR_%,violations,viol_rate_%,CR_%,rollback_rate_%,measured_violations,within_budget,above_budget,safe_violations_within,safe_viol_rate_%_within,safe_CR_%_within,violations_within,viol_rate_%_within,CR_%_within,rollback_rate_%_within,measured_violations_within
+unified,240,1,0,0.0,85.19,0,0.0,85.19,0.0,0,1,0,0,0.0,85.19,0,0.0,85.19,0.0,0
+unified,300,1,0,0.0,85.19,0,0.0,85.19,0.0,0,1,0,0,0.0,85.19,0,0.0,85.19,0.0,0
+unified,1000000,1,0,0.0,85.19,0,0.0,85.19,0.0,0,1,0,0,0.0,85.19,0,0.0,85.19,0.0,0

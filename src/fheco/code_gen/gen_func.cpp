@@ -413,6 +413,7 @@ int main(int argc, char **argv)
 
   size_t galois_keys_total_size = galois_keys.save_size();
   cout << "rotation_keys_size_(MB): " << galois_keys_total_size / (1024.0 * 1024.0) << endl;
+  cout << "rotation_keys_count_: " << get_rotation_steps_fhe().size() << endl;
   Encryptor encryptor(context, public_key);
   Evaluator evaluator(context);
   Decryptor decryptor(context, secret_key);

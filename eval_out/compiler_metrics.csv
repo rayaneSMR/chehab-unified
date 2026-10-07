@@ -1,0 +1,7 @@
+benchmark,noise_budget,preference,w_ops,w_keys,execution_time_s,total_time_s,rotation_key_size_MB,rotation_keys
+dot_product_4,240,speed (max w_ops),1.0,0.0,1.161,1.446,18.1967,1
+dot_product_4,240,memory (max w_keys),0.5,0.5,0.636,0.875,18.1967,1
+dot_product_4,300,speed (max w_ops),1.0,0.0,0.722,0.902,18.1967,1
+dot_product_4,300,memory (max w_keys),0.5,0.5,0.705,0.863,18.1967,1
+dot_product_4,1000000,speed (max w_ops),1.0,0.0,0.642,0.816,18.1967,1
+dot_product_4,1000000,memory (max w_keys),0.5,0.5,0.752,0.941,18.1967,1

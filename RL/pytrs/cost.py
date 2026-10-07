@@ -248,5 +248,6 @@ def calculate_cost(expr: Expr,
         w_rot=1.0 if w_rot is None else w_rot, 
         w_depth=w_depth, 
         w_muldepth=w_muldepth, 
-        w_vec=w_vec
+        w_vec=w_vec,
+         w_keys=0.0 if w_keys is None else w_keys
     )

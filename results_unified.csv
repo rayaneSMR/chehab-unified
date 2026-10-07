@@ -1,7 +1,7 @@
-benchmark,w_ops,w_keys,final_ops_cost,final_keys_cost,rotation_keys_count,rotation_keys_static,rotation_keys_size (MB),noise_budget,noise_used_estimated,noise_budget_status,Remaining_noise_budget,noise_used_measured,add,sub,multiply_plain,rotate_rows,negate,multiply,Depth,Multiplicative Depth,optimizer_time (s),compile_time (s),circuit_execution_time (s),galois_keys_generation_time (s),total_execution_time (s)
-dot_product_4,1.0,0.0,260.0,0.0,N/A,1,18.1967,240,40.57,OK,328.0,41.0,2,0,0,1,0,2,4,1,1.13,26.230,0.603,0.162,0.765
-dot_product_4,0.5,0.5,260.0,0.0,N/A,1,18.1967,240,40.57,OK,327.0,42.0,2,0,0,1,0,2,4,1,1.23,19.635,0.755,0.187,0.942
-dot_product_4,1.0,0.0,260.0,0.0,N/A,1,18.1967,300,40.57,OK,328.0,41.0,2,0,0,1,0,2,4,1,0.93,14.488,0.582,0.080,0.663
-dot_product_4,0.5,0.5,260.0,0.0,N/A,1,18.1967,300,40.57,OK,327.0,42.0,2,0,0,1,0,2,4,1,0.89,13.084,1.048,0.193,1.241
-dot_product_4,1.0,0.0,260.0,0.0,N/A,1,18.1967,1000000,40.57,OK,327.0,42.0,2,0,0,1,0,2,4,1,1.0,13.803,0.638,0.093,0.730
-dot_product_4,0.5,0.5,260.0,0.0,N/A,1,18.1967,1000000,40.57,OK,327.0,42.0,2,0,0,1,0,2,4,1,0.92,12.662,0.694,0.198,0.893
+benchmark,w_ops,w_keys,final_ops_cost,final_keys_cost,rotation_keys_count,rotation_keys_static,rotation_keys_size (MB),noise_budget,noise_used_estimated,noise_budget_status,Remaining_noise_budget,noise_used_measured,add,sub,multiply_plain,rotate_rows,negate,multiply,Depth,Multiplicative Depth,optimizer_time (s),compile_time (s),circuit_execution_time (s),galois_keys_generation_time (s),total_execution_time (s),initial_ops_cost,initial_noise_estimated,agent_final_ops_cost,agent_final_noise_estimated,rollback_applied
+dot_product_4,1.0,0.0,260.0,1.0,1.0,1,18.1967,240,40.57,OK,328.0,41.0,2,0,0,1,0,2,4,1,1.06,26.933,1.161,0.284,1.446,1756.0,39.37,260.0,40.57,0.0
+dot_product_4,0.5,0.5,260.0,1.0,1.0,1,18.1967,240,40.57,OK,328.0,41.0,2,0,0,1,0,2,4,1,1.88,17.625,0.636,0.239,0.875,1756.0,39.37,260.0,40.57,0.0
+dot_product_4,1.0,0.0,260.0,1.0,1.0,1,18.1967,300,40.57,OK,328.0,41.0,2,0,0,1,0,2,4,1,1.04,14.113,0.722,0.180,0.902,1756.0,39.37,260.0,40.57,0.0
+dot_product_4,0.5,0.5,260.0,1.0,1.0,1,18.1967,300,40.57,OK,328.0,41.0,2,0,0,1,0,2,4,1,1.06,17.823,0.705,0.158,0.863,1756.0,39.37,260.0,40.57,0.0
+dot_product_4,1.0,0.0,260.0,1.0,1.0,1,18.1967,1000000,40.57,OK,328.0,41.0,2,0,0,1,0,2,4,1,1.13,15.972,0.642,0.174,0.816,1756.0,39.37,260.0,40.57,0.0
+dot_product_4,0.5,0.5,260.0,1.0,1.0,1,18.1967,1000000,40.57,OK,327.0,42.0,2,0,0,1,0,2,4,1,1.52,16.657,0.752,0.189,0.941,1756.0,39.37,260.0,40.57,0.0

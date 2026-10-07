@@ -62,6 +62,9 @@ COLUMNS = (
     + ["Depth", "Multiplicative Depth",
        "optimizer_time (s)", "compile_time (s)", "circuit_execution_time (s)",
        "galois_keys_generation_time (s)", "total_execution_time (s)"]
+    # --- extra values printed by the patched run.py (needed for CR% / raw violations) ---
+    + ["initial_ops_cost", "initial_noise_estimated",
+       "agent_final_ops_cost", "agent_final_noise_estimated", "rollback_applied"]
 )
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
@@ -89,6 +92,16 @@ def parse_compile_output(stdout: str) -> dict:
         if m:
             out["noise_used_estimated"] = float(m.group(1))
             out["noise_budget_status"] = m.group(3).upper()
+        for pat, key in (
+            (rf"initial exec cost\s*:\s*{NUM}", "initial_ops_cost"),
+            (rf"initial noise \(est\)\s*:\s*{NUM}", "initial_noise_estimated"),
+            (rf"agent final exec cost\s*:\s*{NUM}", "agent_final_ops_cost"),
+            (rf"agent final noise \(est\)\s*:\s*{NUM}", "agent_final_noise_estimated"),
+            (rf"rollback applied\s*:\s*{NUM}", "rollback_applied"),
+        ):
+            m = re.match(pat, low)
+            if m:
+                out[key] = float(m.group(1))
         m = re.match(rf"optimization completed in\s*{NUM}\s*seconds", low)
         if m:
             out["optimizer_time (s)"] = float(m.group(1))
@@ -166,6 +179,11 @@ def build_row(framework, bench, w_ops, w_keys, budget, samples):
         "final_ops_cost": med("final_ops_cost"),
         "final_keys_cost": med("final_keys_cost"),
         "optimizer_time (s)": med("optimizer_time (s)"),
+        "initial_ops_cost": med("initial_ops_cost"),
+        "initial_noise_estimated": med("initial_noise_estimated"),
+        "agent_final_ops_cost": med("agent_final_ops_cost"),
+        "agent_final_noise_estimated": med("agent_final_noise_estimated"),
+        "rollback_applied": med("rollback_applied"),
     }
     for op in OPERATIONS:
         merged[op] = med(op)
@@ -278,4 +296,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    
