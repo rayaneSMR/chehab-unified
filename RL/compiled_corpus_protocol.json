@@ -1,0 +1,36 @@
+{
+  "description": "Predeclared acceptance gates for compiled-corpus validation; model constants remain unchanged.",
+  "holdout_rule": "Sort the complete BENCHMARKS list in the runner and assign every fourth benchmark (1-based positions divisible by 4) to holdout before measurements. Partial runs retain the same assignments.",
+  "measurements": {
+    "widths": [4, 8, 16],
+    "forms": ["scalar", "vectorized"],
+    "extended_widths": {
+      "dot_product": [32],
+      "hamming_dist": [32],
+      "l2_distance": [32]
+    },
+    "special_cases": {
+      "conv2d": "Compiler-native mode at requested widths <= 16.",
+      "deep_network": {
+        "deep-poly": [3, 5, 8],
+        "deep-conv": [3, 4, 8],
+        "deep-linear": [2, 4, 8]
+      }
+    },
+    "repeats_per_program": 5,
+    "gogc": 100,
+    "rss_metric": "median of per-run /usr/bin/time peak RSS in MiB",
+    "phase_snapshots": ["baseline", "keys", "inputs", "evaluation"]
+  },
+  "acceptance_gates": {
+    "heldout_interval_coverage": ">= 0.90",
+    "heldout_median_absolute_percentage_error": "<= 20.0%",
+    "heldout_absolute_mean_signed_error": "<= 10.0%",
+    "heldout_within_benchmark_pairwise_rank_accuracy": ">= 0.80",
+    "heldout_budget_false_accept_count_at_64_256_1024_MiB": 0,
+    "heldout_budget_false_reject_rate": "<= 0.10 among programs whose measured median RSS fits the budget"
+  },
+  "tuning_policy": "Do not change base overhead, garbage multiplier, or hi margin using holdout observations. This runner only evaluates the current fixed model.",
+  "ast_roots": "All variables assigned to encryptedOutputs are combined under a non-allocating Vec root so the estimate covers every output retained by the generated program.",
+  "scope": "The corpus has 108 planned candidates: all regular benchmarks at widths 4, 8, and 16; dot_product, hamming_dist, and l2_distance additionally at width 32; Conv2D compiler-native at requested widths <= 16; and three Deep Network circuit modes at their listed parameters. CryptoNets is excluded because it is not enabled in the root build; polynomials_coyote emits SEAL code rather than Lattigo. DCT, max, polynomial-derivative, and sort compiler modes may fail generation or parsing and such failures are recorded rather than counted as measurements."
+}

@@ -110,7 +110,33 @@ Chaque binaire Go a été compilé puis exécuté avec `GOGC=100`; `/usr/bin/tim
 
 Couverture observée : **0/5**. L'erreur signée moyenne de `lo` est **-56.38 %**; Spearman entre RSS mesuré et `lo` est **1.000** (n=5). Le classement est monotone, mais la sous-estimation absolue est importante et `hi` ne couvre aucun programme. Ces mesures n'ont pas été utilisées pour ajuster la marge. Les exécutions RSS peuvent varier d'un lancement à l'autre; les valeurs de ce tableau sont une mesure unique par largeur, pas un résultat hold-out ni une borne physique.
 
-La voie `vectorize_code=1` a aussi été essayée, mais ne produit pas de programme dans cet environnement : le sous-processus RL échoue avant la vectorisation parce que `stable_baselines3` n'est pas installé (`ModuleNotFoundError`). Aucun résultat vectorisé n'est inclus ni extrapolé à partir des cinq programmes scalaires ci-dessus. Pour valider directement les candidats mémoire du RL, il faut d'abord restaurer cette dépendance et relancer la campagne sur des sorties vectorisées.
+### Protocole du corpus multi-benchmarks
+
+Le nouveau runner `RL/validate_benchmark_corpus.py` étend cette vérification aux programmes générés par les benchmarks CHEHAB. La commande reproductible est `python3 RL/validate_benchmark_corpus.py --repeats 5`; le protocole gelé avant la mesure est dans `RL/compiled_corpus_protocol.json`. Il couvre 108 candidats prévus : les formes scalaires et vectorisées par e-graph des benchmarks réguliers aux largeurs 4, 8 et 16, avec la largeur 32 ajoutée pour dot product, Hamming et L2; Conv2D compilé nativement aux largeurs prises en charge; et les modes polynomial, convolution et linéaire de Deep Network. Une génération ou une exécution en échec reste consignée dans `RL/compiled_corpus_failures.csv` et n'est jamais comptée comme programme mesuré.
+
+Chaque candidat est exécuté cinq fois avec `GOGC=100`. Le RSS absolu maximal de `/usr/bin/time` est résumé par médiane, minimum et maximum; chaque exécution conserve aussi les snapshots baseline, clés, inputs et évaluation (RSS, HWM et tas Go). L'AST est reconstruit depuis le Go généré par CHEHAB, tous les ciphertexts affectés à `encryptedOutputs` sont conservés sous une racine `Vec`, et `(N,L)` est lu dans ce même fichier. Quand un plaintext d'entrée est absent, le runner encode des vecteurs déterministes de `1.0` uniquement pour permettre l'exécution : cela ne préserve pas les valeurs métier du benchmark. Il réécrit aussi `eval.NegNew(x)` en `eval.MulNew(x, -1.0)` pour la compatibilité avec Lattigo installé. Les fichiers `RL/compiled_corpus_runs.csv`, `RL/compiled_corpus_summary.csv` et `RL/compiled_corpus_metrics.csv` sont mis à jour pendant la campagne afin de garder les résultats partiels en cas d'arrêt.
+
+Le holdout est fixé par benchmark avant la mesure : chaque quatrième nom, dans l'ordre trié de la liste complète du runner, est réservé au holdout. Une exécution partielle conserve cette même attribution. Le rapport inclut couverture `[lo, hi]`, erreur absolue et biais signé de `lo`, Spearman moyen intra-benchmark, exactitude de classement paire à paire et faux positifs/négatifs aux budgets 64, 256 et 1024 MiB. Aucun paramètre de l'estimateur n'est ajusté sur le holdout. Ces RSS absolus incluent la baseline et ne doivent pas être mélangés aux deltas baseline-soustraits du sweep synthétique.
+
+Les formes vectorisées de ce corpus passent par le backend e-graph du compilateur; elles ne sont pas les candidats produits par le chemin RL `vectorize_code=1`. Ce dernier échoue dans cet environnement avant la vectorisation parce que `stable_baselines3` n'est pas installé (`ModuleNotFoundError`). Les mesures du corpus améliorent donc la validation de programmes compiler-native et e-graph, mais ne remplacent pas une campagne sur les sorties réellement générées pendant les épisodes RL.
+
+### Résultats du corpus compilé
+
+La campagne a produit **93 programmes mesurés sur 108 prévus**, avec cinq exécutions chacun (**465 exécutions RSS**). Le seuil visé de 100 programmes complétés n'est donc pas atteint. Les 15 échecs restent dans `RL/compiled_corpus_failures.csv` : trois DCT vectorisés et trois `poly_derivative` vectorisés échouent sur des noms absents des maps; quatre variantes `max` et quatre `sort` terminent en erreur `object not defined`; `sort` scalaire largeur 4 échoue aussi au parsing sur l'opérande `c195`. Aucun échec n'a été transformé en mesure. Les paramètres générés couvrent six couples `(N,L)` : `(16384,6)`, `(16384,7)`, `(16384,8)`, `(16384,9)`, `(16384,10)` et `(32768,12)`.
+
+Les métriques comparent la médiane RSS absolue au modèle non ajusté. Le holdout fixé avant mesure contient 19 programmes; le jeu de développement en contient 74.
+
+| Mesure | Holdout | Développement | Critère préfixé |
+|---|---:|---:|---:|
+| Couverture de `[lo, hi]` | 31.6 % (6/19) | 35.1 % (26/74) | holdout ≥ 90 % — échec |
+| Erreur absolue médiane de `lo` | 53.60 % | 54.95 % | holdout ≤ 20 % — échec |
+| Biais signé moyen de `lo` | -55.30 % | -52.85 % | \|holdout\| ≤ 10 % — échec |
+| Spearman moyen intra-benchmark | 0.958 | 0.944 | rapporté, sans seuil |
+| Classement paire à paire intra-benchmark | 95.35 % (41/43) | 96.26 % (180/187) | holdout ≥ 80 % — passe |
+
+En prenant `estimated_bytes_hi <= budget` comme décision « tient », le holdout a **4 faux positifs à 64 MiB**, contre le critère zéro; il n'en a aucun à 256 ni 1024 MiB. Le taux de faux rejets, calculé parmi les programmes dont le RSS mesuré tient réellement, est 0/5 à 64 MiB, 0/17 à 256 MiB et 1/19 (5.3 %) à 1024 MiB. Les taux de faux rejets respectent le seuil de 10 %, mais cela ne compense pas les faux positifs à 64 MiB. Le classement reste fort alors que les estimations absolues sont très sous-évaluées; **l'estimateur actuel ne doit pas être utilisé comme garantie de budget mémoire**. Aucun coefficient ni marge n'a été recalibré sur ce corpus ou son holdout.
+
+Les RSS de phase sont disponibles par répétition et sous forme médiane/minimum/maximum dans les CSV. Ce corpus utilise le RSS absolu du programme, baseline comprise; ses résultats ne sont pas fusionnés avec le sweep synthétique baseline-soustrait.
 
 Le mode mémoire de l'environnement RL utilise comme paramètres fixes `N=16384`, `L=6`, cohérents avec ces programmes générés. Les autres paramètres ne sont pas automatiquement déduits pendant un épisode; il faut les fixer explicitement pour toute nouvelle campagne.
 
