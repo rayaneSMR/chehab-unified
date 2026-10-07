@@ -118,7 +118,15 @@ Chaque candidat est exécuté cinq fois avec `GOGC=100`. Le RSS absolu maximal d
 
 Le holdout est fixé par benchmark avant la mesure : chaque quatrième nom, dans l'ordre trié de la liste complète du runner, est réservé au holdout. Une exécution partielle conserve cette même attribution. Le rapport inclut couverture `[lo, hi]`, erreur absolue et biais signé de `lo`, Spearman moyen intra-benchmark, exactitude de classement paire à paire et faux positifs/négatifs aux budgets 64, 256 et 1024 MiB. Aucun paramètre de l'estimateur n'est ajusté sur le holdout. Ces RSS absolus incluent la baseline et ne doivent pas être mélangés aux deltas baseline-soustraits du sweep synthétique.
 
-Les formes vectorisées de ce corpus passent par le backend e-graph du compilateur; elles ne sont pas les candidats produits par le chemin RL `vectorize_code=1`. Ce dernier échoue dans cet environnement avant la vectorisation parce que `stable_baselines3` n'est pas installé (`ModuleNotFoundError`). Les mesures du corpus améliorent donc la validation de programmes compiler-native et e-graph, mais ne remplacent pas une campagne sur les sorties réellement générées pendant les épisodes RL.
+#### Point important : le corpus e-graph n'est pas l'intégration RL
+
+**Non, l'estimateur n'utilise pas e-graph pour faire ses estimations.** Le rôle de l'estimateur est de recevoir un AST et d'en calculer le coût mémoire; le calcul est dans `RL/pytrs/peak_ram.py`. Dans l'environnement RL, `RL/fhe_rl/env.py` appelle `estimate_vectorized_peak_ram` sur l'expression candidate après une action de réécriture. L'estimateur n'appelle ni `gen_vectorized_code`, ni le backend e-graph, ni Stable-Baselines3. Cette séparation est intentionnelle : l'estimation doit pouvoir s'appliquer aux candidats de l'agent sans en choisir ou en optimiser un elle-même.
+
+**En revanche, oui, l'e-graph a été utilisé pour générer une partie des programmes servant à évaluer l'estimateur.** Dans le runner de corpus, les lignes `Vectorization=vectorized` demandent la génération vectorisée (`vectorize_code=1`) et transmettent `optimization_method=0`; le benchmark CHEHAB définit `0` comme la voie e-graph et `1` comme la voie RL. Les lignes `Vectorization=scalar` désactivent la vectorisation. Le runner compile ensuite en Go/Lattigo ces sources produites, reconstruit l'AST depuis le Go généré, puis passe cet AST à la même fonction d'estimation. C'est donc le **programme d'évaluation** qui utilise une autre voie de génération; ce n'est pas l'algorithme de l'estimateur qui dépend d'e-graph.
+
+Cette différence limite les conclusions : les 93 mesures du corpus vérifient l'estimation sur 74 candidats de développement et 19 candidats holdout générés en modes scalaires, compiler-native ou e-graph. Elles ne démontrent **pas** la précision sur les expressions exactes que produira l'agent RL pendant un épisode. En particulier, elles ne valident ni la distribution des candidats RL, ni leurs transformations intermédiaires, ni le taux d'acceptation/rejet du masque mémoire face au RSS de ces mêmes candidats. L'e-graph ne peut donc pas servir de substitut à la campagne RL prévue.
+
+La voie de génération RL des benchmarks (`optimization_method=1`) n'a pas été mesurée dans cette campagne : son lancement échoue dans cet environnement avant de produire les candidats parce que `stable_baselines3` n'est pas installé (`ModuleNotFoundError`). Il faut rétablir cette dépendance et ajouter une collecte qui exporte chaque AST candidat réellement vu par l'environnement, puis le compiler/exécuter et mesurer son RSS avant de revendiquer une validation sur la voie RL. En attendant, les chiffres du corpus doivent être décrits comme une validation des estimateurs sur le sous-ensemble mesurable des programmes CHEHAB scalaires/e-graph/compiler-native, et non comme une validation de l'estimateur dans la boucle RL.
 
 ### Résultats du corpus compilé
 
@@ -129,7 +137,8 @@ Les métriques comparent la médiane RSS absolue au modèle non ajusté. Le hold
 | Mesure | Holdout | Développement | Critère préfixé |
 |---|---:|---:|---:|
 | Couverture de `[lo, hi]` | 31.6 % (6/19) | 35.1 % (26/74) | holdout ≥ 90 % — échec |
-| Erreur absolue médiane de `lo` | 53.60 % | 54.95 % | holdout ≤ 20 % — échec |
+| Erreur absolue médiane de `lo` | 50.21 MiB | 39.59 MiB | rapportée, sans seuil |
+| MAPE médiane de `lo` | 53.60 % | 54.95 % | holdout ≤ 20 % — échec |
 | Biais signé moyen de `lo` | -55.30 % | -52.85 % | \|holdout\| ≤ 10 % — échec |
 | Spearman moyen intra-benchmark | 0.958 | 0.944 | rapporté, sans seuil |
 | Classement paire à paire intra-benchmark | 95.35 % (41/43) | 96.26 % (180/187) | holdout ≥ 80 % — passe |
@@ -137,6 +146,96 @@ Les métriques comparent la médiane RSS absolue au modèle non ajusté. Le hold
 En prenant `estimated_bytes_hi <= budget` comme décision « tient », le holdout a **4 faux positifs à 64 MiB**, contre le critère zéro; il n'en a aucun à 256 ni 1024 MiB. Le taux de faux rejets, calculé parmi les programmes dont le RSS mesuré tient réellement, est 0/5 à 64 MiB, 0/17 à 256 MiB et 1/19 (5.3 %) à 1024 MiB. Les taux de faux rejets respectent le seuil de 10 %, mais cela ne compense pas les faux positifs à 64 MiB. Le classement reste fort alors que les estimations absolues sont très sous-évaluées; **l'estimateur actuel ne doit pas être utilisé comme garantie de budget mémoire**. Aucun coefficient ni marge n'a été recalibré sur ce corpus ou son holdout.
 
 Les RSS de phase sont disponibles par répétition et sous forme médiane/minimum/maximum dans les CSV. Ce corpus utilise le RSS absolu du programme, baseline comprise; ses résultats ne sont pas fusionnés avec le sweep synthétique baseline-soustrait.
+
+#### Reproduire la campagne et lire les artefacts
+
+La campagne doit être lancée depuis la racine du dépôt, sur Linux. Il faut que les exécutables CHEHAB des benchmarks soient déjà construits sous `build/benchmarks/<nom>/<nom>`, que Go et les dépendances du module Lattigo soient disponibles, et que `/usr/bin/time` soit installé. Le runner crée un répertoire temporaire par candidat sous `build/benchmarks`, copie les fichiers nécessaires, lance le générateur de données lorsqu'il existe, puis appelle le compilateur du benchmark pour produire le Go. Il construit ensuite un unique exécutable Go instrumenté par candidat et le réutilise pour les cinq répétitions.
+
+Commande de la campagne documentée :
+
+```bash
+python3 RL/validate_benchmark_corpus.py --repeats 5
+```
+
+Options disponibles :
+
+```text
+--benchmarks <nom...>       sous-ensemble des benchmarks de la liste prise en charge
+--widths <entier...>        largeurs à demander au runner
+--repeats <entier>          répétitions d'exécution par candidat, doit être >= 1
+--raw-output <chemin>       CSV détaillé par répétition et phase
+--summary-output <chemin>   CSV consolidé par candidat
+--metrics-output <chemin>   CSV de métriques développement/holdout
+--failures-output <chemin>  CSV des erreurs de génération, compilation ou mesure
+```
+
+Pour la campagne de référence, les largeurs régulières sont 4, 8 et 16; les benchmarks `dot_product`, `hamming_dist` et `l2_distance` ont aussi une largeur 32. Conv2D est lancé nativement aux largeurs demandées jusqu'à 16. Deep Network utilise ses paramètres propres, indépendants de `--widths` : profondeurs polynomial 3/5/8, tailles convolution 3/4/8, tailles linéaires 2/4/8. La commande de référence prévoit donc 108 candidats et 540 exécutions (108 × 5) si tout compile et s'exécute. Les arguments de largeur ne changent pas le holdout.
+
+Les quatre artefacts de données ont des rôles différents :
+
+| Fichier | Granularité et contenu |
+|---|---|
+| [`compiled_corpus_runs.csv`](./compiled_corpus_runs.csv) | Une ligne par exécution. Inclut le RSS maximum externe (`/usr/bin/time`), puis pour chaque phase le RSS/HWM observé au snapshot, `HeapAlloc` et `HeapSys` du runtime Go. |
+| [`compiled_corpus_summary.csv`](./compiled_corpus_summary.csv) | Une ligne par candidat compilé et mesuré. Contient le programme, sa forme, sa largeur, `(N,L)`, son split, `lo`, `hi`, RSS médian/minimum/maximum, erreur signée, indicateur d'intervalle, nombre de répétitions et résumé médian/minimum/maximum du RSS des phases. |
+| [`compiled_corpus_metrics.csv`](./compiled_corpus_metrics.csv) | Une ligne par métrique et split; contient les mesures d'erreur, de classement et de décision budgétaire. |
+| [`compiled_corpus_failures.csv`](./compiled_corpus_failures.csv) | Une ligne par candidat non mesuré avec le diagnostic du générateur, du compilateur, du parseur, du build Go ou de l'exécution. Un échec n'est jamais converti en RSS égal à zéro. |
+
+Les sorties sont écrites de façon incrémentale après chaque candidat terminé ou échoué. Une campagne interrompue peut donc laisser des résultats partiels : vérifier `Repeat Count` et le nombre de lignes dans le CSV avant de les interpréter comme le corpus complet. Les CSV livrés ici correspondent à la campagne terminée de 93 candidats; ils ne sont pas présentés comme 108 mesures réussies.
+
+#### Définition des mesures et des seuils
+
+`Actual` dans cette validation est le RSS maximal absolu renvoyé par `/usr/bin/time` pour le processus compilé, en MiB; il inclut donc la baseline de Go, les paramètres, les clés, les entrées et l'évaluation. C'est une définition différente des deltas baseline-soustraits du sweep synthétique. La mémoire de phase est capturée depuis `/proc/self/status` au cours du même processus : `baseline` au début de `main`, `keys` après la génération des clés, `inputs` après la préparation des entrées et juste avant l'évaluation, puis `evaluation` après la fin du calcul. Les snapshots `VmRSS`/`VmHWM` sont des lectures ponctuelles; le pic complet du processus reste la valeur `/usr/bin/time`, et non le plus grand de ces quatre snapshots.
+
+Le programme généré est aussi analysé par le modèle. Le parseur reconstruit les opérations depuis le Go émis par CHEHAB, extrait `LogN`, `LogQ` et `LogP` pour obtenir `(N,L)`, puis relie toutes les variables stockées dans `encryptedOutputs` sous un nœud `Vec` non allouant. Ainsi, les sorties multiples ne sont pas omises de l'AST estimé. La campagne mesure toutefois l'empreinte de l'exécutable, pas la justesse fonctionnelle du benchmark : pour permettre l'exécution lorsque le générateur ne renseigne pas un plaintext, l'instrumentation encode un vecteur rempli de `1.0`. Le remplacement de `eval.NegNew(x)` par `eval.MulNew(x, -1.0)` vise uniquement la compatibilité avec la version Lattigo disponible. Ces adaptations sont des limites du protocole et ne doivent pas être prises pour les vraies entrées métier.
+
+Pour chaque candidat réussi, `Actual` utilisé dans le tableau de synthèse est la médiane des cinq RSS maximaux. Les indicateurs se calculent ainsi :
+
+- **Couverture** : proportion des candidats pour lesquels `lo <= Actual <= hi`.
+- **Erreur absolue médiane** : médiane de `abs(lo - Actual)` en MiB.
+- **Erreur absolue en pourcentage (MAPE médiane)** : médiane de `abs((lo - Actual) / Actual) * 100`.
+- **Biais signé moyen de `lo`** : moyenne de `((lo - Actual) / Actual) * 100`; une valeur négative indique une sous-estimation.
+- **Spearman intra-benchmark** : corrélation de rang entre `lo` et RSS mesuré pour les candidats d'un même benchmark; le résultat reporté est la moyenne non pondérée des benchmarks ayant des rangs comparables. Il s'agit d'une moyenne par benchmark, pas d'un Spearman global mélangeant des circuits différents.
+- **Exactitude paire à paire** : proportion des paires de candidats d'un même benchmark dont l'ordre relatif selon `lo` est le même que celui selon le RSS. Les paires à égalité sur l'estimation ou sur la mesure sont ignorées.
+
+Pour un budget `B`, l'estimateur prédit qu'un programme tient si et seulement si `hi <= B`; le programme est mesuré comme tenant si son RSS médian `<= B`. Un **faux positif / false accept** est une prédiction « tient » alors que le RSS dépasse `B` (décision dangereuse). Le **taux de faux rejets / false reject rate** est le nombre de programmes mesurés comme tenant mais rejetés par `hi`, divisé par le nombre de programmes dont le RSS mesuré tient réellement. Le fichier des métriques fournit également ce dénominateur (`measured_fit_count`) et le nombre brut de faux positifs. Les critères d'acceptation ont été écrits dans le protocole avant la campagne : ils s'appliquent au holdout, et aucun paramètre de l'estimateur n'a été ajusté à partir de ces résultats.
+
+#### Composition effective et échecs
+
+Le holdout fixe contient `discrete_cosin_transform`, `hamming_dist`, `max` et `sobel`. Le découpage est au niveau benchmark, donc aucun candidat d'un de ces quatre benchmarks ne passe dans le développement. Les programmes effectivement mesurés sont répartis ainsi :
+
+| Benchmark | Candidats prévus | Mesurés | Échecs | Split |
+|---|---:|---:|---:|---|
+| `box_blur` | 6 | 6 | 0 | développement |
+| `conv2d` | 3 | 3 | 0 | développement |
+| `deep_network` | 9 | 9 | 0 | développement |
+| `discrete_cosin_transform` | 6 | 3 | 3 | holdout |
+| `dot_product` | 8 | 8 | 0 | développement |
+| `gx_kernel` | 6 | 6 | 0 | développement |
+| `gy_kernel` | 6 | 6 | 0 | développement |
+| `hamming_dist` | 8 | 8 | 0 | holdout |
+| `l2_distance` | 8 | 8 | 0 | développement |
+| `lin_reg` | 6 | 6 | 0 | développement |
+| `matrix_mul` | 6 | 6 | 0 | développement |
+| `max` | 6 | 2 | 4 | holdout |
+| `poly_derivative` | 6 | 3 | 3 | développement |
+| `poly_reg` | 6 | 6 | 0 | développement |
+| `roberts_cross` | 6 | 6 | 0 | développement |
+| `sobel` | 6 | 6 | 0 | holdout |
+| `sort` | 6 | 1 | 5 | développement |
+| **Total** | **108** | **93** | **15** | |
+
+Les 15 échecs sont : trois formes vectorisées de DCT dont le générateur ne retrouve pas certaines entrées (`x1`/`x2`), quatre variantes `max` dont la génération Go s'arrête sur `object not defined`, trois formes vectorisées de `poly_derivative` avec une entrée `x` absente, quatre variantes `sort` avec `object not defined`, et `sort` scalaire largeur 4 dont le parseur ne reconnaît pas `c195`. Ces candidats ne figurent pas dans les dénominateurs de précision et leur exclusion rend la taille effective de l'échantillon plus faible que celle prévue.
+
+La moyenne Spearman du holdout repose sur trois benchmarks ayant des rangs non dégénérés (`hamming_dist`, `max`, `sobel`). DCT a bien trois mesures scalaires, mais `lo` est identique sur ces trois largeurs; son rang d'estimation est donc dégénéré et son Spearman n'est pas défini. Le développement repose sur onze benchmarks comparables. L'exactitude paire à paire utilise 43 paires holdout et 187 paires de développement; les candidats échoués et les paires à égalité ne contribuent pas.
+
+| Budget | Split | Programmes mesurés tenant | Faux positifs | Faux rejets | Taux de faux rejets |
+|---:|---|---:|---:|---:|---:|
+| 64 MiB | holdout | 5 | 4 | 0 | 0/5 = 0 % |
+| 64 MiB | développement | 34 | 7 | 0 | 0/34 = 0 % |
+| 256 MiB | holdout | 17 | 0 | 0 | 0/17 = 0 % |
+| 256 MiB | développement | 63 | 0 | 4 | 4/63 = 6.3 % |
+| 1024 MiB | holdout | 19 | 0 | 1 | 1/19 = 5.3 % |
+| 1024 MiB | développement | 73 | 0 | 5 | 5/73 = 6.8 % |
 
 Le mode mémoire de l'environnement RL utilise comme paramètres fixes `N=16384`, `L=6`, cohérents avec ces programmes générés. Les autres paramètres ne sont pas automatiquement déduits pendant un épisode; il faut les fixer explicitement pour toute nouvelle campagne.
 
