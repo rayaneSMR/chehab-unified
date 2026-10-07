@@ -199,18 +199,14 @@ def get_total_rotations(expr: Expr) -> int:
             count += get_total_rotations(child)
     return count
 
-def _calculate_cost_constrained(expr: Expr,
-               w_ops=1.0,
-               w_rot=1.0,
-               w_depth=1.0,
-               w_muldepth=1.0,
-               w_vec=-1.0,
-               ) -> float:
+def _calculate_cost_constrained(expr, w_ops=1.0, w_rot=1.0, w_depth=1.0,
+                                w_muldepth=1.0, w_vec=-1.0, w_keys=0.0):
     return (
         w_ops * operations_cost(expr) +
         w_rot * rotations_cost(expr) +
         w_depth * get_normal_depth(expr) +
-        w_muldepth * get_multiplicative_depth(expr) 
+        w_muldepth * get_multiplicative_depth(expr) +
+        w_keys * get_unique_rotations(expr)
     )
 
 def _calculate_cost_mo(expr: Expr,
