@@ -23,6 +23,7 @@ from validate_benchmark_corpus import (
     instrument_go_source,
     parse_phases,
     phase_rss_summary,
+    save_generated_source,
 )
 
 
@@ -68,6 +69,30 @@ encryptedOutputs["o"] = w
         self.assertEqual(expression.op, "*")
         self.assertEqual(expression.args[0], Var("a"))
         self.assertEqual(expression.args[1], Var("b"))
+
+    def test_saved_generated_source_records_sha256_and_manifest(self):
+        import hashlib
+        import tempfile
+        from pathlib import Path
+
+        source = "package main\nfunc main() {}\n"
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            saved, digest = save_generated_source(
+                "dot_product", 4, "vectorized", source,
+                output_dir=root / "sources",
+            )
+
+            self.assertTrue(saved.is_file())
+            self.assertEqual(saved.read_bytes(), source.encode())
+            self.assertEqual(
+                digest, hashlib.sha256(source.encode()).hexdigest()
+            )
+            manifest = root / "compiled_corpus_generated_sources_manifest.csv"
+            self.assertTrue(manifest.is_file())
+            manifest_text = manifest.read_text()
+            self.assertIn(digest, manifest_text)
+            self.assertIn("dot_product", manifest_text)
 
     def test_instrumentation_records_phases_and_repairs_plaintext_inputs(self):
         source = '''package main

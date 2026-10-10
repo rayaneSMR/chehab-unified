@@ -1,5 +1,6 @@
 import argparse
 import csv
+import hashlib
 import os
 import re
 import shutil
@@ -25,6 +26,11 @@ DEFAULT_RAW_OUTPUT = ROOT / "RL" / "compiled_corpus_runs.csv"
 DEFAULT_SUMMARY_OUTPUT = ROOT / "RL" / "compiled_corpus_summary.csv"
 DEFAULT_METRICS_OUTPUT = ROOT / "RL" / "compiled_corpus_metrics.csv"
 DEFAULT_FAILURES_OUTPUT = ROOT / "RL" / "compiled_corpus_failures.csv"
+# Every measured program's generated Go source is saved here together with its
+# sha256 so published estimates stay reproducible even though the e-graph
+# vectorizer is not bit-reproducible across compiler runs.
+GENERATED_SOURCES_DIR = ROOT / "RL" / "compiled_corpus_generated_sources"
+GENERATED_SOURCES_MANIFEST = ROOT / "RL" / "compiled_corpus_generated_sources_manifest.csv"
 BENCHMARKS = (
     "box_blur",
     "conv2d",
@@ -455,6 +461,53 @@ def prepare_benchmark(benchmark: str, width: int, vectorization: str, working_di
     return generated
 
 
+def save_generated_source(
+    benchmark: str,
+    width: int,
+    vectorization: str,
+    source_text: str,
+    output_dir: Path = None,
+):
+    """Persist the exact generated Go source used for estimation, with sha256.
+
+    The e-graph vectorizer is not bit-reproducible: compiling the same
+    candidate twice can emit different Go code. Saving the source and reading
+    the estimate back from that saved copy keeps a published result tied to
+    one concrete compiler output. Appends the hash to the manifest CSV.
+    Returns (saved_path, sha256_hex).
+    """
+    directory = Path(output_dir) if output_dir is not None else GENERATED_SOURCES_DIR
+    directory.mkdir(parents=True, exist_ok=True)
+    path = directory / f"{benchmark}_{width}_{vectorization}.go"
+    data = source_text.encode()
+    path.write_bytes(data)
+    digest = hashlib.sha256(data).hexdigest()
+    manifest = (
+        Path(output_dir).parent / "compiled_corpus_generated_sources_manifest.csv"
+        if output_dir is not None
+        else GENERATED_SOURCES_MANIFEST
+    )
+    new_file = not manifest.is_file()
+    with manifest.open("a", newline="") as handle:
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=("Benchmark", "Width", "Vectorization", "SHA256", "Source File"),
+            lineterminator="\n",
+        )
+        if new_file:
+            writer.writeheader()
+        writer.writerow(
+            {
+                "Benchmark": benchmark,
+                "Width": width,
+                "Vectorization": vectorization,
+                "SHA256": digest,
+                "Source File": path.name,
+            }
+        )
+    return path, digest
+
+
 def measure_program(
     benchmark: str,
     width: int,
@@ -470,7 +523,12 @@ def measure_program(
         generated = prepare_benchmark(
             benchmark, width, vectorization, working_directory
         )
-        generated_source = generated.read_text()
+        # Save the generated source and its hash, then estimate from the saved
+        # copy so the estimate is tied to one concrete compiler output.
+        saved_source, source_sha256 = save_generated_source(
+            benchmark, width, vectorization, generated.read_text()
+        )
+        generated_source = saved_source.read_text()
         ast = parse_compiler_program(generated_source)
         params = parse_parameters(generated_source)
         estimate = estimate_peak_ram(
