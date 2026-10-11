@@ -1,65 +1,58 @@
- Prerequisites
-*.d
+# V3 peak-RAM estimator artifacts
 
-*.tmp
+# Build outputs / binaries
+lattigo_backend/benchmark_conv2d
+lattigo_backend/benchmark_deep_poly
+lattigo_backend/calibrate
+lattigo_backend/check_huge_key
+lattigo_backend/deep_conv2d_3layers
+lattigo_backend/detailed_calibrate
+lattigo_backend/sweep
+lattigo_backend/sweep_runner
+lattigo_backend/test_bin
+lattigo_backend/test_dp13_boot
+lattigo_backend/test_generated
+lattigo_backend/test_program
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+# Artifact CSVs / spreadsheets / docs / presentations
+RL/compiled_corpus_v3_runs.csv
+RL/compiled_corpus_v3_summary.csv
+RL/compiled_corpus_v3_metrics.csv
+RL/compiled_corpus_v3_failures.csv
+RL/compiled_corpus_generated_sources_manifest.csv
+RL/metrics_summary.xlsx
+RL/QA_Preparation.docx
+RL/QA_Preparation.md
+RL/gen_docx.py
+RL/gen_excel.py
+RL/presentation_pfe.tex
+RL/metrics_summary.xlsx
 
-# Precompiled Headers
-*.gch
-*.pch
+# Generated Go sources + oracle table + calibration artefacts
+RL/compiled_corpus_generated_sources/
+RL/v3_size_oracle_table.csv
+RL/v3_baseline_calibration.json
+RL/v3_baseline/
+RL/v3_baseline_heldout_checks.csv
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+# veclang runner temp/generated files
+RL/veclang_runner/generated_fhe.go
+RL/veclang_runner/fhe_io_example.txt
+RL/veclang_runner/fhe_io_example_adapted.txt
+RL/veclang_runner/he/_gen_he_fhe.cpp
+RL/veclang_runner/he/_gen_he_fhe.hpp
+RL/veclang_runner/he/fhe_io_example_adapted.txt
+RL/veclang_runner/he/main.cpp
+RL/veclang_runner/he/utils.cpp
+RL/veclang_runner/he/utils.hpp
+RL/veclang_runner/temp_expr.txt
 
-# Fortran module files
-*.mod
-*.smod
+# SEAL calibration
+SEAL_calib/
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
-**/*/pyc
-# Executables
-*.exe
-*.out
-*.app
-
-# VSCode settings
-.vscode/
-
-# Build
-bin/
-lib/
+# Build directories
 build/
-target/
-*.build
-env
-thirdparty/
-egraphs/target/**
-# Jupyter checkpoints
-.ipynb_checkpoints/
-*.pyc
-__pycache__/
-*.pyo
-*.pyd
-
-/logs
-
-.DS_Store
-
-commands.txt
-
-manuscript writing/
-manuscript writing/*
-hpc_results/logs/RL/*.log
-*.log
-*Zone.Identifier
+egraphs/target/
+RL/veclang_runner/build/
+RL/veclang_runner/he/build/
+tests/__pycache__/
