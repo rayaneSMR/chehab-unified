@@ -739,6 +739,174 @@ def estimate_peak_ram(node: Any, params: FHEParams,
         relin_keys_count=relin_keys, galois_keys_count=galois_keys, bootstrap_keys_count=boot_keys,
         labels=labels)
 
+# ---------------------------------------------------------------------------
+# V3 estimator: baseline_hat + exact live set (no GC headroom term)
+# ---------------------------------------------------------------------------
+
+def estimate_peak_ram_v3(node: Any, params: FHEParams, baseline_bytes: int,
+                         keys_threshold: int = 9999,
+                         count_inputs: bool = True,
+                         packed_vector_inputs: bool = False) -> PeakRAMEstimate:
+    """V3: estimate = baseline_hat + exact live set.
+
+    baseline_bytes: predicted empty-worker startup RSS (offline ELF text+data
+    calibration; the worker is never executed for prediction). Object sizes
+    (keys, ciphertexts, plaintexts) come from the library size oracle
+    (fhe_rl.size_oracle.object_bytes); memory_layout formulas are unit-test
+    cross-checks only. No gc_headroom_factor and no widened hi:
+    estimated_bytes_hi == estimated_bytes_lo == the v3 point estimate.
+    """
+    import sys
+    import os
+    rl_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    if rl_dir not in sys.path:
+        sys.path.append(rl_dir)
+    from fhe_rl.size_oracle import OracleParams, object_bytes
+    from fhe_rl.memory_layout import (
+        lattigo_parameter_bytes,
+        lattigo_helper_buffer_bytes,
+        lattigo_input_staging_bytes,
+        lattigo_postprocess_bytes,
+    )
+
+    backend = "lattigo"
+    nQ = params.nQ(backend)
+    nP = params.nP(backend)
+    oracle_params = OracleParams.from_fhe_params(params, backend)
+    ct_b = object_bytes("ciphertext_deg1", oracle_params)
+    pt_b = object_bytes("plaintext_max_level", oracle_params)
+    key_b = object_bytes("galois_key", oracle_params)
+    sk_b = object_bytes("secret_key", oracle_params)
+    pk_b = object_bytes("public_key", oracle_params)
+
+    # --- traversal identical to v2 (frozen semantics) ---
+    steps_freq = get_rotation_freq(node)
+    step_set = reduce_rotation_keys_pass(steps_freq, keys_threshold)
+
+    def get_unique_leaves(nd):
+        seen = set()
+        stack = [nd]
+        while stack:
+            curr = stack.pop()
+            if is_input(curr):
+                seen.add(getattr(curr, 'name', str(getattr(curr, 'value', 'const'))))
+            elif isinstance(curr, Op) or hasattr(curr, 'args'):
+                for c in children(curr):
+                    if not isinstance(c, int):
+                        stack.append(c)
+        return len(seen)
+
+    def get_unique_consts(nd):
+        seen = set()
+        stack = [(nd, False)]
+        while stack:
+            curr, is_rot_arg = stack.pop()
+            if (isinstance(curr, Const) or getattr(curr, 'op', '') == 'const') and not is_rot_arg:
+                seen.add(getattr(curr, 'value', str(curr)))
+            elif isinstance(curr, Op) or hasattr(curr, 'args'):
+                for i, c in enumerate(children(curr)):
+                    is_step = (getattr(curr, 'op', '') in ("<<", "rot") and i == 1)
+                    if not isinstance(c, int):
+                        stack.append((c, is_step))
+        return len(seen)
+
+    def get_packed_vector_counts(nd):
+        seen_vectors = set()
+        stack = [nd]
+        input_vectors = 0
+        plaintext_vectors = 0
+        while stack:
+            curr = stack.pop()
+            if isinstance(curr, Op) and curr.op == "Vec":
+                vector_id = tuple(
+                    ("var", arg.name) if isinstance(arg, Var) else ("const", repr(arg.value))
+                    for arg in curr.args
+                )
+                if vector_id not in seen_vectors:
+                    seen_vectors.add(vector_id)
+                    if any(isinstance(arg, Var) for arg in curr.args):
+                        input_vectors += 1
+                    elif any(isinstance(arg, Const) for arg in curr.args):
+                        plaintext_vectors += 1
+                continue
+            if isinstance(curr, Op):
+                stack.extend(children(curr))
+        return input_vectors, plaintext_vectors
+
+    s_dag = _slots_dag(node)
+
+    N = params.poly_modulus_degree
+    parameter_b = lattigo_parameter_bytes(N, nQ, nP)
+    helper_buffers_b = lattigo_helper_buffer_bytes(N, nQ, nP, galois_key_count=0)
+    input_staging_b = lattigo_input_staging_bytes(N)
+    postprocess_b = lattigo_postprocess_bytes(N, nQ)
+
+    alloc_ops = 0
+    memo = {}
+    build_dag(node, memo)
+    for n in memo.values():
+        if not n["is_input"] and n["op"] not in ("const", "literal", "Vec"):
+            alloc_ops += 1
+    relin_keys = int(
+        any(
+            n["op"] in ("*", "mul", "square", "VecMul")
+            and len(getattr(n["node"], "args", ())) >= 2
+            and all(contains_encrypted_input(argument) for argument in n["node"].args[:2])
+            for n in memo.values()
+        )
+    )
+    galois_keys = len(step_set)
+    total_keys = relin_keys + galois_keys  # boot_keys = 0 (never invented)
+
+    if packed_vector_inputs:
+        input_count, plaintext_count = get_packed_vector_counts(node)
+    else:
+        input_count, plaintext_count = get_unique_leaves(node), get_unique_consts(node)
+    inputs_b = int(input_count * ct_b) if count_inputs else 0
+    plaintexts_b = int(plaintext_count * pt_b)
+    inter_b = int(s_dag * ct_b)
+
+    keys_b = int(total_keys * key_b + sk_b + pk_b)
+    rotation_index_b = galois_keys * N * 8
+
+    live_set = (
+        keys_b + inputs_b + plaintexts_b + inter_b
+        + parameter_b + helper_buffers_b + rotation_index_b
+        + input_staging_b + postprocess_b
+    )
+    v3 = int(baseline_bytes) + live_set
+
+    labels = {
+        "model": "v3 = baseline_hat + exact live set (no GC headroom, no widened hi)",
+        "baseline": "predicted from ELF text+data via offline calibration; "
+                    "worker never executed for prediction",
+        "object_sizes": "library size oracle (BinarySize of empty objects)",
+        "keys": "simulated key set (after reduce_rotation_keys pass)",
+        "intermediates": "simulated over CSE DAG",
+        "unmeasured": "allocator retention beyond the live set under "
+                      "runtime/debug.SetMemoryLimit is UNMEASURED (not padded)",
+    }
+    return PeakRAMEstimate(
+        keys_bytes=keys_b, keygen_transient_bytes=0,
+        inputs_bytes=inputs_b, plaintexts_bytes=plaintexts_b,
+        intermediates_bytes=inter_b,
+        estimated_bytes_lo=v3, estimated_bytes_hi=v3,
+        base_overhead_bytes=int(baseline_bytes), high_growth_bytes=0,
+        allocation_bytes=alloc_ops * ct_b, parameter_bytes=parameter_b,
+        helper_buffers_bytes=helper_buffers_b,
+        rotation_index_bytes=rotation_index_b,
+        input_staging_bytes=input_staging_b,
+        postprocess_bytes=postprocess_b,
+        input_plaintext_transient_bytes=0,
+        managed_live_bytes=live_set,
+        total_bytes=v3, allocating_ops=alloc_ops,
+        slots_fixed=s_dag, slots_min=s_dag,
+        n_keys_raw=total_keys, n_keys_reduced=total_keys,
+        relin_keys_count=relin_keys, galois_keys_count=galois_keys,
+        bootstrap_keys_count=0,
+        labels=labels)
+
+
 def within_budget(est: PeakRAMEstimate, budget_bytes: int,
                   use_lower_bound: bool = False) -> bool:
     """Compare an estimate to budget; neither estimate is a physical RSS bound."""

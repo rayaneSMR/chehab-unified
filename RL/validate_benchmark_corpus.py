@@ -1,6 +1,7 @@
 import argparse
 import csv
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -15,7 +16,9 @@ from pytrs.peak_ram import (
     LATTIGO_CONFIG,
     LATTIGO_CONFIG_V1,
     estimate_peak_ram,
+    estimate_peak_ram_v3,
 )
+from fhe_rl.size_oracle import OracleParams
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -31,6 +34,7 @@ DEFAULT_FAILURES_OUTPUT = ROOT / "RL" / "compiled_corpus_failures.csv"
 # vectorizer is not bit-reproducible across compiler runs.
 GENERATED_SOURCES_DIR = ROOT / "RL" / "compiled_corpus_generated_sources"
 GENERATED_SOURCES_MANIFEST = ROOT / "RL" / "compiled_corpus_generated_sources_manifest.csv"
+V3_BASELINE_CALIBRATION = ROOT / "RL" / "v3_baseline_calibration.json"
 BENCHMARKS = (
     "box_blur",
     "conv2d",
@@ -173,7 +177,7 @@ def instrument_go_source(source: str) -> str:
     if not imports:
         raise ValueError("Expected parenthesized Go imports in compiler output")
     import_block = imports.group(1)
-    for package in ('"os"', '"runtime"', '"strings"'):
+    for package in ('"os"', '"runtime"', '"strings"', '"strconv"', '"runtime/debug"'):
         if package not in import_block:
             import_block += f"\n\t{package}"
     source = source[: imports.start(1)] + import_block + source[imports.end(1) :]
@@ -204,7 +208,14 @@ func reportMemoryPhase(name string) {
         raise ValueError("Generated source has no main function")
     source = source[:main_start] + helper + "\n" + source[main_start:]
     source = source.replace(
-        "func main() {", "func main() {\n\treportMemoryPhase(\"baseline\")", 1
+        "func main() {",
+        "func main() {\n"
+        '\tif limitText := os.Getenv("CHEHAB_MEM_LIMIT_BYTES"); limitText != "" {\n'
+        "\t\tif limitBytes, parseErr := strconv.ParseUint(limitText, 10, 64); parseErr == nil {\n"
+        "\t\t\tdebug.SetMemoryLimit(int64(limitBytes))\n"
+        "\t\t}\n"
+        "\t}\n"
+        '\treportMemoryPhase("baseline")', 1,
     )
     parameters_anchor = "// Key Generation"
     keys_anchor = "// Encoder, Encryptor, Decryptor, Evaluator"
@@ -586,6 +597,133 @@ def measure_program(
         return params, estimate, legacy_estimate, runs_by_gogc
 
 
+def load_v3_baseline_coefficients():
+    """Load the offline (a, b) baseline coefficients with fingerprint check.
+
+    On fingerprint mismatch uses the calibration's documented conservative
+    default and flags 'default-baseline'. The gc_headroom_factor of v2 is
+    untouched by this path.
+    """
+    calibration = json.loads(V3_BASELINE_CALIBRATION.read_text())
+    import sys as _sys
+
+    _baseline_dir = str(V3_BASELINE_CALIBRATION.parent / "v3_baseline")
+    if _baseline_dir not in _sys.path:
+        _sys.path.insert(0, _baseline_dir)
+    from calibrate_baseline import fingerprint  # noqa: E402
+
+    if fingerprint() == calibration["fingerprint"]:
+        return calibration["a"], calibration["b"], "calibrated"
+    default = calibration["unknown_fingerprint_default"]
+    return default["a_default"], default["b_default"], "default-baseline"
+
+
+def elf_text_data_mib(binary: Path) -> float:
+    """text+data MiB of a compiled (never necessarily run) Go binary."""
+    out = subprocess.run(
+        ["size", "-B", str(binary)], check=True, capture_output=True,
+        text=True, timeout=60,
+    )
+    fields = out.stdout.strip().splitlines()[-1].split()
+    return (int(fields[0]) + int(fields[1])) / 2**20
+
+
+def measure_program_v3(
+    benchmark: str,
+    width: int,
+    vectorization: str,
+    repeat_count: int,
+    budgets_mib,
+    baseline_a: float,
+    baseline_b: float,
+    baseline_flag: str,
+):
+    """V3 campaign measurement for one candidate: compile once, then run
+    unconstrained (GOGC=100) plus once per budget with CHEHAB_MEM_LIMIT_BYTES
+    set, recording peak RSS and wall time for every run."""
+    with tempfile.TemporaryDirectory(
+        prefix=f"chehab-{benchmark}-{width}-{vectorization}-",
+        dir=BUILD_BENCHMARKS,
+    ) as temporary_directory:
+        working_directory = Path(temporary_directory)
+        generated = prepare_benchmark(
+            benchmark, width, vectorization, working_directory
+        )
+        saved_source, source_sha256 = save_generated_source(
+            benchmark, width, vectorization, generated.read_text()
+        )
+        generated_source = saved_source.read_text()
+        ast = parse_compiler_program(generated_source)
+        params = parse_parameters(generated_source)
+        instrumented = instrument_go_source(generated_source)
+        instrumented_path = working_directory / "instrumented_fhe.go"
+        instrumented_path.write_text(instrumented)
+        executable = working_directory / "compiled_fhe"
+        subprocess.run(
+            [
+                "go",
+                "build",
+                "-mod=readonly",
+                "-o",
+                str(executable),
+                str(instrumented_path),
+            ],
+            cwd=LATTIGO_DIR,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=BUILD_TIMEOUT_SECONDS,
+        )
+        # Baseline predicted from the ELF only; the binary is irrelevant until
+        # the runs below. The ELF text+data comes from the same binary that is
+        # measured, so baseline_hat is tied to one concrete compiler output.
+        baseline_hat_mib = (
+            baseline_a * elf_text_data_mib(executable) + baseline_b
+        )
+        v3 = estimate_peak_ram_v3(
+            ast, params, baseline_bytes=int(baseline_hat_mib * 2**20)
+        )
+
+        def run_once(repeat, memory_limit_mib):
+            env = {**os.environ, "GOGC": "100"}
+            if memory_limit_mib is not None:
+                env["CHEHAB_MEM_LIMIT_BYTES"] = str(
+                    int(memory_limit_mib * 2**20)
+                )
+            measured = subprocess.run(
+                [
+                    "/usr/bin/time", "-f",
+                    "peak_rss_kib=%M elapsed_s=%e", str(executable),
+                ],
+                cwd=working_directory,
+                env=env,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=RUN_TIMEOUT_SECONDS,
+            )
+            peak = re.search(r"peak_rss_kib=(\d+)", measured.stderr)
+            elapsed = re.search(r"elapsed_s=([\d.]+)", measured.stderr)
+            if not peak:
+                raise RuntimeError("Missing /usr/bin/time peak RSS measurement")
+            return {
+                "Repeat": repeat,
+                "Budget (MiB)": memory_limit_mib if memory_limit_mib is not None else "unconstrained",
+                "Peak RSS (MiB)": int(peak.group(1)) / 1024,
+                "Elapsed (s)": float(elapsed.group(1)) if elapsed else float("nan"),
+                "Phases": parse_phases(measured.stdout),
+            }
+
+        runs = []
+        for repeat in range(1, repeat_count + 1):
+            runs.append(run_once(repeat, None))
+            for budget in budgets_mib:
+                runs.append(run_once(repeat, budget))
+        return (
+            params, v3, baseline_hat_mib, baseline_flag, source_sha256, runs,
+        )
+
+
 def rank_pairwise_accuracy(rows, estimate_column="Estimated Lo (MiB)"):
     concordant = total = 0
     grouped = {}
@@ -885,6 +1023,191 @@ def leave_one_benchmark_out_calibration(rows, percentile=0.95):
     return results
 
 
+def v3_summary_metrics(summary_rows, budgets):
+    """Pre-registered v3 metrics from summary rows (v3 estimate vs budget runs)."""
+    out = []
+    out.append(("program_count", len(summary_rows)))
+    complete = [r for r in summary_rows]
+    ape = []
+    signed = []
+    for r in complete:
+        m = r["Unconstrained Median Peak (MiB)"]
+        e = r["V3 Estimate (MiB)"]
+        if m != m or m == 0:
+            continue
+        ape.append(abs(e - m) / m * 100)
+        signed.append((e - m) / m * 100)
+    out.append(("median_ape_v3_vs_unconstrained", statistics.median(ape)))
+    out.append(("mean_signed_v3_vs_unconstrained_percent", statistics.mean(signed)))
+    out.append(("p90_ape_v3_vs_unconstrained", interpolated_percentile(ape, 0.90)))
+    for budget in budgets:
+        completed = failed = at_or_under = 0
+        fits_failed = 0
+        ratios = []
+        for r in complete:
+            c = r[f"Budget {budget} MiB Runs Completed"]
+            f = r[f"Budget {budget} MiB Runs Failed"]
+            completed += c
+            failed += f
+            at_or_under += r[f"Budget {budget} MiB Runs Peak LE {budget * 1.03:g}"]
+            med = r[f"Budget {budget} MiB Median Peak (MiB)"]
+            fits = r[f"Budget {budget} MiB Fits (v3<={budget})"]
+            if fits and (f > 0 or (med == med and med > budget)):
+                fits_failed += 1
+            el = r[f"Budget {budget} MiB Median Elapsed (s)"]
+            un = r["Unconstrained Median Elapsed (s)"]
+            if el == el and un:
+                ratios.append(el / un)
+        out.append((f"budget_run_count_at_{budget}mib", completed + failed))
+        out.append((f"budget_run_completed_at_{budget}mib", completed))
+        out.append((f"budget_run_failed_at_{budget}mib", failed))
+        out.append((f"fraction_le_103_at_{budget}mib",
+                    at_or_under / completed if completed else float("nan")))
+        out.append((f"false_accepts_at_{budget}mib", fits_failed))
+        out.append((f"walltime_ratio_median_at_{budget}mib",
+                    statistics.median(ratios) if ratios else float("nan")))
+        out.append((f"walltime_ratio_max_at_{budget}mib",
+                    max(ratios) if ratios else float("nan")))
+    fits_overs = []
+    for r in complete:
+        for budget in budgets:
+            if not r[f"Budget {budget} MiB Fits (v3<={budget})"]:
+                continue
+            med = r[f"Budget {budget} MiB Median Peak (MiB)"]
+            if r[f"Budget {budget} MiB Runs Failed"] > 0:
+                fits_overs.append(float("inf"))
+            elif med == med:
+                fits_overs.append((med / budget - 1) * 100)
+    if any(o == float("inf") for o in fits_overs):
+        out.append(("overshoot_percent_fits_predicted", float("inf")))
+    elif fits_overs:
+        out.append(("overshoot_percent_fits_predicted", max(fits_overs)))
+    else:
+        out.append(("overshoot_percent_fits_predicted", float("nan")))
+    out.append(("false_accept_total",
+                sum(v for k, v in out if k.startswith("false_accepts_at_"))))
+    return out
+
+
+def run_v3(args, ordered_benchmarks):
+    """V3 campaign: same candidates as v2; each compiled worker runs
+    unconstrained plus once per memory budget (CHEHAB_MEM_LIMIT_BYTES)."""
+    baseline_a, baseline_b, baseline_flag = load_v3_baseline_coefficients()
+    print(f"V3 baseline: a={baseline_a:.4f} b={baseline_b:.4f} "
+          f"flag={baseline_flag}", flush=True)
+    raw_rows, summary_rows, failures = [], [], []
+
+    def persist():
+        if raw_rows:
+            args.v3_raw_output.parent.mkdir(parents=True, exist_ok=True)
+            with args.v3_raw_output.open("w", newline="") as output:
+                writer = csv.DictWriter(
+                    output, fieldnames=list(raw_rows[0]), lineterminator="\n")
+                writer.writeheader()
+                writer.writerows(raw_rows)
+        if summary_rows:
+            args.v3_summary_output.parent.mkdir(parents=True, exist_ok=True)
+            with args.v3_summary_output.open("w", newline="") as output:
+                writer = csv.DictWriter(
+                    output, fieldnames=list(summary_rows[0]), lineterminator="\n")
+                writer.writeheader()
+                writer.writerows(summary_rows)
+        args.v3_failures_output.parent.mkdir(parents=True, exist_ok=True)
+        with args.v3_failures_output.open("w", newline="") as output:
+            writer = csv.DictWriter(
+                output, fieldnames=("Program", "Error"), lineterminator="\n")
+            writer.writeheader()
+            writer.writerows(failures)
+
+    for benchmark in ordered_benchmarks:
+        for width, vectorization in candidate_cases(benchmark, args.widths):
+            key = f"{benchmark}/width={width}/{vectorization}"
+            print(f"Measuring v3 {key}", flush=True)
+            try:
+                (params, v3, baseline_hat, flag, sha,
+                 runs) = measure_program_v3(
+                    benchmark, width, vectorization, args.repeats,
+                    args.memory_budgets, baseline_a, baseline_b, baseline_flag,
+                )
+            except Exception as error:
+                detail = str(error)
+                if isinstance(error, subprocess.CalledProcessError):
+                    detail = f"{detail}\nstdout: {error.stdout}\nstderr: {error.stderr}"
+                failures.append({"Program": key, "Error": detail})
+                print(f"FAILED {key}: {error}", flush=True)
+                persist()
+                continue
+            uncon = [r["Peak RSS (MiB)"] for r in runs
+                     if r["Budget (MiB)"] == "unconstrained"]
+            un_elapsed = [r["Elapsed (s)"] for r in runs
+                          if r["Budget (MiB)"] == "unconstrained"]
+            v3_mib = v3.estimated_bytes_lo / 2**20
+            row = {
+                "Benchmark": benchmark, "Width": width,
+                "Vectorization": vectorization, "Split": args.split,
+                "N": params.poly_modulus_degree,
+                "L": params.coeff_modulus_num_primes,
+                "Baseline Flag": flag, "Source SHA256": sha,
+                "V3 Estimate (MiB)": v3_mib,
+                "V3 Live Set (MiB)": v3.managed_live_bytes / 2**20,
+                "Baseline Hat (MiB)": baseline_hat,
+                "Unconstrained Median Peak (MiB)":
+                    statistics.median(uncon),
+                "Unconstrained Median Elapsed (s)":
+                    statistics.median(un_elapsed),
+                "Repeat Count": args.repeats,
+            }
+            for budget in args.memory_budgets:
+                ok = [r for r in runs
+                      if r["Budget (MiB)"] == budget
+                      and r["Peak RSS (MiB)"] == r["Peak RSS (MiB)"]]
+                fails = sum(1 for r in runs
+                            if r["Budget (MiB)"] == budget) - len(ok)
+                med = statistics.median(
+                    [r["Peak RSS (MiB)"] for r in ok]) if ok else float("nan")
+                el = statistics.median(
+                    [r["Elapsed (s)"] for r in ok
+                     if r["Elapsed (s)"] == r["Elapsed (s)"]]) if ok else float("nan")
+                row[f"Budget {budget} MiB Median Peak (MiB)"] = med
+                row[f"Budget {budget} MiB Median Elapsed (s)"] = el
+                row[f"Budget {budget} MiB Runs Completed"] = len(ok)
+                row[f"Budget {budget} MiB Runs Failed"] = fails
+                row[f"Budget {budget} MiB Runs Peak LE {budget * 1.03:g}"] = sum(
+                    1 for r in ok if r["Peak RSS (MiB)"] <= budget * 1.03)
+                row[f"Budget {budget} MiB Fits (v3<={budget})"] = v3_mib <= budget
+            summary_rows.append(row)
+            for run in runs:
+                raw_rows.append({
+                    "Benchmark": benchmark, "Width": width,
+                    "Vectorization": vectorization, "Split": args.split,
+                    "Repeat": run["Repeat"], "Budget (MiB)": run["Budget (MiB)"],
+                    "Peak RSS (MiB)": run["Peak RSS (MiB)"],
+                    "Elapsed (s)": run["Elapsed (s)"],
+                    "Source SHA256": sha, "V3 Estimate (MiB)": v3_mib,
+                })
+            persist()
+    persist()
+    print(f"Completed {len(summary_rows)} programs, {len(raw_rows)} runs, "
+          f"{len(failures)} failures.", flush=True)
+    metric_rows = [
+        {"Model": "v3", "Split": args.split, "Metric": name, "Value": value}
+        for name, value in v3_summary_metrics(summary_rows, args.memory_budgets)
+    ]
+    args.v3_metrics_output.parent.mkdir(parents=True, exist_ok=True)
+    with args.v3_metrics_output.open("w", newline="") as output:
+        writer = csv.DictWriter(
+            output, fieldnames=("Model", "Split", "Metric", "Value"),
+            lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(metric_rows)
+    for metric in metric_rows:
+        print(f"v3 {args.split} {metric['Metric']}={metric['Value']}", flush=True)
+    if failures:
+        print("Failures:", flush=True)
+        for failure in failures:
+            print(f"  {failure['Program']}: {failure['Error']}", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Compile and repeatedly measure CHEHAB benchmark programs."
@@ -905,6 +1228,23 @@ def main():
         default=ROOT / "RL" / "compiled_corpus_benchmark_metrics.csv",
     )
     parser.add_argument("--failures-output", type=Path, default=DEFAULT_FAILURES_OUTPUT)
+    parser.add_argument(
+        "--model", choices=("v1v2", "v3"), default="v1v2",
+        help="v1v2 runs the legacy path; v3 runs the policy campaign "
+             "(budget limits, ELF-derived baseline, new output files).",
+    )
+    parser.add_argument(
+        "--memory-budgets", nargs="+", type=int, default=(64, 256, 1024),
+        help="V3 budgets in MiB applied via CHEHAB_MEM_LIMIT_BYTES.",
+    )
+    parser.add_argument("--v3-raw-output", type=Path,
+                        default=ROOT / "RL" / "compiled_corpus_v3_runs.csv")
+    parser.add_argument("--v3-summary-output", type=Path,
+                        default=ROOT / "RL" / "compiled_corpus_v3_summary.csv")
+    parser.add_argument("--v3-metrics-output", type=Path,
+                        default=ROOT / "RL" / "compiled_corpus_v3_metrics.csv")
+    parser.add_argument("--v3-failures-output", type=Path,
+                        default=ROOT / "RL" / "compiled_corpus_v3_failures.csv")
     args = parser.parse_args()
     if args.repeats < 1:
         parser.error("--repeats must be positive")
@@ -925,6 +1265,10 @@ def main():
     ordered_benchmarks = benchmarks_for_split(
         selected_benchmarks, args.split
     )
+    if args.model == "v3":
+        # V3 policy campaign. Legacy v1/v2 outputs are never written here.
+        run_v3(args, ordered_benchmarks)
+        return
     splits_to_report = (args.split,)
     raw_rows, summary_rows, failures = [], [], []
     def persist_results():

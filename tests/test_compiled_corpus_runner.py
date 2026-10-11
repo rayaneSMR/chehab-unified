@@ -56,6 +56,33 @@ encryptedOutputs["b"] = b
         self.assertEqual(len(expression.args), 2)
         self.assertEqual([output.op for output in expression.args], ["+", "*"])
 
+    def test_instrumentation_sets_go_memory_limit_from_budget_env(self):
+        source = '''package main
+import (
+    "fmt"
+)
+func main() {
+    // Key Generation
+    // Encoder, Encryptor, Decryptor, Evaluator
+    // Input/Output maps
+    // Run computation
+    elapsed := time.Since(t).Seconds() * 1000.0
+    for range encryptedOutputs {}
+\t_ = encodedOutputs
+}
+'''
+        instrumented = instrument_go_source(source)
+
+        self.assertIn('"strconv"', instrumented)
+        self.assertIn('"runtime/debug"', instrumented)
+        self.assertIn('os.Getenv("CHEHAB_MEM_LIMIT_BYTES")', instrumented)
+        self.assertIn("debug.SetMemoryLimit", instrumented)
+        # Limit is applied before the baseline snapshot.
+        self.assertLess(
+            instrumented.index("debug.SetMemoryLimit"),
+            instrumented.index('reportMemoryPhase("baseline")'),
+        )
+
     def test_parser_preserves_ssa_values_when_names_are_reused(self):
         source = """
 x := encryptedInputs["a"]
