@@ -13,7 +13,7 @@ LATTIGO_DIR = "/home/maroua/chehab-unified/lattigo_backend"
 
 sys.path.append(RL_DIR)
 from pytrs.parser import parse_sexpr
-from pytrs.peak_ram import estimate_peak_ram, FHEParams, BackendConfig
+from pytrs.peak_ram import estimate_peak_ram, FHEParams, LATTIGO_CONFIG, SEAL_CONFIG
 
 def run_cmd(cmd, cwd=None):
     try:
@@ -59,11 +59,13 @@ def main():
         
         # Estimate
         params = FHEParams(poly_modulus_degree=16384, coeff_modulus_num_primes=6)
-        lat_conf = BackendConfig("lattigo", 0.286, base_bytes_overhead=45*1024**2)
-        seal_conf = BackendConfig("seal", 1.9, base_bytes_overhead=15*1024**2)
+        lat_est_obj = estimate_peak_ram(ast, params, backend_config=LATTIGO_CONFIG)
+        lat_est_lo = lat_est_obj.total_bytes_lo / 1024**2
+        lat_est_hi = lat_est_obj.total_bytes_hi / 1024**2
         
-        lat_est = estimate_peak_ram(ast, params, order="fixed", keys="raw", backend_config=lat_conf).total_mib
-        seal_est = estimate_peak_ram(ast, params, order="fixed", keys="raw", backend_config=seal_conf).total_mib
+        seal_est_obj = estimate_peak_ram(ast, params, backend_config=SEAL_CONFIG)
+        seal_est_lo = seal_est_obj.total_bytes_lo / 1024**2
+        seal_est_hi = seal_est_obj.total_bytes_hi / 1024**2
         
         # 1. Run Python Generator (inline, no torch)
         import random
@@ -111,7 +113,7 @@ def main():
         
         # Execute SEAL and measure RAM
         seal_actual = get_peak_ram("./build/main", cwd=he_dir)
-        print(f"SEAL: Actual {seal_actual:.2f} MB, Est {seal_est:.2f} MB", flush=True)
+        print(f"SEAL: Actual {seal_actual:.2f} MB, Est Lo {seal_est_lo:.2f} MB, Est Hi {seal_est_hi:.2f} MB", flush=True)
         
         # 3. Generate Lattigo Go Code
         run_cmd("/home/maroua/chehab-unified/build/RL/veclang_runner/veclang_runner 1 1 1", cwd=VECLANG_RUNNER_DIR)
@@ -128,14 +130,14 @@ def main():
         # Execute Lattigo and measure RAM
         run_cmd("go build -o test_bin generated_fhe.go", cwd=LATTIGO_DIR)
         lat_actual = get_peak_ram("./test_bin", cwd=LATTIGO_DIR)
-        print(f"Lattigo: Actual {lat_actual:.2f} MB, Est {lat_est:.2f} MB", flush=True)
+        print(f"Lattigo: Actual {lat_actual:.2f} MB, Est Lo {lat_est_lo:.2f} MB, Est Hi {lat_est_hi:.2f} MB", flush=True)
         
-        seal_err = abs(seal_est - seal_actual) / seal_actual * 100 if seal_actual > 0 else 0
-        seal_dir = "OVER" if seal_est > seal_actual else "UNDER" if seal_est < seal_actual else "EXACT"
-        lat_err = abs(lat_est - lat_actual) / lat_actual * 100 if lat_actual > 0 else 0
-        lat_dir = "OVER" if lat_est > lat_actual else "UNDER" if lat_est < lat_actual else "EXACT"
+        seal_err_lo = abs(seal_est_lo - seal_actual) / seal_actual * 100 if seal_actual > 0 else 0
+        seal_dir_lo = "OVER" if seal_est_lo > seal_actual else "UNDER" if seal_est_lo < seal_actual else "EXACT"
+        lat_err_lo = abs(lat_est_lo - lat_actual) / lat_actual * 100 if lat_actual > 0 else 0
+        lat_dir_lo = "OVER" if lat_est_lo > lat_actual else "UNDER" if lat_est_lo < lat_actual else "EXACT"
         
-        res_row = [name, seal_actual, seal_est, f"{seal_err:.2f}%", seal_dir, lat_actual, lat_est, f"{lat_err:.2f}%", lat_dir]
+        res_row = [name, seal_actual, seal_est_lo, seal_est_hi, f"{seal_err_lo:.2f}%", seal_dir_lo, lat_actual, lat_est_lo, lat_est_hi, f"{lat_err_lo:.2f}%", lat_dir_lo]
         results.append(res_row)
         with open("/mnt/c/Users/CC USER/.gemini/antigravity-ide/brain/72d30e96-47dc-46c5-98b8-938eff1a973a/scratch/benchmarks_execution.csv", "a", newline='') as f:
             writer = csv.writer(f)
@@ -144,6 +146,6 @@ def main():
 if __name__ == "__main__":
     with open("/mnt/c/Users/CC USER/.gemini/antigravity-ide/brain/72d30e96-47dc-46c5-98b8-938eff1a973a/scratch/benchmarks_execution.csv", "w", newline='') as f:
         writer = csv.writer(f)
-        writer.writerow(["Benchmark", "SEAL Actual", "SEAL Est", "SEAL Error", "SEAL Dir", "Lattigo Actual", "Lattigo Est", "Lattigo Error", "Lattigo Dir"])
+        writer.writerow(["Benchmark", "SEAL Actual", "SEAL Est Lo", "SEAL Est Hi", "SEAL Error Lo", "SEAL Dir Lo", "Lattigo Actual", "Lattigo Est Lo", "Lattigo Est Hi", "Lattigo Error Lo", "Lattigo Dir Lo"])
     main()
 
