@@ -38,7 +38,39 @@ class Expr:
         expected_vec_length: int | None = None,
         debug: bool = False
     ) -> bool:
-        """Return True if the expression tree is well‑formed (see doc‑string)."""
+        """Return True if the expression tree is well‑formed (see doc‑string).
+
+        DAG-aware: results are memoized by (id(self), expected_vec_length) for
+        the duration of a single top-level call, so shared subtrees are
+        validated once instead of once-per-occurrence (exponential -> linear
+        on shared/DAG trees produced by the vectorize / distributive rules).
+        """
+        cache: dict = {}
+        return self._validate_cached(depth, expected_vec_length, debug, cache)
+
+    def _validate_cached(
+        self,
+        depth: int,
+        expected_vec_length: int | None,
+        debug: bool,
+        cache: dict,
+    ) -> bool:
+        key = (id(self), expected_vec_length)
+        cached = cache.get(key)
+        if cached is not None:
+            return cached
+        result = self._validate_impl(depth, expected_vec_length, debug, cache)
+        cache[key] = result
+        return result
+
+    def _validate_impl(
+        self,
+        depth: int,
+        expected_vec_length: int | None,
+        debug: bool,
+        cache: dict,
+    ) -> bool:
+        """Original validation logic; recursive calls go through _validate_cached."""
         ind = "  " * depth  # indentation helper
 
         if debug:
@@ -85,7 +117,7 @@ class Expr:
             for i, child in enumerate(args):
                 if debug:
                     print(f"{ind}    checking Vec element #{i}")
-                if not child.validate_expression(depth+2, None, debug):
+                if not child._validate_cached(depth+2, None, debug, cache):
                     return False
             return True
 
@@ -97,7 +129,7 @@ class Expr:
                 if debug:
                     print(f"{ind}[ERROR] '{op}' expects 1 child, got {n}")
                 return False
-            return args[0].validate_expression(depth+2, expected_vec_length, debug)
+            return args[0]._validate_cached(depth+2, expected_vec_length, debug, cache)
 
         # ────────────────────────────────────────────────────────────────────
         # C) n‑ary vector ops  (VecAdd / VecMinus / VecMul)
@@ -108,7 +140,7 @@ class Expr:
                     print(f"{ind}[ERROR] '{op}' expects ≥2 children, got {n}")
                 return False
             return all(
-                child.validate_expression(depth+2, expected_vec_length, debug)
+                child._validate_cached(depth+2, expected_vec_length, debug, cache)
                 for child in args
             )
 
@@ -124,7 +156,7 @@ class Expr:
             vec_child, shift_child = args
 
             # first argument must be a *vector expression*
-            if not vec_child.validate_expression(depth+2, expected_vec_length, debug):
+            if not vec_child._validate_cached(depth+2, expected_vec_length, debug):
                 if debug:
                     print(f"{ind}[ERROR] first arg of '<<' must be a vector")
                 return False
@@ -140,11 +172,11 @@ class Expr:
         # E) unary minus  /  binary minus
         # ────────────────────────────────────────────────────────────────────
         if op == "-" and n == 1:         # unary
-            return args[0].validate_expression(depth+2, None, debug)
+            return args[0]._validate_cached(depth+2, None, debug, cache)
 
         if op == "-" and n == 2:         # binary
             return all(
-                child.validate_expression(depth+2, None, debug)
+                child._validate_cached(depth+2, None, debug, cache)
                 for child in args
             )
 
@@ -157,7 +189,7 @@ class Expr:
                     print(f"{ind}[ERROR] '{op}' expects 2 children, got {n}")
                 return False
             return all(
-                child.validate_expression(depth+2, None, debug)
+                child._validate_cached(depth+2, None, debug, cache)
                 for child in args
             )
 
@@ -176,6 +208,8 @@ class Expr:
 class Const(Expr):
     def __init__(self, value: int | float):
         self.value = value
+    def _struct_hash(self) -> int:
+        return hash(("const", self.value))
     def __repr__(self) -> str:
         return f"Const({self.value})"
     def __eq__(self, other):  return isinstance(other, Const) and self.value == other.value
@@ -185,6 +219,8 @@ class Var(Expr):
     def __init__(self, name: str,parent:str=None):
         self.name = name
         self.parent_op = parent
+    def _struct_hash(self) -> int:
+        return hash(("var", self.name))
     def __repr__(self) -> str:
         return f"Var({self.name})"
     def __eq__(self, other):  return isinstance(other, Var) and self.name == other.name
@@ -199,7 +235,22 @@ class Op(Expr):
     def __init__(self, op: str, args: list[Expr]):
         self.op   = op
         self.args = args
+        self._cached_struct_hash = None
+    def _struct_hash(self) -> int:
+        """Structural hash of this Op, memoized. Children are hashed first
+        (bottom-up construction guarantees they are already memoized)."""
+        if self._cached_struct_hash is None:
+            self._cached_struct_hash = hash((self.op, tuple(a._struct_hash() for a in self.args)))
+        return self._cached_struct_hash
     def __repr__(self) -> str:
         return f"Op({self.op}, [{', '.join(repr(a) for a in self.args)}])"
-    def __eq__(self, other):  return isinstance(other, Op) and self.op == other.op and self.args == other.args
-    def __hash__(self):       return hash((self.op, tuple(self.args)))
+    def __eq__(self, other):
+        if self is other:
+            return True                       # identity fast-path
+        if not isinstance(other, Op):
+            return False
+        if self._struct_hash() != other._struct_hash():   # hash short-circuit
+            return False
+        return self.op == other.op and self.args == other.args
+    def __hash__(self):
+        return self._struct_hash()
