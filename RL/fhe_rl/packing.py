@@ -199,8 +199,12 @@ def _is_unary_minus(elem):
         return False
 
 
-def _decompose(elems):
+def _decompose(elems, fix_labels=False):
+    """Split lanes "( op x y )" into operand vectors. fix_labels=False keeps the legacy slicing
+    toks[1:-1] (keeps the operator token; CPU/Lattigo calibration was fitted on it).
+    fix_labels=True slices toks[2:-1] (operands only); used by the GPU backend."""
     ops1, ops2 = [], []
+    start = 2 if fix_labels else 1
     for e in elems:
         if e == "0":
             ops1.append("0"); ops2.append("0"); continue
@@ -208,7 +212,7 @@ def _decompose(elems):
             toks = _tokens(e)
             if len(toks) < 4 or toks[0] != "(" or toks[-1] != ")":
                 continue
-            items = _groups(toks[1:-1])
+            items = _groups(toks[start:-1])
         except Exception:
             continue
         if len(items) >= 2:
@@ -219,7 +223,8 @@ def _decompose(elems):
 
 
 class _Packer:
-    def __init__(self):
+    def __init__(self, fix_labels=False):
+        self.fix_labels = fix_labels
         self.dictionary = {}          # "Vec lane lane ..." -> label
         self.entries = {}             # label -> kind ('c' or 'p')
         self.n = 0
@@ -279,13 +284,13 @@ class _Packer:
             if nz(add) and nz(mul):
                 return f"( + {self.pcv(add)} {self.pcv(mul)} )"
             if nz(add):
-                a, b = _decompose(add); return f"( + {self.pcv(a)} {self.pcv(b)} )"
+                a, b = _decompose(add, self.fix_labels); return f"( + {self.pcv(a)} {self.pcv(b)} )"
             if nz(sub):
-                a, b = _decompose(sub); return f"( - {self.pcv(a)} {self.pcv(b)} )"
+                a, b = _decompose(sub, self.fix_labels); return f"( - {self.pcv(a)} {self.pcv(b)} )"
             if nz(mul):
-                a, b = _decompose(mul); return f"( * {self.pcv(a)} {self.pcv(b)} )"
+                a, b = _decompose(mul, self.fix_labels); return f"( * {self.pcv(a)} {self.pcv(b)} )"
             if nz(neg):
-                a, _ = _decompose(neg); return f"( - {self.pcv(a)} )"
+                a, _ = _decompose(neg, self.fix_labels); return f"( - {self.pcv(a)} )"
             return self._entry(key, "c")      # other composed lanes (e.g. rotations): kept as an input vector, as the compiler does
         # only simple lanes (variables / literals)
         is_lit = all(_is_literal(v) for v in simple)
@@ -320,7 +325,7 @@ _VEC_OPS = {"VecAdd": "+", "VecMinus": "-", "VecNeg": "-", "VecMul": "*", "<<": 
             "VecAddRot": "VecAddRot", "VecMinusRot": "VecMinusRot", "VecMulRot": "VecMulRot"}
 
 
-def pack(expr):
+def pack(expr, fix_labels=False):
     """returns (ir_string, n_cipher_inputs, n_plain_inputs, n_ops)
 
     Never raises: on malformed input returns the raw expression with zero
@@ -328,14 +333,14 @@ def pack(expr):
     instead of killing a SubprocVecEnv worker.
     """
     try:
-        return _pack_inner(expr)
+        return _pack_inner(expr, fix_labels)
     except Exception:
         raw = expr if isinstance(expr, str) else ""
         return raw, 0, 0, 0
 
 
-def _pack_inner(expr):
-    pk = _Packer()
+def _pack_inner(expr, fix_labels=False):
+    pk = _Packer(fix_labels)
 
     def proc(node):
         if isinstance(node, str):
@@ -354,10 +359,10 @@ def _pack_inner(expr):
     return ir, n_c, n_p, n_ops
 
 
-def pack_expr_str(expr):
+def pack_expr_str(expr, fix_labels=False):
     """expression in the estimator's dialect: cipher vectors -> Var, plaintext vectors -> constant 1"""
     try:
-        ir, _, _, _ = pack(expr)
+        ir, _, _, _ = pack(expr, fix_labels)
         ir = re.sub(r"\bp\d+\b", "1", ir)
         return ir.replace("( ", "(").replace(" )", ")")
     except Exception:
