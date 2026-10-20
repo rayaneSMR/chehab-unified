@@ -312,14 +312,20 @@ def train_agent(
 
     unified_metrics_cb = UnifiedMetricsCallback(pid_wrapper=pid_wrapper, total_timesteps=total_timesteps, progress_freq=2000, verbose=1)
 
-    # Write heartbeat alongside every progress line (cheap, atomic).
+    # Heartbeat alongside every progress line, gated to progress_freq (writes
+    # on EVERY vecenv step would be 625k file writes over a 5M-step run).
     _orig_progress_step = unified_metrics_cb._on_step
+    _hb_state = {"last_write": -1}
     def _on_step_with_heartbeat():
         ok = _orig_progress_step()
+        nts = int(unified_metrics_cb.num_timesteps)
+        if nts - _hb_state["last_write"] < unified_metrics_cb.progress_freq:
+            return ok
+        _hb_state["last_write"] = nts
         try:
             with open(heartbeat_path, "w") as _hb:
                 _hb.write('{"timesteps": %d, "time": %.1f, "run": "%s"}' % (
-                    int(unified_metrics_cb.num_timesteps), time.time(), run_name))
+                    nts, time.time(), run_name))
         except Exception:
             pass
         return ok

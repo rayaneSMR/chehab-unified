@@ -115,6 +115,19 @@ class fheEnvUnified(gym.Env):
         self.embed_fallback_count = 0
         self._worker_logged = False
 
+        # ── Deterministic memoization (bit-identical to recomputation) ──────
+        # GNN embeddings and action masks are pure functions of the expression
+        # string (budget additionally only for noise_masking) and never depend
+        # on policy weights, so caching them is exactly equivalent to
+        # recomputing. The GNN forward was ~85% of env.step wall time; caches
+        # mainly make repeated evaluations (deterministic eval trajectories)
+        # and recurrent expressions nearly free. Sized for 64 GB nodes:
+        # ~50 MB embeddings + ~140 MB masks per worker process.
+        self._EMB_CACHE_MAX = 50_000
+        self._MASK_CACHE_MAX = 20_000
+        self._emb_cache = {}
+        self._mask_cache = {}
+
         # Clamping threads inside each worker environment to prevent thread contention
         torch.set_num_threads(1)
 
@@ -441,13 +454,13 @@ class fheEnvUnified(gym.Env):
             print(f"{BOLD}{MAGENTA}At position          {RESET}: {BLUE}{pos_idx}{RESET}")
             print(f"{CYAN}{'-'*100}{RESET}")
 
-        embedding = self._embed_expression(self.expression)
-        if embedding is None:
-            terminated = True
-            truncated = True
-            reward = self.calculate_final_reward()
-        else:
-            terminated = terminated or (self.steps >= self.max_steps)
+        # Fast-step optimization: _embed_expression NEVER returns None (it
+        # returns a zeros fallback), so the old "embedding is None" branch was
+        # dead code and this second GNN forward pass was redundant -- _get_obs()
+        # below embeds the exact same expression. Only the max_steps guard from
+        # the old else-branch is kept (it is also enforced above, right after
+        # applying a non-END rule).
+        terminated = terminated or (self.steps >= self.max_steps)
 
         # ── NATO-SC Terminal Quadratic Penalty ──
         if self.constraint_method in ("nato_sc", "lagrangian_pid_nato") and (terminated or truncated):
@@ -606,6 +619,9 @@ class fheEnvUnified(gym.Env):
             if self.embeddings_model is None:
                 self.embed_fallback_count += 1
                 return fallback
+            cached = self._emb_cache.get(expr)
+            if cached is not None:
+                return cached.copy()
             if hasattr(self.embeddings_model, "get_embedding"):
                 emb = self.embeddings_model.get_embedding(expr)
                 if emb is None:
@@ -615,7 +631,10 @@ class fheEnvUnified(gym.Env):
                 if arr.size != self.embedding_dim:
                     self.embed_fallback_count += 1
                     return fallback
-                return arr
+                if len(self._emb_cache) >= self._EMB_CACHE_MAX:
+                    self._emb_cache.clear()
+                self._emb_cache[expr] = arr
+                return arr.copy()
             expr_tree = parse_sexpr(expr)
             with torch.no_grad():
                 emb = get_expression_cls_embedding(expr_tree, self.embeddings_model)
@@ -626,7 +645,10 @@ class fheEnvUnified(gym.Env):
             if arr.size != self.embedding_dim:
                 self.embed_fallback_count += 1
                 return fallback
-            return arr
+            if len(self._emb_cache) >= self._EMB_CACHE_MAX:
+                self._emb_cache.clear()
+            self._emb_cache[expr] = arr
+            return arr.copy()
         except Exception:
             self.embed_fallback_count += 1
             return fallback
@@ -654,12 +676,6 @@ class fheEnvUnified(gym.Env):
         n_actions = len(self.rules.keys()) * self.max_positions
         mask = np.zeros(n_actions, dtype=np.float32)
         try:
-            parsed = parse_sexpr(self.expression)
-        except Exception:
-            # Unparseable expression: allow only END so the episode can close.
-            mask[0] = 1.0
-            return mask
-        try:
             use_masking = (
                 self.constraint_method == "noise_masking"
                 and self.budget is not None
@@ -667,6 +683,19 @@ class fheEnvUnified(gym.Env):
             )
         except Exception:
             use_masking = False
+        # Memoization: the mask is a pure function of the expression (plus the
+        # budget only when noise_masking is active), so a cached mask is
+        # bit-identical to a freshly computed one.
+        cache_key = (self.expression, self.budget) if use_masking else self.expression
+        cached = self._mask_cache.get(cache_key)
+        if cached is not None:
+            return cached.copy()
+        try:
+            parsed = parse_sexpr(self.expression)
+        except Exception:
+            # Unparseable expression: allow only END so the episode can close.
+            mask[0] = 1.0
+            return mask
         for rule_idx, rule_name in enumerate(self.rules.keys()):
             if rule_name == "END":
                 mask[rule_idx * self.max_positions] = 1.0
@@ -693,4 +722,12 @@ class fheEnvUnified(gym.Env):
                     mask[start:start + valid_positions] = 1.0
         if not np.any(mask):
             mask[0] = 1.0  # never return an all-zero mask (would stall sampling)
-        return mask
+        return self._store_mask(cache_key, mask)
+
+    def _store_mask(self, key, mask: np.ndarray) -> np.ndarray:
+        """Cache the pristine mask and hand the caller a copy, so caller-side
+        mutation can never poison the cache (results stay bit-identical)."""
+        if len(self._mask_cache) >= self._MASK_CACHE_MAX:
+            self._mask_cache.clear()
+        self._mask_cache[key] = mask
+        return mask.copy()
