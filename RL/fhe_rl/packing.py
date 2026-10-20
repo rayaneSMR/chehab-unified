@@ -208,7 +208,7 @@ def _decompose(elems):
             toks = _tokens(e)
             if len(toks) < 4 or toks[0] != "(" or toks[-1] != ")":
                 continue
-            items = _groups(toks[2:-1])
+            items = _groups(toks[1:-1])
         except Exception:
             continue
         if len(items) >= 2:
