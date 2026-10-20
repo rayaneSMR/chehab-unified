@@ -179,6 +179,9 @@ def estimate_expression_memory(
     # HEonGPU keeps a ciphertext's top-level buffer after rescaling; Lattigo shrinks it.
     peak_cts, peak_bytes = live.peak(params.N, level_aware=(backend == "cpu"))
     terms = estimate_peak_memory(params.N, params.L, params.K, len(live.rotations), peak_bytes, backend)
+    if backend == "gpu":
+        # generated .cu keeps one extra full copy per distinct input label (gen_input_terms)
+        terms["input_copies"] = len(live.inputs) * ciphertext_bytes(params.N, params.L - 1)
     galois = len(live.rotations) + (1 if backend == "gpu" and live.rotations else 0)
     return MemoryEstimate(params, len(live.rotations), galois, peak_cts, terms)
 
