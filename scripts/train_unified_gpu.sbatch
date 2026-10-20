@@ -3,17 +3,21 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -c 16
-#SBATCH -t 7-00:00:00
+#SBATCH -t 4-00:00:00
 #SBATCH --mail-user=rs10728@nyu.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
 #SBATCH -o /scratch/rs10728/heongpu-project/logs/output.unified_gpu.%j.txt
 #SBATCH -e /scratch/rs10728/heongpu-project/logs/error.unified_gpu.%j.txt
 #SBATCH -J unified-gpu
+#SBATCH -p condo
+#SBATCH -q c2
+#SBATCH --gres=gpu:a100:1
 #SBATCH --signal=B:TERM@300
 
-module load gcc/11.5.0
+module load gcc/11.5.0 cuda/12.2.0
 export PYTHONUNBUFFERED=1
 export PEAK_RAM_BACKEND=gpu          # estimator = HEonGPU (A100) + label-fixed packing
+export ROT_LOG=/scratch/rs10728/heongpu-project/logs/rot_nonzero_${SLURM_JOB_ID:-local}.log
 PY=/home/rs10728/.conda/envs/fhe_rl/bin/python
 PROJ_ROOT=/scratch/rs10728/heongpu-project/src/chehab-unified
 mkdir -p /scratch/rs10728/heongpu-project/logs

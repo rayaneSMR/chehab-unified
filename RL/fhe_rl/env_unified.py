@@ -539,6 +539,12 @@ class fheEnvUnified(gym.Env):
             rot_keys = rotation_steps(self.expression)
         except Exception:
             rot_keys = -1
+        if rot_keys != 0:
+            try:
+                with open(__import__("os").environ.get("ROT_LOG", "/tmp/rot_nonzero.log"), "a") as _f:
+                    _f.write(f"{rot_keys}\t{self.expression[:300]}\n")
+            except Exception:
+                pass
         try:
             r_exec, r_keys = float(self._last_r_vec[0]), float(self._last_r_vec[1])
         except Exception:
