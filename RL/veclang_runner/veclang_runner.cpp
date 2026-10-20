@@ -33,7 +33,7 @@ int main(int argc, char **argv)
   else
     Compiler::disable_const_folding();
 
-  // argv[3]: backend selection — 0 = SEAL (default), 1 = Lattigo/CKKS
+  // argv[3]: backend selection — 0 = SEAL (default), 1 = Lattigo/CKKS, 2 = HEonGPU/CKKS
   int backend = 0;
   if (argc > 3) backend = stoi(argv[3]);
 
@@ -68,6 +68,15 @@ int main(int argc, char **argv)
     Compiler::gen_lattigo_code(func, go_os, numeric_limits<size_t>::max(), true);
     go_os.close();
     cout << "lattigo_output: generated_fhe.go" << endl;
+  }
+  else if (backend == 2)
+  {
+    // HEonGPU / CKKS (scheme 1)
+    ofstream cu_os("generated_fhe.cu");
+    if (!cu_os) throw logic_error("failed to create CUDA output file");
+    Compiler::gen_heongpu_code(func, cu_os, 1);
+    cu_os.close();
+    cout << "heongpu_output: generated_fhe.cu" << endl;
   }
   else
   {

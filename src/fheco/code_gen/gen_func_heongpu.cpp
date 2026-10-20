@@ -38,6 +38,13 @@ void gen_func_heongpu(
 
   string scheme_str = (scheme == 0) ? "heongpu::Scheme::BFV" : "heongpu::Scheme::CKKS";
   os << "constexpr auto SCHEME = " << scheme_str << ";\n\n";
+  if (scheme == 1) {
+    os << "template <class OPS>\n";
+    os << "void align_levels(OPS& ops, heongpu::Ciphertext<SCHEME>& a, heongpu::Ciphertext<SCHEME>& b) {\n";
+    os << "    while (a.depth() < b.depth()) ops.mod_drop_inplace(a);\n";
+    os << "    while (b.depth() < a.depth()) ops.mod_drop_inplace(b);\n";
+    os << "}\n\n";
+  }
 
   // Generate rotation steps getter
   os << "std::vector<int> getRotationSteps() {\n";
@@ -187,9 +194,12 @@ void gen_func_heongpu(
   os << "    auto t_keys_end = std::chrono::high_resolution_clock::now();\n";
   os << "    double keys_elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(t_keys_end - t_keys_start).count();\n\n";
 
-  os << "    std::ostringstream key_stream(std::ios::binary);\n";
-  os << "    galois_keys.save(key_stream);\n";
-  os << "    size_t galois_keys_total_size = key_stream.str().size();\n";
+  os << "    size_t galois_keys_total_size = 0;\n";
+  os << "    if (!rotations.empty()) {\n";
+  os << "        std::ostringstream key_stream(std::ios::binary);\n";
+  os << "        galois_keys.save(key_stream);\n";
+  os << "        galois_keys_total_size = key_stream.str().size();\n";
+  os << "    }\n";
   os << "    std::cout << \"rotation_keys_size_(MB): \"\n";
   os << "              << galois_keys_total_size / (1024.0 * 1024.0) << \"\\n\\n\";\n\n";
 
@@ -481,6 +491,20 @@ void gen_term_eval(
           os << " = ";
           gen_cipher_var_id(operands_ctxt_objects_ids[0], os);
           os << ";\n";
+      }
+      if (op_name == "negate") {
+        os << "    ops.negate_inplace(";
+        gen_cipher_var_id(term_object_id, os);
+        os << ");\n";
+        return;
+      }
+      if (scheme == 1 && (op_name == "add" || op_name == "sub" || op_name == "multiply")
+          && term->operands()[1]->type() == ir::Term::Type::cipher) {
+        os << "    align_levels(ops, ";
+        gen_cipher_var_id(term_object_id, os);
+        os << ", ";
+        gen_cipher_var_id(operands_ctxt_objects_ids[1], os);
+        os << ");\n";
       }
       os << "    ops." << op_name << "_inplace(";
       gen_cipher_var_id(term_object_id, os);
