@@ -1,4 +1,5 @@
 import os
+import shutil
 import subprocess 
 import csv 
 import re
@@ -226,6 +227,10 @@ def run_benchmark(subfolder_name, slot_count, w_ops, w_keys, build_path, build_p
         if he_build_ok:
             # ── HEonGPU: compile and run CUDA code ──────────────────
             cu_file = os.path.join(build_path, "generated_fhe.cu")
+            if not os.path.exists(cu_file):
+                heongpu_cu = os.path.join(build_path, "heongpu", "generated_fhe.cu")
+                if os.path.exists(heongpu_cu):
+                    shutil.copy(heongpu_cu, cu_file)
             if os.path.exists(cu_file):
                 ensure_heongpu_cmake(build_path)
 
@@ -500,6 +505,10 @@ def run_poly_benchmark(subfolder_name, build_path, build_path_he, build_path_he_
 
         # ── HEonGPU: run CUDA code ──────────────────────────────────────────────
         cu_file = os.path.join(build_path, "generated_fhe.cu")
+        if not os.path.exists(cu_file):
+            heongpu_cu = os.path.join(build_path, "heongpu", "generated_fhe.cu")
+            if os.path.exists(heongpu_cu):
+                shutil.copy(heongpu_cu, cu_file)
         if os.path.exists(cu_file):
             ensure_heongpu_cmake(build_path)
 

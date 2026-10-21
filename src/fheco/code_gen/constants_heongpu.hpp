@@ -56,6 +56,9 @@ constexpr std::string_view source_includes{
 #include <utility>
 #include <chrono>
 #include <iostream>
+#include <iomanip>
+#include <cstdlib>
+#include <algorithm>
 
 #include <atomic>
 #include <thread>
@@ -96,6 +99,9 @@ const std::unordered_map<ir::OpType, std::string_view, ir::HashOpType, ir::Equal
   
   // Rescale
   {{ir::OpCode::Type::rescale, {ir::Term::Type::cipher}}, "rescale"sv},
+
+  // Mod switch
+  {{ir::OpCode::Type::mod_switch, {ir::Term::Type::cipher}}, "mod_switch"sv},
 };
 
 // Helper to get the cipher variable name

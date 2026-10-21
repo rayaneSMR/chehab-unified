@@ -48,6 +48,14 @@ void Func::init_const(T &constant, PackedVal packed_val)
   constant.id_ = insert_const_term(move(packed_val))->id();
 }
 
+template <typename T>
+void Func::init_const(T &constant, PackedVal packed_val, vector<double> float_val)
+{
+  clear_data_eval_.adjust_packed_val(packed_val);
+  constant.example_val_ = packed_val;
+  constant.id_ = insert_const_term(move(packed_val), move(float_val))->id();
+}
+
 template <typename TArg, typename TDest>
 void Func::operate_unary(OpCode op_code, const TArg &arg, TDest &dest)
 {
@@ -154,7 +162,12 @@ bool Func::can_fold(const vector<Term *> &operands, vector<PackedVal> &operands_
 
 Term *Func::insert_const_term(PackedVal packed_val, bool &inserted)
 {
-  return data_flow_.insert_const({util::is_scalar(packed_val), move(packed_val)}, inserted);
+  return data_flow_.insert_const({util::is_scalar(packed_val), move(packed_val), {}}, inserted);
+}
+
+Term *Func::insert_const_term(PackedVal packed_val, vector<double> float_val, bool &inserted)
+{
+  return data_flow_.insert_const({util::is_scalar(packed_val), move(packed_val), move(float_val)}, inserted);
 }
 
 void Func::replace_term_with(Term *term1, Term *term2)
@@ -209,6 +222,8 @@ template void Func::init_input(Plaintext &, string);
 // init_const
 template void Func::init_const(Ciphertext &, PackedVal);
 template void Func::init_const(Plaintext &, PackedVal);
+template void Func::init_const(Ciphertext &, PackedVal, vector<double>);
+template void Func::init_const(Plaintext &, PackedVal, vector<double>);
 // set_output
 template void Func::set_output(const Ciphertext &, string);
 template void Func::set_output(const Plaintext &, string);

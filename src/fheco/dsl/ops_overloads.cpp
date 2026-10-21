@@ -334,6 +334,16 @@ Ciphertext encrypt(const Plaintext &arg)
   return dest;
 }
 
+Ciphertext rescale(const Ciphertext &arg)
+{
+  if (arg.idx().size())
+    throw invalid_argument("subscript read must be performed on const variables");
+
+  Ciphertext dest{};
+  Compiler::active_func()->operate_unary(ir::OpCode::rescale, arg, dest);
+  return dest;
+}
+
 // subscript helper
 pair<int, int> compute_subscripted_range(const Ciphertext &arg)
 {

@@ -268,11 +268,19 @@ def parse_arguments(args=None):
         ],
         help="Constraint method",
     )
-    test_parser.add_argument(
+    dataset_group = test_parser.add_mutually_exclusive_group()
+    dataset_group.add_argument(
         "--dataset",
         type=str,
         default="./fhe_rl/datasets/benchmarks.txt",
         help="Path to evaluation dataset",
+    )
+    dataset_group.add_argument(
+        "--benchmark",
+        type=str,
+        default=None,
+        help="DNN tensor-graph benchmark name (e.g., resnet20_relu). The C++ runner serializes "
+             "the graph to an S-expression automatically; no hand-written expression needed.",
     )
     test_parser.add_argument(
         "--budget_encoding",
@@ -451,9 +459,10 @@ def main(args=None):
         if parsed_args.train_budgets:
             train_budgets = [int(b.strip()) for b in parsed_args.train_budgets.split(",")]
 
+        expressions_file = parsed_args.benchmark or parsed_args.dataset
         if parsed_args.v2:
             test_agent_v2(
-                parsed_args.dataset,
+                expressions_file,
                 embeddings,
                 agent_zip,
                 output_dir=parsed_args.output_dir,
@@ -464,7 +473,7 @@ def main(args=None):
             )
         else:
             test_agent(
-                parsed_args.dataset,
+                expressions_file,
                 embeddings,
                 agent_zip,
                 output_dir=parsed_args.output_dir,

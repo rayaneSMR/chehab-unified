@@ -87,11 +87,12 @@ struct ConstInfo
 {
   bool is_scalar_;
   PackedVal val_;
+  std::vector<double> float_val_;
 };
 
 inline bool operator==(const ConstInfo &lhs, const ConstInfo &rhs)
 {
-  return lhs.is_scalar_ == rhs.is_scalar_ && lhs.val_ == rhs.val_;
+  return lhs.is_scalar_ == rhs.is_scalar_ && lhs.val_ == rhs.val_ && lhs.float_val_ == rhs.float_val_;
 }
 
 inline bool operator!=(const ConstInfo &lhs, const ConstInfo &rhs)

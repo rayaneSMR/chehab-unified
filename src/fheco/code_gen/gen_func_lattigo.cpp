@@ -99,32 +99,37 @@ void gen_primitive_reference_go(const shared_ptr<ir::Func> &func, ostream &os)
     os << "\t" << ref << " := make([]float64, len(values))\n";
     if (constant.second.is_scalar_)
     {
+      double scalar_val = !constant.second.float_val_.empty() ? constant.second.float_val_[0] : static_cast<double>(constant.second.val_[0]);
       os << "\tfor i := range " << ref << " { " << ref << "[i] = "
-         << constant.second.val_[0] << " }\n";
+         << scalar_val << " }\n";
     }
     else
     {
-      const auto &vec = constant.second.val_;
+      const bool has_float = !constant.second.float_val_.empty();
+      const size_t vec_size = has_float ? constant.second.float_val_.size() : constant.second.val_.size();
       size_t nz = 0;
-      for (double v : vec)
+      for (size_t i = 0; i < vec_size; ++i)
       {
+        double v = has_float ? constant.second.float_val_[i] : static_cast<double>(constant.second.val_[i]);
         if (v != 0.0) ++nz;
       }
-      if (nz * 4 < vec.size())
+      if (nz * 4 < vec_size)
       {
-        for (size_t index = 0; index < vec.size(); ++index)
+        for (size_t index = 0; index < vec_size; ++index)
         {
-          if (vec[index] != 0.0)
-            os << "\t" << ref << "[" << index << "] = " << vec[index] << "\n";
+          double v = has_float ? constant.second.float_val_[index] : static_cast<double>(constant.second.val_[index]);
+          if (v != 0.0)
+            os << "\t" << ref << "[" << index << "] = " << v << "\n";
         }
       }
       else
       {
         os << "\tcopy(" << ref << ", []float64{";
-        for (size_t index = 0; index < constant.second.val_.size(); ++index)
+        for (size_t index = 0; index < vec_size; ++index)
         {
           if (index) os << ", ";
-          os << constant.second.val_[index];
+          double v = has_float ? constant.second.float_val_[index] : static_cast<double>(constant.second.val_[index]);
+          os << v;
         }
         os << "})\n";
       }
@@ -191,14 +196,6 @@ void gen_primitive_reference_go(const shared_ptr<ir::Func> &func, ostream &os)
     for (const auto &label : output.second.labels_)
       os << "\texpectedOutputs[\"" << label << "\"] = " << ref << "\n";
   }
-
-  // Mark every declared reference as used. Input copies (all identical
-  // append(values) buffers) may be shadowed by alias terms that operations
-  // consume instead, leaving the original ref unread -- a Go
-  // "declared and not used" compile error. Same idiom as the `_ = cN`
-  // statements in the FHE body. No allocation is added or removed.
-  for (const auto &[id, ref] : references)
-    os << "\t_ = " << ref << "\n";
 }
 
 } // namespace
@@ -226,17 +223,16 @@ void gen_func_lattigo(
     os << go_file_header;
   }
   
-  // Generate rotation steps getter
   gen_rotation_steps_getter_go(func_name, rotation_steps, os);
   os << "\n";
   
-  // Generate the main computation function
+  gen_const_terms_go(func->data_flow().constants_info(), func->clear_data_evaluator().signedness(), os);
+
   gen_func_signature_go(func_name, os);
   os << " {\n";
   
   TermsCtxtObjectsInfo terms_ctxt_objects_info;
   gen_input_terms_go(func->data_flow().inputs_info(), os, terms_ctxt_objects_info);
-  gen_const_terms_go(func->data_flow().constants_info(), func->clear_data_evaluator().signedness(), os);
   gen_op_terms_go(func, os, terms_ctxt_objects_info);
   gen_output_terms_go(func->data_flow().outputs_info(), os, terms_ctxt_objects_info);
   
@@ -320,9 +316,23 @@ void gen_const_terms_go(
   ostream &os)
 {
   if (const_terms_info.empty())
+  {
+    os << "func init_constants(params hefloat.Parameters, encoder *hefloat.Encoder) {}\n\n";
     return;
+  }
     
-  os << "\n\t// Encode constants\n";
+  os << "var (\n";
+  for (const auto &const_info : const_terms_info)
+  {
+    auto term = const_info.first;
+    auto object_id = term->id();
+    os << "\t";
+    gen_plain_var_id_go(object_id, os);
+    os << " *rlwe.Plaintext\n";
+  }
+  os << ")\n\n";
+
+  os << "func init_constants(params hefloat.Parameters, encoder *hefloat.Encoder) {\n";
   os << "\tslotCount := params.MaxSlots()\n";
   os << "\t_ = slotCount\n";
   
@@ -333,15 +343,15 @@ void gen_const_terms_go(
     
     os << "\t";
     gen_plain_var_id_go(object_id, os);
-    os << " := hefloat.NewPlaintext(params, params.MaxLevel())\n";
+    os << " = hefloat.NewPlaintext(params, params.MaxLevel())\n";
     
     if (const_info.second.is_scalar_)
     {
-      // Scalar constant - replicate across all slots
+      double scalar_val = !const_info.second.float_val_.empty() ? const_info.second.float_val_[0] : static_cast<double>(const_info.second.val_[0]);
       os << "\t{\n";
       os << "\t\tvalues := make([]float64, slotCount)\n";
       os << "\t\tfor i := range values {\n";
-      os << "\t\t\tvalues[i] = float64(" << const_info.second.val_[0] << ")\n";
+      os << "\t\t\tvalues[i] = float64(" << scalar_val << ")\n";
       os << "\t\t}\n";
       os << "\t\tencoder.Encode(values, ";
       gen_plain_var_id_go(object_id, os);
@@ -350,32 +360,35 @@ void gen_const_terms_go(
     }
     else
     {
-      // Vector constant
-      const auto &vec = const_info.second.val_;
+      const bool has_float = !const_info.second.float_val_.empty();
+      const size_t vec_size = has_float ? const_info.second.float_val_.size() : const_info.second.val_.size();
       size_t nz = 0;
-      for (double v : vec)
+      for (size_t i = 0; i < vec_size; ++i)
       {
+        double v = has_float ? const_info.second.float_val_[i] : static_cast<double>(const_info.second.val_[i]);
         if (v != 0.0) ++nz;
       }
       os << "\t{\n";
-      if (nz * 4 < vec.size())
+      if (nz * 4 < vec_size)
       {
         os << "\t\tvalues := make([]float64, slotCount)\n";
-        for (size_t i = 0; i < vec.size(); ++i)
+        for (size_t i = 0; i < vec_size; ++i)
         {
-          if (vec[i] != 0.0)
+          double v = has_float ? const_info.second.float_val_[i] : static_cast<double>(const_info.second.val_[i]);
+          if (v != 0.0)
           {
-            os << "\t\tvalues[" << i << "] = float64(" << vec[i] << ")\n";
+            os << "\t\tvalues[" << i << "] = float64(" << v << ")\n";
           }
         }
       }
       else
       {
         os << "\t\tvalues := []float64{";
-        for (size_t i = 0; i < const_info.second.val_.size(); ++i)
+        for (size_t i = 0; i < vec_size; ++i)
         {
+          double v = has_float ? const_info.second.float_val_[i] : static_cast<double>(const_info.second.val_[i]);
           if (i > 0) os << ", ";
-          os << "float64(" << const_info.second.val_[i] << ")";
+          os << "float64(" << v << ")";
         }
         os << "}\n";
       }
@@ -385,6 +398,7 @@ void gen_const_terms_go(
       os << "\t}\n";
     }
   }
+  os << "}\n\n";
 }
 
 void gen_op_terms_go(
@@ -405,7 +419,10 @@ void gen_op_terms_go(
       hoisted_inputs.insert(input_id);
   if (!hoisted_inputs.empty())
   {
-    os << "\tbuffDecompQP := eval.GetBuffDecompQP()\n";
+    os << "\tbuffDecompQP := make([]ringqp.Poly, params.BaseRNSDecompositionVectorSize(params.MaxLevelQ(), 0))\n";
+    os << "\tfor i := range buffDecompQP {\n";
+    os << "\t\tbuffDecompQP[i] = params.RingQP().NewPoly()\n";
+    os << "\t}\n";
     os << "\tvar lastDecompID int = -1\n";
   }
   
@@ -523,60 +540,131 @@ void gen_op_terms_go(
       }
       else
       {
-        os << "\t";
-        gen_cipher_var_id_go(term_object_id, os);
-        os << ", _ = eval.RotateNew(";
-        gen_cipher_var_id_go(input_object_id, os);
-        os << ", " << steps << ")\n";
+        if (term_object_id == input_object_id)
+        {
+          os << "\t_ = eval.Rotate(";
+          gen_cipher_var_id_go(input_object_id, os);
+          os << ", " << steps << ", ";
+          gen_cipher_var_id_go(input_object_id, os);
+          os << ")\n";
+        }
+        else
+        {
+          os << "\tif ";
+          gen_cipher_var_id_go(term_object_id, os);
+          os << " == nil || ";
+          gen_cipher_var_id_go(term_object_id, os);
+          os << ".Level() < ";
+          gen_cipher_var_id_go(input_object_id, os);
+          os << ".Level() {\n\t\t";
+          gen_cipher_var_id_go(term_object_id, os);
+          os << ", _ = eval.RotateNew(";
+          gen_cipher_var_id_go(input_object_id, os);
+          os << ", " << steps << ")\n\t} else {\n\t\t_ = eval.Rotate(";
+          gen_cipher_var_id_go(input_object_id, os);
+          os << ", " << steps << ", ";
+          gen_cipher_var_id_go(term_object_id, os);
+          os << ")\n\t}\n";
+        }
       }
     }
     else if (term->op_code().type() == ir::OpCode::Type::square)
     {
-      // Square: eval.MulRelinNew(ct, ct) + auto-rescale for CKKS
-      os << "\t";
-      gen_cipher_var_id_go(term_object_id, os);
-      os << ", _ = eval.MulRelinNew(";
-      gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
-      os << ", ";
-      gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
-      os << ")\n";
-      // Auto-rescale after square (cipher-cipher multiplication)
+      if (term_object_id == operands_ctxt_objects_ids[0])
+      {
+        os << "\t_ = eval.MulRelin(";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ", ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ", ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ")\n";
+      }
+      else
+      {
+        os << "\tif ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << " == nil || ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ".Level() < ";
+        gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        os << ".Level() {\n\t\t";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ", _ = eval.MulRelinNew(";
+        gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        os << ", ";
+        gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        os << ")\n\t} else {\n\t\t_ = eval.MulRelin(";
+        gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        os << ", ";
+        gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        os << ", ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ")\n\t}\n";
+      }
       os << "\t_ = eval.Rescale(";
       gen_cipher_var_id_go(term_object_id, os);
       os << ", ";
       gen_cipher_var_id_go(term_object_id, os);
       os << ")\n";
-      if (!hoisted_inputs.empty())
-        os << "\tlastDecompID = -1\n";
     }
     else if (term->op_code().type() == ir::OpCode::Type::rescale)
     {
-      // Rescale: copy input, then rescale in-place
-      // Lattigo's Rescale modifies in-place, so we need to copy first
-      os << "\t";
-      gen_cipher_var_id_go(term_object_id, os);
-      os << " = ";
-      gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
-      os << ".CopyNew()\n";
-      os << "\t_ = eval.Rescale(";
-      gen_cipher_var_id_go(term_object_id, os);
-      os << ", ";
-      gen_cipher_var_id_go(term_object_id, os);
-      os << ")\n";
+      if (term_object_id == operands_ctxt_objects_ids[0])
+      {
+        os << "\t_ = eval.Rescale(";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ", ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ")\n";
+      }
+      else
+      {
+        os << "\tif ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << " == nil {\n\t\t";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << " = ";
+        gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        os << ".CopyNew()\n\t\t_ = eval.Rescale(";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ", ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ")\n\t} else {\n\t\t_ = eval.Rescale(";
+        gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        os << ", ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ")\n\t}\n";
+      }
     }
     else if (term->op_code().type() == ir::OpCode::Type::relin)
     {
-      // Relinearize: copy input, then relinearize in-place
-      os << "\t";
-      gen_cipher_var_id_go(term_object_id, os);
-      os << " = ";
-      gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
-      os << ".CopyNew()\n";
-      os << "\t_ = eval.Relinearize(";
-      gen_cipher_var_id_go(term_object_id, os);
-      os << ", ";
-      gen_cipher_var_id_go(term_object_id, os);
-      os << ")\n";
+      if (term_object_id == operands_ctxt_objects_ids[0])
+      {
+        os << "\t_ = eval.Relinearize(";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ", ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ")\n";
+      }
+      else
+      {
+        os << "\tif ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << " == nil {\n\t\t";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << " = ";
+        gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        os << ".CopyNew()\n\t\t_ = eval.Relinearize(";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ", ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ")\n\t} else {\n\t\t_ = eval.Relinearize(";
+        gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        os << ", ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ")\n\t}\n";
+      }
     }
     else if (term->op_code().type() == ir::OpCode::Type::mod_switch)
     {
@@ -592,17 +680,15 @@ void gen_op_terms_go(
     }
     else if (term->op_code().type() == ir::OpCode::Type::SumVec)
     {
-      // SumVec reduction: sum all slots using log(n) rotations and additions
-      // SumVec(x, size) → x + (x << size/2) + ((x + (x << size/2)) << size/4) + ...
       int size = term->op_code().size();
-      os << "\t// SumVec reduction (size=" << size << ")\n";
-      os << "\t";
-      gen_cipher_var_id_go(term_object_id, os);
-      os << " = ";
-      gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
-      os << ".CopyNew()\n";
-      
-      // Generate log2(size) rotations and additions
+      if (term_object_id != operands_ctxt_objects_ids[0])
+      {
+        os << "\t";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << " = ";
+        gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        os << ".CopyNew()\n";
+      }
       int step = size / 2;
       while (step >= 1)
       {
@@ -610,20 +696,17 @@ void gen_op_terms_go(
         os << "\t\trotated, _ := eval.RotateNew(";
         gen_cipher_var_id_go(term_object_id, os);
         os << ", " << step << ")\n";
-        os << "\t\t";
+        os << "\t\t_ = eval.Add(";
         gen_cipher_var_id_go(term_object_id, os);
-        os << ", _ = eval.AddNew(";
+        os << ", rotated, ";
         gen_cipher_var_id_go(term_object_id, os);
-        os << ", rotated)\n";
+        os << ")\n";
         os << "\t}\n";
         step /= 2;
       }
     }
     else if (term->op_code().type() == ir::OpCode::Type::bootstrap)
     {
-      // Bootstrap: refresh ciphertext to max level
-      // Requires bootstrapper to be initialized (see gen_main_go)
-      os << "\t// Bootstrap: refresh to max level\n";
       os << "\t";
       gen_cipher_var_id_go(term_object_id, os);
       os << ", _ = bootstrapper.Bootstrap(";
@@ -632,70 +715,107 @@ void gen_op_terms_go(
     }
     else if (term->op_code().type() == ir::OpCode::Type::negate)
     {
-      // Negate via Sub: eval.NegNew does not exist in Lattigo v5 hefloat.
-      // out = Sub(in, in) -> zero, then out = Sub(out, in) -> -in.
       os << "\t";
       gen_cipher_var_id_go(term_object_id, os);
-      os << ", _ = eval.SubNew(";
-      gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
-      os << ", ";
-      gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
-      os << ")\n";
-      os << "\t";
-      gen_cipher_var_id_go(term_object_id, os);
-      os << ", _ = eval.SubNew(";
-      gen_cipher_var_id_go(term_object_id, os);
-      os << ", ";
+      os << ", _ = eval.NegNew(";
       gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
       os << ")\n";
     }
     else
     {
-      // Binary operations: add, sub, mul
       auto op_type = ir::OpType{term->op_code().type(), std::move(operands_types)};
       auto op_it = operation_mapping.find(op_type);
       
       if (op_it == operation_mapping.end())
       {
-        os << "\t// WARNING: Unsupported operation " << term->op_code() << "\n";
         continue;
       }
       
       string op_name(op_it->second);
-      
-      os << "\t";
-      gen_cipher_var_id_go(term_object_id, os);
-      os << ", _ = eval." << op_name << "New(";
-      
-      // First operand (always cipher for these ops)
       auto operand0 = term->operands()[0];
-      if (operand0->type() == ir::Term::Type::cipher)
-        gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
-      else
-        gen_plain_var_id_go(operand0->id(), os);
-      
-      os << ", ";
-      
-      // Second operand
       auto operand1 = term->operands()[1];
-      if (operand1->type() == ir::Term::Type::cipher)
-        gen_cipher_var_id_go(operands_ctxt_objects_ids[1], os);
-      else
-        gen_plain_var_id_go(operand1->id(), os);
-      
-      os << ")\n";
-      
-      // Every CKKS multiplication raises the scale. A plaintext operand does
-      // not remove that requirement, so normalize both multiplication forms.
-      if (op_name == "MulRelin" || op_name == "Mul")
+
+      if (operand0->type() == ir::Term::Type::cipher && term_object_id == operands_ctxt_objects_ids[0])
       {
-        os << "\t_ = eval.Rescale(";
-        gen_cipher_var_id_go(term_object_id, os);
+        os << "\t_ = eval." << op_name << "(";
+        gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        os << ", ";
+        if (operand1->type() == ir::Term::Type::cipher)
+          gen_cipher_var_id_go(operands_ctxt_objects_ids[1], os);
+        else
+          gen_plain_var_id_go(operand1->id(), os);
         os << ", ";
         gen_cipher_var_id_go(term_object_id, os);
         os << ")\n";
-        if (!hoisted_inputs.empty())
-          os << "\tlastDecompID = -1\n";
+        if (op_name == "MulRelin")
+        {
+          os << "\t_ = eval.Rescale(";
+          gen_cipher_var_id_go(term_object_id, os);
+          os << ", ";
+          gen_cipher_var_id_go(term_object_id, os);
+          os << ")\n";
+        }
+      }
+      else if (op_name == "Add" && operand1->type() == ir::Term::Type::cipher &&
+               term_object_id == operands_ctxt_objects_ids[1])
+      {
+        os << "\t_ = eval.Add(";
+        if (operand0->type() == ir::Term::Type::cipher)
+          gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        else
+          gen_plain_var_id_go(operand0->id(), os);
+        os << ", ";
+        gen_cipher_var_id_go(operands_ctxt_objects_ids[1], os);
+        os << ", ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ")\n";
+      }
+      else
+      {
+        os << "\tif ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << " == nil";
+        if (operand0->type() == ir::Term::Type::cipher)
+        {
+          os << " || ";
+          gen_cipher_var_id_go(term_object_id, os);
+          os << ".Level() < ";
+          gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+          os << ".Level()";
+        }
+        os << " {\n\t\t";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ", _ = eval." << op_name << "New(";
+        if (operand0->type() == ir::Term::Type::cipher)
+          gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        else
+          gen_plain_var_id_go(operand0->id(), os);
+        os << ", ";
+        if (operand1->type() == ir::Term::Type::cipher)
+          gen_cipher_var_id_go(operands_ctxt_objects_ids[1], os);
+        else
+          gen_plain_var_id_go(operand1->id(), os);
+        os << ")\n\t} else {\n\t\t_ = eval." << op_name << "(";
+        if (operand0->type() == ir::Term::Type::cipher)
+          gen_cipher_var_id_go(operands_ctxt_objects_ids[0], os);
+        else
+          gen_plain_var_id_go(operand0->id(), os);
+        os << ", ";
+        if (operand1->type() == ir::Term::Type::cipher)
+          gen_cipher_var_id_go(operands_ctxt_objects_ids[1], os);
+        else
+          gen_plain_var_id_go(operand1->id(), os);
+        os << ", ";
+        gen_cipher_var_id_go(term_object_id, os);
+        os << ")\n\t}\n";
+        if (op_name == "MulRelin")
+        {
+          os << "\t_ = eval.Rescale(";
+          gen_cipher_var_id_go(term_object_id, os);
+          os << ", ";
+          gen_cipher_var_id_go(term_object_id, os);
+          os << ")\n";
+        }
       }
     }
   }
@@ -774,15 +894,6 @@ void gen_main_go(
   }
 
   os << R"(
-func getMaxRSS() uint64 {
-	var ru syscall.Rusage
-	if err := syscall.Getrusage(syscall.RUSAGE_SELF, &ru); err == nil {
-		// Linux reports ru.Maxrss in kilobytes.
-		return uint64(ru.Maxrss) * 1024
-	}
-	return 0
-}
-
 func getCurrentRSS() uint64 {
 	if data, err := os.ReadFile("/proc/self/statm"); err == nil {
 		fields := strings.Fields(string(data))
@@ -857,7 +968,7 @@ func (s *RamMemSampler) Stop() {
   os << "\t\tLogP:            []int{";
   for (size_t i = 0; i < params.log_p.size(); ++i) {
     if (i > 0) os << ", ";
-    os << std::max(50, params.log_p[i]);
+    os << (ckks_params ? params.log_p[i] : std::max(50, params.log_p[i]));
   }
   os << "},\n";
   
@@ -883,7 +994,6 @@ func (s *RamMemSampler) Stop() {
   os << "\t}\n\n";
   
   os << R"(	// Key Generation
-	keygenStart := time.Now()
 	kgen := rlwe.NewKeyGenerator(params)
 	sk := kgen.GenSecretKeyNew()
 	pk := kgen.GenPublicKeyNew(sk)
@@ -896,7 +1006,9 @@ func (s *RamMemSampler) Stop() {
 		galoisElements[i] = params.GaloisElement(r)
 	}
 
+	galoisKeysStart := time.Now()
 	gks := kgen.GenGaloisKeysNew(galoisElements, sk)
+	keys_elapsed := float64(time.Since(galoisKeysStart).Microseconds()) / 1000.0
 
 	var galois_keys_total_size int
 	for _, gk := range gks {
@@ -960,8 +1072,6 @@ func (s *RamMemSampler) Stop() {
     os << "\tfmt.Println(\"Bootstrap keys generated successfully!\")\n";
   }
   
-  os << "\tkeys_elapsed := float64(time.Since(keygenStart).Microseconds()) / 1000.0\n";
-
   os << R"(
 	// Deterministic inputs and timing setup.
 	repetitions := flag.Int("repetitions", 1, "number of encrypted inference repetitions")
@@ -971,7 +1081,6 @@ func (s *RamMemSampler) Stop() {
 	encodedInputs := make(map[string]*rlwe.Plaintext)
 	encryptedOutputs := make(map[string]*rlwe.Ciphertext)
 	encodedOutputs := make(map[string]*rlwe.Plaintext)
-	encryptStart := time.Now()
 )";
 
   // Generate encrypted inputs for each unique cipher input label
@@ -1005,7 +1114,20 @@ func (s *RamMemSampler) Stop() {
   }
 
   os << R"(
-	encryptMillis := float64(time.Since(encryptStart).Microseconds()) / 1000.0
+	encryptReps := 0
+	encryptBenchStart := time.Now()
+	for time.Since(encryptBenchStart) < 2*time.Millisecond || encryptReps < *repetitions {
+		for range encryptedInputs {
+			pt := hefloat.NewPlaintext(params, params.MaxLevel())
+			_ = encoder.Encode(values, pt)
+			_, _ = enc.EncryptNew(pt)
+		}
+		encryptReps++
+	}
+	encryptMillis := 0.0
+	if encryptReps > 0 {
+		encryptMillis = (float64(time.Since(encryptBenchStart).Nanoseconds()) / 1e6) / float64(encryptReps)
+	}
 	precisionChecked := false
 )";
   if (can_generate_primitive_reference(func))
@@ -1018,14 +1140,15 @@ func (s *RamMemSampler) Stop() {
     os << "\texpectedOutputs := make(map[string][]float64)\n";
   }
   os << R"(
+	init_constants(params, encoder)
 	computeStart := time.Now()
 	for i := 0; i < *repetitions; i++ {
 	)";
   os << "\t\t" << func_name;
   os << R"((encryptedInputs, encodedInputs, encryptedOutputs, encodedOutputs, encoder, enc, eval, params)
 	}
-	computeMillis := float64(time.Since(computeStart).Microseconds()) / 1000.0 / float64(*repetitions)
-	decryptStart := time.Now()
+  elapsed := float64(time.Since(computeStart).Nanoseconds()) / 1e6
+  computeMillis := elapsed / float64(*repetitions)
 	maxAbsError := 0.0
 	for name, ct := range encryptedOutputs {
 		pt := dec.DecryptNew(ct)
@@ -1038,7 +1161,20 @@ func (s *RamMemSampler) Stop() {
 		}
 		fmt.Printf("%s: [%.4f, %.4f, %.4f, ...]\n", name, values[0], values[1], values[2])
 	}
-	decryptMillis := float64(time.Since(decryptStart).Microseconds()) / 1000.0
+	decryptReps := 0
+	decryptStart := time.Now()
+	for time.Since(decryptStart) < 2*time.Millisecond || decryptReps < *repetitions {
+		for _, ct := range encryptedOutputs {
+			pt := dec.DecryptNew(ct)
+			vals := make([]float64, params.MaxSlots())
+			_ = encoder.Decode(pt, vals)
+		}
+		decryptReps++
+	}
+	decryptMillis := 0.0
+	if decryptReps > 0 {
+		decryptMillis = (float64(time.Since(decryptStart).Nanoseconds()) / 1e6) / float64(decryptReps)
+	}
 	levelsEnd := -1
 	for _, ct := range encryptedOutputs { levelsEnd = ct.Level(); break }
 	maxAbsErrorJSON := "null"
@@ -1048,7 +1184,6 @@ func (s *RamMemSampler) Stop() {
      << R"(,\"level_start\":%d,\"level_end\":%d,\"max_abs_error\":%s,\"precision_checked\":%t}\n",
 		*repetitions, encryptMillis, computeMillis, decryptMillis, len(galoisElements), params.MaxLevel(), levelsEnd, maxAbsErrorJSON, precisionChecked)
 	_ = encodedOutputs
-	elapsed := computeMillis
 	fmt.Printf("circuit_execution_time_(ms): %f\n", elapsed)
 	fmt.Printf("galois_keys_generation_time_(ms): %f\n", keys_elapsed)
 	fmt.Printf("total_execution_time_(ms): %f\n", elapsed+keys_elapsed)
@@ -1056,10 +1191,8 @@ func (s *RamMemSampler) Stop() {
 
 	sampler.Stop()
 	fmt.Printf("peak_ram_memory_(MB): %f\n", float64(sampler.peakUsed.Load())/(1024.0*1024.0))
-	fmt.Printf("max_rss_(MB): %f\n", float64(getMaxRSS())/(1024.0*1024.0))
 }
 )";
 }
 
 } // namespace fheco::code_gen::lattigo
-

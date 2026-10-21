@@ -33,6 +33,8 @@ public:
 
   Plaintext(PackedVal packed_val, std::vector<std::size_t> shape = {Compiler::active_func()->slot_count()});
 
+  Plaintext(std::vector<double> float_val, PackedVal packed_val, std::vector<std::size_t> shape = {Compiler::active_func()->slot_count()});
+
   Plaintext(integer scalar_val);
 
   ~Plaintext() = default;

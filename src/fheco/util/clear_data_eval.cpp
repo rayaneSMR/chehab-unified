@@ -56,6 +56,10 @@ void ClearDataEval::operate_unary(const ir::OpCode &op_code, const PackedVal &ar
     mul(arg, arg, dest);
     break;
 
+  case ir::OpCode::Type::rescale:
+    dest = arg;
+    break;
+
   default:
     throw logic_error("unhandled clear evaluation for unary operation");
   }

@@ -33,7 +33,7 @@ unordered_set<int> reduce_rotation_keys(const shared_ptr<ir::Func> &func, size_t
 
   int keys_count = ordered_used_steps.size();
   if (keys_count <= keys_threshold)
-    return unordered_set(ordered_used_steps.begin(), ordered_used_steps.end());
+    return unordered_set<int>(ordered_used_steps.begin(), ordered_used_steps.end());
 
   unordered_map<int, vector<int>> steps_nafs;
   for (auto steps : ordered_used_steps)
@@ -84,8 +84,6 @@ unordered_set<int> reduce_rotation_keys(const shared_ptr<ir::Func> &func, size_t
     if (keys_count <= keys_threshold)
       break;
   }
-  if (keys_count > keys_threshold)
-    throw logic_error("could not go lower than the threshold, maybe keys_threshold is invalid (too low)");
 
   for (auto non_decomp_steps : ordered_used_steps)
     used_steps.insert(non_decomp_steps);
@@ -124,11 +122,9 @@ vector<int> naf(int value)
 {
   vector<int> res;
 
-  // Record the sign of the original value and compute abs
   bool sign = value < 0;
   value = abs(value);
 
-  // Transform to non-adjacent form (NAF)
   for (int i = 0; value; i++)
   {
     int zi = (value & int(0x1)) ? 2 - (value & int(0x3)) : 0;
@@ -140,3 +136,4 @@ vector<int> naf(int value)
   return res;
 }
 } // namespace fheco::passes
+

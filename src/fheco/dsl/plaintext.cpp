@@ -37,6 +37,11 @@ Plaintext::Plaintext(PackedVal packed_val, vector<size_t> shape) : Plaintext(mov
   Compiler::active_func()->init_const(*this, move(packed_val));
 }
 
+Plaintext::Plaintext(vector<double> float_val, PackedVal packed_val, vector<size_t> shape) : Plaintext(move(shape))
+{
+  Compiler::active_func()->init_const(*this, move(packed_val), move(float_val));
+}
+
 Plaintext::Plaintext(integer scalar_val)
   : Plaintext(
       Compiler::scalar_vector_shape_enabled() ? vector<size_t>{Compiler::active_func()->slot_count()}

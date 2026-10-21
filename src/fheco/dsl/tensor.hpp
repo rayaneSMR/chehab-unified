@@ -17,6 +17,7 @@ enum class PackingLayout
 {
   ROW_MAJOR,
   INTERLEAVED_HWC,
+  MULTIPLEXED,
 };
 
 struct TensorShape

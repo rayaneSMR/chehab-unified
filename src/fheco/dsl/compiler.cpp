@@ -1,4 +1,4 @@
-﻿#include "fheco/ckks/ckks_params.hpp"
+#include "fheco/ckks/ckks_params.hpp"
 #include "fheco/ckks/ckks_scale_manager.hpp"
 #include "fheco/code_gen/gen_func.hpp"
 #include "fheco/code_gen/gen_func_lattigo.hpp"
@@ -124,18 +124,17 @@ void Compiler::gen_lattigo_code(
     
     // Add 1 if this is a cipher-cipher multiplication
     auto op_type = term->op_code().type();
-    if (op_type == ir::OpCode::Type::mul || op_type == ir::OpCode::Type::square)
+    if (op_type == ir::OpCode::Type::mul || op_type == ir::OpCode::Type::square || op_type == ir::OpCode::Type::rescale)
     {
-      // Check if cipher-cipher (not cipher-plain)
-      bool is_ctxt_ctxt = (op_type == ir::OpCode::Type::square);
-      if (!is_ctxt_ctxt && term->operands().size() >= 2)
+      bool is_level_consuming = (op_type == ir::OpCode::Type::square || op_type == ir::OpCode::Type::rescale);
+      if (!is_level_consuming && term->operands().size() >= 2)
       {
         auto* op1 = term->operands()[0];
         auto* op2 = term->operands()[1];
-        is_ctxt_ctxt = (op1->type() == ir::Term::Type::cipher && 
-                        op2->type() == ir::Term::Type::cipher);
+        is_level_consuming = (op1->type() == ir::Term::Type::cipher && 
+                              op2->type() == ir::Term::Type::cipher);
       }
-      if (is_ctxt_ctxt)
+      if (is_level_consuming)
         ++depth;
     }
     
@@ -226,7 +225,7 @@ void Compiler::gen_lattigo_code(
 /***********************************************************************/
 void Compiler::gen_heongpu_code(
   const std::shared_ptr<ir::Func> &func, std::ostream &cu_os, int scheme,
-  size_t rotation_keys_threshold)
+  size_t rotation_keys_threshold, bool insert_rescale, const ckks::CKKSParams *custom_params)
 {
 #ifdef FHECO_LOGGING
   clog << "\nHEonGPU code generation (CUDA)\n";
@@ -236,13 +235,12 @@ void Compiler::gen_heongpu_code(
   unordered_set<int> rotation_steps_keys;
   rotation_steps_keys = passes::reduce_rotation_keys(func, rotation_keys_threshold);
 
-  // We add explicit relin for HEonGPU (similar to SEAL)
-  passes::relin_after_ctxt_ctxt_mul(func);
-
   param_select::EncParams bfv_params;
   ckks::CKKSParams ckks_params;
 
   if (scheme == 0) {
+    // We add explicit relin for HEonGPU BFV
+    passes::relin_after_ctxt_ctxt_mul(func);
     param_select::ParameterSelector selector(func, param_select::EncParams::SecurityLevel::tc128);
     bool use_mod_switch = false;
     if (auto_enc_params_selection_enabled()) {
@@ -287,7 +285,12 @@ void Compiler::gen_heongpu_code(
     bool needs_bootstrap = (max_mul_depth > MAX_DEPTH_WITHOUT_BOOTSTRAP);
     size_t mul_depth = needs_bootstrap ? MAX_DEPTH_WITHOUT_BOOTSTRAP : std::max(max_mul_depth + 1, static_cast<size_t>(3));
     
-    if (needs_bootstrap)
+    if (custom_params)
+    {
+      ckks_params = *custom_params;
+      needs_bootstrap = ckks_params.enable_bootstrap;
+    }
+    else if (needs_bootstrap)
     {
       ckks_params = ckks::CKKSParamSelector::default_params_with_bootstrap(mul_depth);
       ckks_params.enable_bootstrap = true;
@@ -297,10 +300,26 @@ void Compiler::gen_heongpu_code(
       ckks_params = ckks::CKKSParamSelector::default_params(mul_depth);
       ckks_params.enable_bootstrap = false;
     }
+
+    if (insert_rescale)
+    {
+      ckks::CKKSScaleManager scale_manager(func, ckks_params);
+      scale_manager.set_enable_bootstrap(needs_bootstrap);
+      scale_manager.analyze_and_transform();
+    }
+    passes::relin_after_ctxt_ctxt_mul(func);
   }
 
   // Call the generator
   code_gen::heongpu::gen_func_heongpu(func, rotation_steps_keys, cu_os, func->name(), scheme, &bfv_params, &ckks_params);
+}
+
+void Compiler::gen_heongpu_code(
+  const std::shared_ptr<ir::Func> &func, std::ostream &cu_os, int scheme,
+  const ckks::CKKSParams &custom_params,
+  std::size_t rotation_keys_threshold, bool insert_rescale)
+{
+  gen_heongpu_code(func, cu_os, scheme, rotation_keys_threshold, insert_rescale, &custom_params);
 }
 
 /***********************************************************************/
@@ -852,7 +871,23 @@ void Compiler::call_rl_vectorizer(int vector_width, float w_ops, float w_keys, c
         Double quotes around paths for Windows cmd.exe compatibility.
   -----------------------------------------------------------------*/
   std::ostringstream cmd;
-  cmd << "python -m fhe_rl ";
+  const char* py_env = std::getenv("PYTHON");
+  std::string python_bin = "python";
+  if (py_env && *py_env) {
+    python_bin = py_env;
+  } else {
+    for (const auto& candidate_py : {
+      "/home/imed/miniconda3/envs/chehabEnv/bin/python",
+      "/home/imed/miniconda3/envs/chehab/bin/python",
+      "python3"
+    }) {
+      if (fs::exists(candidate_py)) {
+        python_bin = candidate_py;
+        break;
+      }
+    }
+  }
+  cmd << python_bin << " -m fhe_rl ";
   if (!framework.empty()) {
       cmd << "--framework " << framework << " ";
   } else if (w_ops >= 0.0f) {

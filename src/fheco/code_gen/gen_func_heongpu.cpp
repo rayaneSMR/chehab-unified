@@ -6,7 +6,9 @@
 #include "fheco/ir/func.hpp"
 #include "fheco/passes/prepare_code_gen.hpp"
 #include <algorithm>
+#include <cmath>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <set>
@@ -20,6 +22,194 @@ using namespace std;
 
 namespace fheco::code_gen::heongpu
 {
+
+namespace
+{
+
+string reference_name(size_t term_id)
+{
+  return "ref_" + to_string(term_id);
+}
+
+bool can_generate_primitive_reference(const shared_ptr<ir::Func> &func)
+{
+  unordered_set<size_t> supported;
+  for (const auto &input : func->data_flow().inputs_info())
+    if (input.first->type() == ir::Term::Type::cipher)
+      supported.insert(input.first->id());
+  for (const auto &constant : func->data_flow().constants_info())
+    supported.insert(constant.first->id());
+
+  for (const auto *term : func->get_top_sorted_terms())
+  {
+    if (!term->is_operation())
+      continue;
+
+    const auto type = term->op_code().type();
+    const auto required_operands = type == ir::OpCode::Type::add ||
+      type == ir::OpCode::Type::sub || type == ir::OpCode::Type::mul ? 2 : 1;
+    if (term->operands().size() < required_operands)
+      return false;
+    for (size_t index = 0; index < required_operands; ++index)
+      if (!supported.count(term->operands()[index]->id()))
+        return false;
+
+    switch (type)
+    {
+      case ir::OpCode::Type::encrypt:
+      case ir::OpCode::Type::add:
+      case ir::OpCode::Type::sub:
+      case ir::OpCode::Type::negate:
+      case ir::OpCode::Type::rotate:
+      case ir::OpCode::Type::square:
+      case ir::OpCode::Type::mul:
+      case ir::OpCode::Type::mod_switch:
+      case ir::OpCode::Type::relin:
+      case ir::OpCode::Type::SumVec:
+      case ir::OpCode::Type::rescale:
+      case ir::OpCode::Type::bootstrap:
+        supported.insert(term->id());
+        break;
+      default:
+        return false;
+    }
+  }
+
+  for (const auto &output : func->data_flow().outputs_info())
+    if (output.first->type() != ir::Term::Type::cipher || !supported.count(output.first->id()))
+      return false;
+  return true;
+}
+
+void gen_primitive_reference_cu(const shared_ptr<ir::Func> &func, ostream &os, int scheme)
+{
+  unordered_map<size_t, string> references;
+  for (const auto &input : func->data_flow().inputs_info())
+  {
+    if (input.first->type() != ir::Term::Type::cipher)
+      continue;
+    const auto id = input.first->id();
+    const auto ref = reference_name(id);
+    references.emplace(id, ref);
+    if (scheme == 0) {
+      os << "    std::vector<double> " << ref << "(slot_count);\n";
+      os << "    for (std::size_t i = 0; i < slot_count; ++i) " << ref << "[i] = static_cast<double>(values[i]);\n";
+    } else {
+      os << "    std::vector<double> " << ref << " = values;\n";
+    }
+  }
+
+  for (const auto &constant : func->data_flow().constants_info())
+  {
+    const auto id = constant.first->id();
+    const auto ref = reference_name(id);
+    references.emplace(id, ref);
+    os << "    std::vector<double> " << ref << "(slot_count, 0.0);\n";
+    if (constant.second.is_scalar_)
+    {
+      os << "    for (std::size_t i = 0; i < slot_count; ++i) " << ref << "[i] = "
+         << constant.second.val_[0] << ";\n";
+    }
+    else
+    {
+      const auto &vec = constant.second.val_;
+      size_t nz = 0;
+      for (double v : vec)
+      {
+        if (v != 0.0) ++nz;
+      }
+      if (nz * 4 < vec.size())
+      {
+        for (size_t index = 0; index < vec.size(); ++index)
+        {
+          if (vec[index] != 0.0)
+            os << "    " << ref << "[" << index << "] = " << vec[index] << ";\n";
+        }
+      }
+      else
+      {
+        os << "    {\n";
+        os << "        std::vector<double> tmp_c = {";
+        for (size_t index = 0; index < constant.second.val_.size(); ++index)
+        {
+          if (index) os << ", ";
+          os << constant.second.val_[index];
+        }
+        os << "};\n";
+        os << "        for (std::size_t i = 0; i < tmp_c.size() && i < slot_count; ++i) " << ref << "[i] = tmp_c[i];\n";
+        os << "    }\n";
+      }
+    }
+  }
+
+  for (const auto *term : func->get_top_sorted_terms())
+  {
+    if (!term->is_operation())
+      continue;
+
+    const auto ref = reference_name(term->id());
+    const auto operand = references.at(term->operands()[0]->id());
+    references.emplace(term->id(), ref);
+    const auto type = term->op_code().type();
+    if (type == ir::OpCode::Type::encrypt || type == ir::OpCode::Type::mod_switch ||
+        type == ir::OpCode::Type::relin || type == ir::OpCode::Type::rescale ||
+        type == ir::OpCode::Type::bootstrap)
+    {
+      os << "    std::vector<double> " << ref << " = " << operand << ";\n";
+    }
+    else if (type == ir::OpCode::Type::rotate)
+    {
+      int steps = term->op_code().steps();
+      os << "    std::vector<double> " << ref << "(slot_count, 0.0);\n";
+      os << "    for (std::size_t i = 0; i < slot_count; ++i) " << ref << "[i] = " << operand
+         << "[(i + " << steps << " + slot_count) % slot_count];\n";
+    }
+    else if (type == ir::OpCode::Type::SumVec)
+    {
+      int size = term->op_code().size();
+      os << "    std::vector<double> " << ref << " = " << operand << ";\n";
+      for (int step = size / 2; step >= 1; step /= 2)
+      {
+        os << "    {\n";
+        os << "        std::vector<double> next(slot_count, 0.0);\n";
+        os << "        for (std::size_t i = 0; i < slot_count; ++i) next[i] = "
+           << ref << "[i] + " << ref << "[(i + " << step << ") % slot_count];\n";
+        os << "        " << ref << " = next;\n";
+        os << "    }\n";
+      }
+    }
+    else
+    {
+      os << "    std::vector<double> " << ref << "(slot_count, 0.0);\n";
+      if (type == ir::OpCode::Type::negate)
+      {
+        os << "    for (std::size_t i = 0; i < slot_count; ++i) " << ref << "[i] = -" << operand << "[i];\n";
+      }
+      else if (type == ir::OpCode::Type::square)
+      {
+        os << "    for (std::size_t i = 0; i < slot_count; ++i) " << ref << "[i] = " << operand << "[i] * " << operand << "[i];\n";
+      }
+      else
+      {
+        const auto operand2 = references.at(term->operands()[1]->id());
+        const char *op = type == ir::OpCode::Type::add ? "+" :
+          type == ir::OpCode::Type::sub ? "-" : "*";
+        os << "    for (std::size_t i = 0; i < slot_count; ++i) " << ref << "[i] = " << operand
+           << "[i] " << op << " " << operand2 << "[i];\n";
+      }
+    }
+  }
+
+  os << "    std::unordered_map<std::string, std::vector<double>> expectedOutputs;\n";
+  for (const auto &output : func->data_flow().outputs_info())
+  {
+    const auto &ref = references.at(output.first->id());
+    for (const auto &label : output.second.labels_)
+      os << "    expectedOutputs[\"" << label << "\"] = " << ref << ";\n";
+  }
+}
+
+} // namespace
 
 void gen_func_heongpu(
   const shared_ptr<ir::Func> &func,
@@ -56,11 +246,13 @@ void gen_func_heongpu(
   os << "    std::unordered_map<std::string, heongpu::Plaintext<SCHEME>>& encodedInputs,\n";
   os << "    std::unordered_map<std::string, heongpu::Ciphertext<SCHEME>>& encryptedOutputs,\n";
   os << "    std::unordered_map<std::string, heongpu::Plaintext<SCHEME>>& encodedOutputs,\n";
+  os << "    heongpu::HEContext<SCHEME>& context,\n";
   os << "    heongpu::HEEncoder<SCHEME>& encoder,\n";
   os << "    heongpu::HEEncryptor<SCHEME>& encryptor,\n";
   os << "    heongpu::HEArithmeticOperator<SCHEME>& ops,\n";
   os << "    heongpu::Relinkey<SCHEME>& relin_key,\n";
-  os << "    heongpu::Galoiskey<SCHEME>& galois_keys) {\n\n";
+  os << "    heongpu::Galoiskey<SCHEME>& galois_keys,\n";
+  os << "    double scale = 1.0) {\n\n";
 
   TermsCtxtObjectsInfo terms_ctxt_objects_info;
   gen_input_terms(func->data_flow().inputs_info(), os, terms_ctxt_objects_info, scheme);
@@ -83,6 +275,14 @@ void gen_func_heongpu(
   {
     if (input_info.first->type() == ir::Term::Type::cipher)
       cipher_input_labels.insert(input_info.second.label_);
+  }
+
+  // Collect unique plain input labels
+  std::set<std::string> plain_input_labels;
+  for (const auto &input_info : func->data_flow().inputs_info())
+  {
+    if (input_info.first->type() == ir::Term::Type::plain)
+      plain_input_labels.insert(input_info.second.label_);
   }
 
   os << "struct GpuMemSampler {\n";
@@ -111,8 +311,16 @@ void gen_func_heongpu(
 
   // Generate main()
   os << "int main(int argc, char **argv) {\n";
+  os << "    int repetitions = 1;\n";
+  os << "    for (int i = 1; i < argc; ++i) {\n";
+  os << "        std::string arg = argv[i];\n";
+  os << "        if ((arg == \"-repetitions\" || arg == \"--repetitions\") && i + 1 < argc) {\n";
+  os << "            repetitions = std::max(1, std::atoi(argv[++i]));\n";
+  os << "        }\n";
+  os << "    }\n\n";
   os << "    GpuMemSampler sampler;\n";
   os << "    sampler.start();\n\n";
+
   if (scheme == 0) { // BFV
     if (bfv_params && !bfv_params->coeff_mod_bit_sizes().empty()) {
         os << "    int poly_modulus_degree = " << bfv_params->poly_mod_degree() << ";\n";
@@ -124,7 +332,6 @@ void gen_func_heongpu(
         }
         os << "};\n";
         os << "    std::vector<int> p_bits = {" << sizes.back() << "};\n";
-        // Heuristic to pick an appropriate NTT plain modulus based on N
         if (bfv_params->poly_mod_degree() >= 16384) {
             os << "    int plain_modulus = 786433;\n";
         } else {
@@ -176,9 +383,8 @@ void gen_func_heongpu(
 
   os << "    auto rotations = getRotationSteps();\n\n";
 
-  os << "    cudaDeviceSynchronize();\n\n";
+  os << "    cudaDeviceSynchronize();\n";
   os << "    auto t_keys_start = std::chrono::high_resolution_clock::now();\n";
-  // Galoiskey constructor takes the rotation steps vector
   os << "    heongpu::Galoiskey<SCHEME> galois_keys(context, rotations);\n";
   os << "    if (!rotations.empty()) {\n";
   os << "        keygen.generate_galois_key(galois_keys, secret_key);\n";
@@ -203,15 +409,17 @@ void gen_func_heongpu(
   os << "    std::unordered_map<std::string, heongpu::Ciphertext<SCHEME>> encryptedOutputs;\n";
   os << "    std::unordered_map<std::string, heongpu::Plaintext<SCHEME>> encodedOutputs;\n\n";
 
-  os << "    std::size_t slot_count = poly_modulus_degree / 2;\n";
+  os << "    std::size_t slot_count = encoder.slot_count();\n";
   if (scheme == 0) {
       os << "    std::vector<uint64_t> values(slot_count);\n";
       os << "    for (std::size_t i = 0; i < slot_count; i++) values[i] = static_cast<uint64_t>(i);\n";
   } else {
       os << "    std::vector<double> values(slot_count);\n";
-      os << "    for (std::size_t i = 0; i < slot_count; i++) values[i] = static_cast<double>(i);\n";
+      os << "    for (std::size_t i = 0; i < slot_count; i++) values[i] = static_cast<double>((i % 17) + 1) / 17.0;\n";
   }
 
+  os << "    cudaDeviceSynchronize();\n";
+  os << "    auto t_enc_start = std::chrono::high_resolution_clock::now();\n";
   for (const auto &label : cipher_input_labels) {
     os << "    {\n";
     os << "        heongpu::Plaintext<SCHEME> pt(context);\n";
@@ -222,18 +430,44 @@ void gen_func_heongpu(
     os << "        encryptedInputs[\"" << label << "\"] = ct;\n";
     os << "    }\n";
   }
+  for (const auto &label : plain_input_labels) {
+    os << "    {\n";
+    os << "        heongpu::Plaintext<SCHEME> pt(context);\n";
+    if (scheme == 0) os << "        encoder.encode(pt, values);\n";
+    else os << "        encoder.encode(pt, values, scale);\n";
+    os << "        encodedInputs[\"" << label << "\"] = pt;\n";
+    os << "    }\n";
+  }
+  os << "    cudaDeviceSynchronize();\n";
+  os << "    auto t_enc_end = std::chrono::high_resolution_clock::now();\n";
+  os << "    double encrypt_ms = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(t_enc_end - t_enc_start).count();\n\n";
+
+  bool can_ref = can_generate_primitive_reference(func);
+  if (can_ref) {
+    gen_primitive_reference_cu(func, os, scheme);
+    os << "    bool precision_checked = true;\n";
+  } else {
+    os << "    std::unordered_map<std::string, std::vector<double>> expectedOutputs;\n";
+    os << "    bool precision_checked = false;\n";
+  }
 
   os << "\n    cudaDeviceSynchronize();\n";
   os << "    auto t_start = std::chrono::high_resolution_clock::now();\n";
-  os << "    " << func_name << "(encryptedInputs, encodedInputs, encryptedOutputs, encodedOutputs, encoder, encryptor, ops, relin_key, galois_keys);\n";
+  os << "    for (int rep = 0; rep < repetitions; ++rep) {\n";
+  if (scheme == 0) {
+    os << "        " << func_name << "(encryptedInputs, encodedInputs, encryptedOutputs, encodedOutputs, context, encoder, encryptor, ops, relin_key, galois_keys);\n";
+  } else {
+    os << "        " << func_name << "(encryptedInputs, encodedInputs, encryptedOutputs, encodedOutputs, context, encoder, encryptor, ops, relin_key, galois_keys, scale);\n";
+  }
+  os << "    }\n";
   os << "    cudaDeviceSynchronize();\n";
   os << "    auto t_end = std::chrono::high_resolution_clock::now();\n";
-  os << "    double elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(t_end - t_start).count();\n\n";
+  os << "    double elapsed = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(t_end - t_start).count();\n";
+  os << "    double compute_ms = elapsed / repetitions;\n\n";
 
-  os << "    std::cout << \"circuit_execution_time_(ms): \" << elapsed << \"\\n\";\n";
-  os << "    std::cout << \"galois_keys_generation_time_(ms): \" << keys_elapsed << \"\\n\";\n";
-  os << "    std::cout << \"total_execution_time_(ms): \" << (elapsed + keys_elapsed) << \"\\n\";\n";
-
+  os << "    cudaDeviceSynchronize();\n";
+  os << "    auto t_dec_start = std::chrono::high_resolution_clock::now();\n";
+  os << "    double max_abs_error = 0.0;\n";
   os << "    for (auto& [name, ct] : encryptedOutputs) {\n";
   os << "        heongpu::Plaintext<SCHEME> pt_out(context);\n";
   os << "        decryptor.decrypt(pt_out, ct);\n\n";
@@ -244,16 +478,51 @@ void gen_func_heongpu(
   }
   os << "        encoder.decode(out, pt_out);\n\n";
   os << "        std::cout << name << \": [\" << out[0] << \", \" << out[1] << \", \" << out[2] << \", ...]\\n\";\n";
+  os << "        if (precision_checked && expectedOutputs.count(name)) {\n";
+  os << "            for (std::size_t i = 0; i < out.size() && i < expectedOutputs[name].size(); ++i) {\n";
+  os << "                double diff = std::abs(static_cast<double>(out[i]) - expectedOutputs[name][i]);\n";
+  os << "                if (diff > max_abs_error) max_abs_error = diff;\n";
+  os << "            }\n";
+  os << "        }\n";
   if (scheme == 0) {
       os << "        int remaining_noise_budget = decryptor.remainder_noise_budget(ct);\n";
       os << "        std::cout << \"Remaining_noise_budget: \" << remaining_noise_budget << \" \\n\" << std::flush;\n";
   }
-  os << "    }\n\n";
-  
+  os << "    }\n";
+  os << "    cudaDeviceSynchronize();\n";
+  os << "    auto t_dec_end = std::chrono::high_resolution_clock::now();\n";
+  os << "    double decrypt_ms = std::chrono::duration_cast<std::chrono::duration<double, std::milli>>(t_dec_end - t_dec_start).count();\n\n";
+
+  os << "    std::cout << \"circuit_execution_time_(ms): \" << compute_ms << \"\\n\";\n";
+  os << "    std::cout << \"galois_keys_generation_time_(ms): \" << keys_elapsed << \"\\n\";\n";
+  os << "    std::cout << \"total_execution_time_(ms): \" << (compute_ms + keys_elapsed) << \"\\n\";\n";
+
+  os << "    int level_start = (SCHEME == heongpu::Scheme::CKKS) ? static_cast<int>(q_bits.size()) - 1 : 0;\n";
+  os << "    int level_end = -1;\n";
+ os << "    for (auto& [name, ct] : encryptedOutputs) {\n";
+if (scheme == 1)
+  os << "        level_end = ct.level();\n";
+else
+  os << "        level_end = 0;\n";
+  os << "        break;\n";
+  os << "    }\n";
+  os << "    std::string max_err_json = precision_checked ? std::to_string(max_abs_error) : \"null\";\n";
+  os << "    std::cout << \"BENCHMARK_METRICS {\\\"repetitions\\\":\" << repetitions\n";
+  os << "              << \",\\\"encrypt_ms\\\":\" << std::fixed << std::setprecision(3) << encrypt_ms\n";
+  os << "              << \",\\\"compute_ms\\\":\" << compute_ms\n";
+  os << "              << \",\\\"decrypt_ms\\\":\" << decrypt_ms\n";
+  os << "              << \",\\\"galois_keys\\\":\" << rotations.size()\n";
+  os << "              << \",\\\"bootstrap_count\\\":0\"\n";
+  os << "              << \",\\\"level_start\\\":\" << level_start\n";
+  os << "              << \",\\\"level_end\\\":\" << level_end\n";
+  os << "              << \",\\\"max_abs_error\\\":\" << max_err_json\n";
+  os << "              << \",\\\"precision_checked\\\":\" << (precision_checked ? \"true\" : \"false\")\n";
+  os << "              << \"}\\n\";\n\n";
+
   os << "    cudaDeviceSynchronize();\n";
   os << "    sampler.stop();\n";
   os << "    std::cout << \"peak_gpu_memory_(MB): \"\n";
-  os << "              << sampler.peak_used.load() / (1024.0 * 1024.0) << \"\\n\";\n";
+  os << "              << sampler.peak_used.load() / (1024.0 * 1024.0) << \"\\n\";\n\n";
 
   os << "    return 0;\n";
   os << "}\n";
@@ -270,9 +539,6 @@ void gen_plain_var_id(std::size_t term_id, std::ostream &os) {
 void gen_input_terms(
   const ir::InputTermsInfo &input_terms_info, std::ostream &os, TermsCtxtObjectsInfo &terms_ctxt_objects_info, int scheme)
 {
-  // Track which cipher labels we have already seen.
-  // The first variable referencing a given label gets a REFERENCE (&) to the map entry.
-  // Subsequent variables referencing the same label get a VALUE COPY.
   std::set<std::string> seen_cipher_labels;
 
   for (const auto &input_info : input_terms_info)
@@ -286,7 +552,6 @@ void gen_input_terms(
       
       const auto &label = input_info.second.label_;
       if (seen_cipher_labels.find(label) == seen_cipher_labels.end()) {
-        // First occurrence: reference to the map entry
         seen_cipher_labels.insert(label);
         os << "    // ";
         gen_cipher_var_id(object_id, os);
@@ -295,7 +560,6 @@ void gen_input_terms(
         gen_cipher_var_id(object_id, os);
         os << " = encryptedInputs.at(\"" << label << "\");\n";
       } else {
-        // Subsequent occurrence: independent value copy (so in-place ops on this var don't clobber the original)
         os << "    // ";
         gen_cipher_var_id(object_id, os);
         os << " is an independent COPY, so rotating it does not also mutate the original.\n";
@@ -328,28 +592,125 @@ void gen_const_terms(
     gen_plain_var_id(object_id, os);
     os << "(context);\n";
     
-    // Simplistic encoding for const terms
-    if (scheme == 0) {
-      os << "    {\n";
-      os << "        std::vector<uint64_t> vals(slot_count, " << const_info.second.val_[0] << ");\n";
-      os << "        encoder.encode(";
-      gen_plain_var_id(object_id, os);
-      os << ", vals);\n";
-      os << "    }\n";
-    } else {
-      os << "    {\n";
-      os << "        std::vector<double> vals(slot_count, " << const_info.second.val_[0] << ".0);\n";
-      os << "        encoder.encode(";
-      gen_plain_var_id(object_id, os);
-      os << ", vals, scale);\n";
-      os << "    }\n";
+    if (scheme == 0) { // BFV
+      if (const_info.second.is_scalar_) {
+        os << "    {\n";
+        os << "        std::vector<uint64_t> vals(slot_count, " << static_cast<uint64_t>(const_info.second.val_[0]) << "ULL);\n";
+        os << "        encoder.encode(";
+        gen_plain_var_id(object_id, os);
+        os << ", vals);\n";
+        os << "    }\n";
+      } else {
+        const auto &vec = const_info.second.val_;
+        size_t nz = 0;
+        for (double v : vec) if (v != 0.0) ++nz;
+        if (nz * 4 < vec.size()) {
+          os << "    {\n";
+          os << "        std::vector<uint64_t> vals(slot_count, 0ULL);\n";
+          for (size_t i = 0; i < vec.size(); ++i) {
+            if (vec[i] != 0.0) {
+              os << "        vals[" << i << "] = " << static_cast<uint64_t>(vec[i]) << "ULL;\n";
+            }
+          }
+          os << "        encoder.encode(";
+          gen_plain_var_id(object_id, os);
+          os << ", vals);\n";
+          os << "    }\n";
+        } else {
+          os << "    {\n";
+          os << "        std::vector<uint64_t> vals = {";
+          for (size_t i = 0; i < vec.size(); ++i) {
+            if (i > 0) os << ", ";
+            os << static_cast<uint64_t>(vec[i]) << "ULL";
+          }
+          os << "};\n";
+          os << "        vals.resize(slot_count, 0ULL);\n";
+          os << "        encoder.encode(";
+          gen_plain_var_id(object_id, os);
+          os << ", vals);\n";
+          os << "    }\n";
+        }
+      }
+    } else { // CKKS
+      if (const_info.second.is_scalar_) {
+        os << "    {\n";
+        os << "        std::vector<double> vals(slot_count, " << const_info.second.val_[0] << ");\n";
+        os << "        encoder.encode(";
+        gen_plain_var_id(object_id, os);
+        os << ", vals, scale);\n";
+        os << "    }\n";
+      } else {
+        const auto &vec = const_info.second.val_;
+        size_t nz = 0;
+        for (double v : vec) if (v != 0.0) ++nz;
+        if (nz * 4 < vec.size()) {
+          os << "    {\n";
+          os << "        std::vector<double> vals(slot_count, 0.0);\n";
+          for (size_t i = 0; i < vec.size(); ++i) {
+            if (vec[i] != 0.0) {
+              os << "        vals[" << i << "] = " << vec[i] << ";\n";
+            }
+          }
+          os << "        encoder.encode(";
+          gen_plain_var_id(object_id, os);
+          os << ", vals, scale);\n";
+          os << "    }\n";
+        } else {
+          os << "    {\n";
+          os << "        std::vector<double> vals = {";
+          for (size_t i = 0; i < vec.size(); ++i) {
+            if (i > 0) os << ", ";
+            os << vec[i];
+          }
+          os << "};\n";
+          os << "        vals.resize(slot_count, 0.0);\n";
+          os << "        encoder.encode(";
+          gen_plain_var_id(object_id, os);
+          os << ", vals, scale);\n";
+          os << "    }\n";
+        }
+      }
     }
+  }
+}
+
+void gen_sum_vec(
+  const ir::Term *term, const std::vector<std::size_t> &operands_ids, TermsCtxtObjectsInfo &terms_ctxt_objects_info,
+  std::ostream &os, int scheme)
+{
+  auto term_object_id = terms_ctxt_objects_info.at(term->id()).id_;
+  if (term_object_id != operands_ids[0]) {
+      os << "    ";
+      gen_cipher_var_id(term_object_id, os);
+      os << " = ";
+      gen_cipher_var_id(operands_ids[0], os);
+      os << ";\n";
+  }
+  int size = term->op_code().size();
+  os << "    // SumVec reduction (size=" << size << ")\n";
+  int step = size / 2;
+  while (step >= 1) {
+      os << "    {\n";
+      os << "        heongpu::Ciphertext<SCHEME> temp_rot = ";
+      gen_cipher_var_id(term_object_id, os);
+      os << ";\n";
+      os << "        ops.rotate_rows_inplace(temp_rot, galois_keys, " << step << ");\n";
+      os << "        ops.add_inplace(";
+      gen_cipher_var_id(term_object_id, os);
+      os << ", temp_rot);\n";
+      os << "    }\n";
+      step /= 2;
   }
 }
 
 void gen_term_eval(
   const ir::Term *term, TermsCtxtObjectsInfo &terms_ctxt_objects_info, std::ostream &os, int scheme)
 {
+  static std::unordered_set<size_t> rescaled_terms;
+  if (terms_ctxt_objects_info.empty()) {
+    rescaled_terms.clear();
+  }
+
   auto term_object_id = term->id();
   std::vector<size_t> operands_ctxt_objects_ids(term->operands().size());
   std::unordered_map<size_t, size_t> operands_multip;
@@ -414,6 +775,108 @@ void gen_term_eval(
     gen_plain_var_id(term->operands()[0]->id(), os);
     os << ");\n";
   }
+  else if (term->op_code().type() == ir::OpCode::Type::rotate)
+  {
+    if (term_object_id != operands_ctxt_objects_ids[0]) {
+        os << "    ";
+        gen_cipher_var_id(term_object_id, os);
+        os << " = ";
+        gen_cipher_var_id(operands_ctxt_objects_ids[0], os);
+        os << ";\n";
+    }
+    os << "    ops.rotate_rows_inplace(";
+    gen_cipher_var_id(term_object_id, os);
+    os << ", galois_keys, " << term->op_code().generators()[0] << ");\n";
+  }
+  else if (term->op_code().type() == ir::OpCode::Type::SumVec)
+  {
+    gen_sum_vec(term, operands_ctxt_objects_ids, terms_ctxt_objects_info, os, scheme);
+  }
+  else if (term->op_code().type() == ir::OpCode::Type::square)
+  {
+    if (term_object_id != operands_ctxt_objects_ids[0]) {
+        os << "    ";
+        gen_cipher_var_id(term_object_id, os);
+        os << " = ";
+        gen_cipher_var_id(operands_ctxt_objects_ids[0], os);
+        os << ";\n";
+    }
+    os << "    ops.multiply_inplace(";
+    gen_cipher_var_id(term_object_id, os);
+    os << ", ";
+    gen_cipher_var_id(operands_ctxt_objects_ids[0], os);
+    os << ");\n";
+    os << "    ops.relinearize_inplace(";
+    gen_cipher_var_id(term_object_id, os);
+    os << ", relin_key);\n";
+    if (scheme == 1) {
+        os << "    ops.rescale_inplace(";
+        gen_cipher_var_id(term_object_id, os);
+        os << ");\n";
+        rescaled_terms.insert(term->id());
+    }
+  }
+  else if (term->op_code().type() == ir::OpCode::Type::relin)
+  {
+    if (term_object_id != operands_ctxt_objects_ids[0]) {
+        os << "    ";
+        gen_cipher_var_id(term_object_id, os);
+        os << " = ";
+        gen_cipher_var_id(operands_ctxt_objects_ids[0], os);
+        os << ";\n";
+    }
+    os << "    ops.relinearize_inplace(";
+    gen_cipher_var_id(term_object_id, os);
+    os << ", relin_key);\n";
+    if (scheme == 1) {
+        os << "    ops.rescale_inplace(";
+        gen_cipher_var_id(term_object_id, os);
+        os << ");\n";
+        rescaled_terms.insert(term->id());
+    }
+  }
+  else if (term->op_code().type() == ir::OpCode::Type::rescale)
+  {
+    if (term_object_id != operands_ctxt_objects_ids[0]) {
+        os << "    ";
+        gen_cipher_var_id(term_object_id, os);
+        os << " = ";
+        gen_cipher_var_id(operands_ctxt_objects_ids[0], os);
+        os << ";\n";
+    }
+    if (!rescaled_terms.count(term->operands()[0]->id())) {
+        os << "    ops.rescale_inplace(";
+        gen_cipher_var_id(term_object_id, os);
+        os << ");\n";
+    }
+    rescaled_terms.insert(term->id());
+  }
+  else if (term->op_code().type() == ir::OpCode::Type::mod_switch)
+  {
+    if (term_object_id != operands_ctxt_objects_ids[0]) {
+        os << "    ";
+        gen_cipher_var_id(term_object_id, os);
+        os << " = ";
+        gen_cipher_var_id(operands_ctxt_objects_ids[0], os);
+        os << ";\n";
+    }
+    os << "    ops.mod_switch_inplace(";
+    gen_cipher_var_id(term_object_id, os);
+    os << ");\n";
+  }
+  else if (term->op_code().type() == ir::OpCode::Type::negate)
+  {
+    if (term_object_id != operands_ctxt_objects_ids[0]) {
+        os << "    ";
+        gen_cipher_var_id(term_object_id, os);
+        os << " = ";
+        gen_cipher_var_id(operands_ctxt_objects_ids[0], os);
+        os << ";\n";
+    }
+    os << "    ops.negate_inplace(";
+    gen_cipher_var_id(term_object_id, os);
+    os << ");\n";
+  }
   else
   {
     auto op_type = ir::OpType{term->op_code().type(), std::move(operands_types)};
@@ -424,81 +887,28 @@ void gen_term_eval(
     }
     string op_name(op_it->second);
 
-    if (term->op_code().type() == ir::OpCode::Type::rotate) {
-      // Rotate: ops.rotate_rows_inplace(ct, galois_keys, shift)
-      // If dst != src, copy first so the inplace op works on the right variable
-      if (term_object_id != operands_ctxt_objects_ids[0]) {
-          os << "    ";
-          gen_cipher_var_id(term_object_id, os);
-          os << " = ";
-          gen_cipher_var_id(operands_ctxt_objects_ids[0], os);
-          os << ";\n";
-      }
-      os << "    ops." << op_name << "_inplace(";
-      gen_cipher_var_id(term_object_id, os);
-      os << ", galois_keys, " << term->op_code().generators()[0] << ");\n";
+    if (term_object_id != operands_ctxt_objects_ids[0]) {
+        os << "    ";
+        gen_cipher_var_id(term_object_id, os);
+        os << " = ";
+        gen_cipher_var_id(operands_ctxt_objects_ids[0], os);
+        os << ";\n";
     }
-    else if (term->op_code().type() == ir::OpCode::Type::relin) {
-      // Relinearize: ops.relinearize_inplace(ct, relin_key)
-      // In CKKS, always followed by rescale_inplace
-      if (term_object_id != operands_ctxt_objects_ids[0]) {
-          os << "    ";
-          gen_cipher_var_id(term_object_id, os);
-          os << " = ";
-          gen_cipher_var_id(operands_ctxt_objects_ids[0], os);
-          os << ";\n";
-      }
-      os << "    ops." << op_name << "_inplace(";
-      gen_cipher_var_id(term_object_id, os);
-      os << ", relin_key);\n";
-      // CKKS: relinearize clears relinearization_required_ flag,
-      // then rescale clears rescale_required_ flag
-      if (scheme == 1) {
-          os << "    ops.rescale_inplace(";
-          gen_cipher_var_id(term_object_id, os);
-          os << ");\n";
-      }
-    }
-    else if (term->op_code().type() == ir::OpCode::Type::rescale) {
-      // Rescale: ops.rescale_inplace(ct)
-      if (term_object_id != operands_ctxt_objects_ids[0]) {
-          os << "    ";
-          gen_cipher_var_id(term_object_id, os);
-          os << " = ";
-          gen_cipher_var_id(operands_ctxt_objects_ids[0], os);
-          os << ";\n";
-      }
-      os << "    ops.rescale_inplace(";
-      gen_cipher_var_id(term_object_id, os);
-      os << ");\n";
-    }
-    else {
-      // Binary ops: ops.add_inplace, ops.multiply_inplace, ops.sub_inplace, etc.
-      // Copy src into dst if they differ, then operate in-place
-      if (term_object_id != operands_ctxt_objects_ids[0]) {
-          os << "    ";
-          gen_cipher_var_id(term_object_id, os);
-          os << " = ";
-          gen_cipher_var_id(operands_ctxt_objects_ids[0], os);
-          os << ";\n";
-      }
-      os << "    ops." << op_name << "_inplace(";
-      gen_cipher_var_id(term_object_id, os);
-      os << ", ";
-      
-      auto operand1 = term->operands()[1];
-      if (operand1->type() == ir::Term::Type::cipher) gen_cipher_var_id(operands_ctxt_objects_ids[1], os);
-      else gen_plain_var_id(operand1->id(), os);
-      
-      os << ");\n";
+    os << "    ops." << op_name << "_inplace(";
+    gen_cipher_var_id(term_object_id, os);
+    os << ", ";
+    
+    auto operand1 = term->operands()[1];
+    if (operand1->type() == ir::Term::Type::cipher) gen_cipher_var_id(operands_ctxt_objects_ids[1], os);
+    else gen_plain_var_id(operand1->id(), os);
+    
+    os << ");\n";
 
-      // CKKS: multiply_plain sets rescale_required_ without needing relinearize,
-      // so we rescale immediately
-      if (scheme == 1 && op_name == "multiply_plain") {
-          os << "    ops.rescale_inplace(";
-          gen_cipher_var_id(term_object_id, os);
-          os << ");\n";
-      }
+    if (scheme == 1 && op_name == "multiply_plain") {
+        os << "    ops.rescale_inplace(";
+        gen_cipher_var_id(term_object_id, os);
+        os << ");\n";
+        rescaled_terms.insert(term->id());
     }
   }
 }

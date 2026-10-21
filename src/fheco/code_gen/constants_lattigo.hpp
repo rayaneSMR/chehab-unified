@@ -59,16 +59,15 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
 	"github.com/tuneinsight/lattigo/v5/he/hefloat"
+	"github.com/tuneinsight/lattigo/v5/ring/ringqp"
 )
 
 )"};
 
-// Go file header with ring import (for RingType or Ternary without bootstrapping)
 constexpr std::string_view go_file_header_ring{
 R"(package main
 
@@ -81,12 +80,12 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"
 	"github.com/tuneinsight/lattigo/v5/he/hefloat"
 	"github.com/tuneinsight/lattigo/v5/ring"
+	"github.com/tuneinsight/lattigo/v5/ring/ringqp"
 )
 
 )"};
@@ -104,7 +103,6 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"github.com/tuneinsight/lattigo/v5/core/rlwe"

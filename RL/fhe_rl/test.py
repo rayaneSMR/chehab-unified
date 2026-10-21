@@ -1,13 +1,82 @@
 from stable_baselines3 import PPO
-import sys, importlib, time
+import sys, importlib, time, os, subprocess, tempfile
+from pathlib import Path
 from .utils import load_expressions, load_expressions_named, create_rules
 from pytrs import parse_sexpr
 from .memory import MemoryEstimator, extra_metrics
 from .config import get_env_class, get_policy_class
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
-import os
 import pandas as pd
+
+DNN_BENCHMARKS = [
+    "conv2d", "full_dnn", "cryptonets", "mlp", "lola", "lenet",
+    "resnet20_relu", "resnet20_silu", "resnet34_relu", "resnet34_silu",
+    "resnet50_relu", "resnet50_silu", "alexnet",
+]
+
+_Runner_EXE = "dnn_tensor_benchmarks_runner_bin"
+_Runner_DIR = Path(__file__).resolve().parent.parent / "build" / "benchmarks" / "dnn_tensor"
+
+def _resolve_expressions(expressions_file: str):
+    """Accept either a dataset file path or a DNN benchmark name.
+
+    Benchmark names are expanded into a one-expression dataset file by running
+    the C++ runner and serializing the tensor graph to an S-expression.  Returns
+    the (possibly new) expressions-file path.
+    """
+    name = Path(expressions_file).name
+    if Path(expressions_file).is_file() or name not in DNN_BENCHMARKS:
+        return expressions_file
+    print(f"[test] DNN benchmark '{name}' -> materializing S-expression via C++ runner ...")
+    return _materialize_benchmark_expressions(name)
+
+
+def _materialize_benchmark_expressions(name: str, build_dir: Path = None, timeout: int = 900):
+    """Run the C++ DNN runner to serialize a tensor-graph benchmark to an
+    S-expression, and return a temp file with one ``<expression>:<name>`` line.
+
+    This is the only place the C++ graph becomes an expression your Python
+    evaluator understands, so name resolution is done here (no hand-written
+    S-expression).  Returns a path that `load_expressions_named` can read.
+
+    Raises FileNotFoundError if the runner binary is missing, or RuntimeError
+    if the build/dump step fails.
+    """
+    exe = build_dir or _Runner_DIR
+    runner = exe / _Runner_EXE
+    if not runner.is_file():
+        raise FileNotFoundError(
+            f"DNN runner not found: {runner}. "
+            "Build the runner first (cmake --build build --target dnn_tensor_benchmarks_runner_bin), "
+            "or use --dataset with the pre-generated `dnn_full_benchmarks.txt`."
+        )
+
+    expr_file = exe.parent.parent / "expression.txt"  # runner CWD is exe.parent; writes ../expression.txt
+    tmp = tempfile.mkdtemp(
+        prefix="dnn_expr_",
+        dir=str(Path(__file__).resolve().parent.parent / "test_results"),
+    )
+
+    try:
+        proc = subprocess.run(
+            [str(runner), "--benchmark", name, "--backend", "lattigo",
+             "--optimizer", "original_rl", "--bsgs-base", "global"],
+            cwd=str(runner.parent), text=True, capture_output=True, timeout=timeout,
+        )
+        if proc.returncode != 0 or not expr_file.is_file():
+            raise RuntimeError(
+                f"Runner failed for '{name}' rc={proc.returncode}: "
+                f"{proc.stderr[-400:] or proc.stdout[-400:]}"
+            )
+        expr = " ".join(expr_file.read_text().split())
+        out = Path(tmp) / f"{name}.txt"
+        out.write_text(f"{expr}:{name}\n", encoding="utf-8")
+        return str(out)
+    finally:
+        # The runner may overwrite shared `expression.txt` between benchmarks;
+        # remove the temp working copy we created to keep the disk tidy.
+        expr_file.unlink(missing_ok=True)
 
 
 def test_agent(
@@ -41,7 +110,7 @@ def test_agent(
     output_file : str
         Path for the output Excel file. If None, auto-generated.
     """
-
+    expressions_file = _resolve_expressions(expressions_file)
     expressions = load_expressions(expressions_file)
     rules_list = create_rules("rules.txt")
     rules_list["END"] = None
@@ -203,10 +272,11 @@ def test_agent_v2(
     (safety rollback).  Results are split into feasible (initial_noise <= budget)
     and infeasible categories for honest evaluation.
     """
-
+    expressions_file = _resolve_expressions(expressions_file)
     named_pairs = load_expressions_named(expressions_file)
     expr_names = [name for _, name in named_pairs]
     expressions = load_expressions(expressions_file)
+
     rules_list = create_rules("rules.txt")
     rules_list["END"] = None
     max_positions = 16

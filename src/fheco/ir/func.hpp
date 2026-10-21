@@ -33,6 +33,9 @@ public:
   template <typename T>
   void init_const(T &constant, PackedVal packed_val);
 
+  template <typename T>
+  void init_const(T &constant, PackedVal packed_val, std::vector<double> float_val);
+
   template <typename TArg, typename TDest>
   void operate_unary(OpCode op_code, const TArg &arg, TDest &dest);
 
@@ -67,6 +70,14 @@ public:
   }
 
   Term *insert_const_term(PackedVal packed_val, bool &inserted);
+
+  inline Term *insert_const_term(PackedVal packed_val, std::vector<double> float_val)
+  {
+    bool inserted;
+    return insert_const_term(std::move(packed_val), std::move(float_val), inserted);
+  }
+
+  Term *insert_const_term(PackedVal packed_val, std::vector<double> float_val, bool &inserted);
 
   void replace_term_with(Term *term1, Term *term2);
  

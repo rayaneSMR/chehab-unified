@@ -88,7 +88,15 @@ public:
   // Generate HEonGPU (CUDA) code for BFV or CKKS
   static void gen_heongpu_code(
     const std::shared_ptr<ir::Func> &func, std::ostream &cu_os, int scheme,
-    std::size_t rotation_keys_threshold = std::numeric_limits<std::size_t>::max());
+    std::size_t rotation_keys_threshold = std::numeric_limits<std::size_t>::max(),
+    bool insert_rescale = true,
+    const ckks::CKKSParams *custom_params = nullptr);
+
+  static void gen_heongpu_code(
+    const std::shared_ptr<ir::Func> &func, std::ostream &cu_os, int scheme,
+    const ckks::CKKSParams &custom_params,
+    std::size_t rotation_keys_threshold = std::numeric_limits<std::size_t>::max(),
+    bool insert_rescale = true);
   static inline const std::shared_ptr<ir::Func> &active_func()
   {
     if (active_func_it_ == funcs_table_.cend())

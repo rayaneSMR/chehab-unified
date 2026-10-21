@@ -58,6 +58,8 @@ Plaintext &operator>>=(Plaintext &arg, int steps);
 // encryption
 Ciphertext encrypt(const Plaintext &arg);
 
+Ciphertext rescale(const Ciphertext &arg);
+
 // subscript read
 Ciphertext emulate_subscripted_read(const Ciphertext &arg);
 Plaintext emulate_subscripted_read(const Plaintext &arg);
