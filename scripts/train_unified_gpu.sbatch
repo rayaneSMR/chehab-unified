@@ -34,7 +34,7 @@ echo "==== unified GPU run | backend check ===="
 $PY -c "import sys; sys.path[:0]=['fhe_rl','pytrs']; import memory; print('BACKEND:', memory.BACKEND, memory.ESTIMATOR_VERSION, memory._gpu_params())"
 echo "budgets=$BUDGETS timesteps=$TIMESTEPS eval_freq=$EVAL_FREQ envs=$NUM_ENVS start=$START_ARGS job=${SLURM_JOB_ID:-local}"
 
-stdbuf -oL -eL $PY -u -m fhe_rl \
+exec stdbuf -oL -eL $PY -u -m fhe_rl \
     --framework unified train \
     --dataset ./fhe_rl/datasets/final_llm_dataset.txt \
     --constraint "$CONSTRAINT" --budgets "$BUDGETS" \

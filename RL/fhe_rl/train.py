@@ -104,7 +104,11 @@ def train_agent(
     
     embedder_tag = "gnn" if "gnn" in str(embedder_type).lower() else "trae"
     job_id = os.environ.get("SLURM_JOB_ID", "jobid")
-    run_name = f"model_{job_id}_{constraint_method}_{policy_variant}_{embedder_tag}"
+    # GPU (HEonGPU) memory-model runs get a "_gpu" suffix so auto-resume never mixes them
+    # with CPU/Lattigo runs (their glob pattern ends at the embedder tag and cannot match this).
+    backend_suffix = "_gpu" if (str(constraint_metric).lower() == "mem"
+                                and os.environ.get("PEAK_RAM_BACKEND", "cpu").strip().lower() == "gpu") else ""
+    run_name = f"model_{job_id}_{constraint_method}_{policy_variant}_{embedder_tag}{backend_suffix}"
     tensorboard_log_dir = f"./tensorboard/{run_name}"
     checkpoint_dir = f"./checkpoints/{run_name}"
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -136,7 +140,7 @@ def train_agent(
         # 2. Search other run dirs matching this configuration (e.g. model_*_nato_sc_film_a)
         if os.path.exists("./checkpoints"):
             import glob
-            config_pattern = f"./checkpoints/model_*_{constraint_method}_{policy_variant}_{embedder_tag}"
+            config_pattern = f"./checkpoints/model_*_{constraint_method}_{policy_variant}_{embedder_tag}{backend_suffix}"
             for d in glob.glob(config_pattern):
                 if os.path.isdir(d):
                     for f in os.listdir(d):

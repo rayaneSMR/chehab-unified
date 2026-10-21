@@ -56,6 +56,24 @@ class PIDLagrangianWrapper(VecEnvWrapper):
         ))
         self._prev_error = error
 
+    def save_state(self, path):
+        """Persist the PID controller so a resumed run continues from the same lambda."""
+        import json
+        with open(path, "w") as f:
+            json.dump({
+                "lambda_penalty": self.lambda_penalty,
+                "integral": self._integral,
+                "prev_error": self._prev_error,
+            }, f)
+
+    def load_state(self, path):
+        import json
+        with open(path) as f:
+            s = json.load(f)
+        self.lambda_penalty = float(s["lambda_penalty"])
+        self._integral = float(s["integral"])
+        self._prev_error = float(s["prev_error"])
+
     def reset(self):
         return self.venv.reset()
 
