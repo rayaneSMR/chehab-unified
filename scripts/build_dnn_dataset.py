@@ -1,25 +1,22 @@
 #!/usr/bin/env python3
 """One-time, resumable build of the DNN tensor-graph expression dataset.
 
-Each DNN benchmark is a tensor *graph* in C++, not a plain S-expression.  The
-only way to materialise it as an expression for `test.py` is to run the compiled
-runtime and capture the ``expression.txt`` it dumps.  That step is expensive
-(Large DNNs such as ResNet50 can take minutes per benchmark), so we make this
-script:
+Each DNN benchmark is a tensor graph in C++, not a plain S-expression. The
+only way to materialise it as an expression for test.py is to run the compiled
+runner and capture the expression.txt it dumps.
 
-- incremental (appends only *new* benchmarks to the dataset file),
-- resumable (a failed benchmark is logged and skipped, the run can continue),
-- portable (you point it at the HPC login node where the `chehab` conda env
-  and `build/` directory already live).
-
-You normally generate the dataset **once**, then evaluate forever with
-`--dataset ./fhe_rl/datasets/dnn_full_benchmarks.txt` (fast, deterministic).
+This builder:
+- Runs without executing any optimizer (terminates the runner immediately once
+  expression.txt is written).
+- Incremental and resumable (appends to dnn_full_benchmarks.txt).
+- Cleans expressions (e.g. outer rescale) for full pytrs compatibility.
 """
 
 from __future__ import annotations
 
 import argparse
 import subprocess
+import time
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -34,40 +31,65 @@ DNN_BENCHMARKS = [
     "resnet50_relu", "resnet50_silu", "alexnet",
 ]
 
-# Per-benchmark budget; DNN graphs are large, so keep this generous (seconds).
-DEFAULT_TIMEOUT = 900
+DEFAULT_TIMEOUT = 600
 
 
-def _expr_for(name: str, timeout: int) -> tuple[str, str]:
-    """Run the C++ runner for a single DNN benchmark and return ``(expr, name)``.
+def _clean_expression(expr: str) -> str:
+    """Clean up expression formatting and strip outer rescale if present."""
+    expr = " ".join(expr.split())
+    # Handle outer ( rescale ... ) if present: (Vec ( rescale ( + ... ) ) ) -> (Vec ( + ... ) )
+    if "( rescale " in expr:
+        expr = expr.replace("( rescale ", "")
+        last_paren_idx = expr.rfind(")")
+        if last_paren_idx != -1:
+            expr = expr[:last_paren_idx] + expr[last_paren_idx + 1:]
+    return expr
 
-    Raises subprocess.TimeoutExpired / RuntimeError on failure.  The runner's
-    CWD is the `dnn_tensor` build folder; it writes ``../expression.txt`` there,
-    which is what we read below.
-    """
+
+def _expr_for(name: str, timeout: int) -> str:
+    """Run C++ runner for a benchmark, capture expression.txt, and terminate runner immediately."""
     proj_root = BUILD_DIR / "benchmarks" / "dnn_tensor"
     expr_file = BUILD_DIR / "benchmarks" / "expression.txt"
     tmp = proj_root.parent / "tmp_dnn_dataset" / name
     tmp.mkdir(parents=True, exist_ok=True)
+    expr_file.unlink(missing_ok=True)
 
-    proc = subprocess.run(
+    proc = subprocess.Popen(
         [
             str(EXECUTABLE), "--benchmark", name, "--backend", "lattigo",
             "--optimizer", "original_rl", "--bsgs-base", "global",
         ],
-        cwd=str(proj_root), text=True, capture_output=True, timeout=timeout,
+        cwd=str(proj_root),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
     )
 
-    if proc.returncode != 0 or not expr_file.is_file():
-        raise RuntimeError(
-            f"runner rc={proc.returncode} for {name}\n"
-            f"stdout: {proc.stdout[-500:]}\nstderr: {proc.stderr[-500:]}"
-        )
+    t0 = time.time()
+    raw_content = None
+    while time.time() - t0 < timeout:
+        if expr_file.is_file() and expr_file.stat().st_size > 0:
+            size1 = expr_file.stat().st_size
+            time.sleep(0.5)
+            if expr_file.is_file() and expr_file.stat().st_size == size1:
+                # File is completely written
+                raw_content = expr_file.read_text(encoding="utf-8").strip()
+                proc.kill()
+                break
+        if proc.poll() is not None:
+            if expr_file.is_file() and expr_file.stat().st_size > 0:
+                raw_content = expr_file.read_text(encoding="utf-8").strip()
+                break
+            stdout, stderr = proc.communicate()
+            raise RuntimeError(f"runner failed for {name} with rc={proc.returncode}\nstderr: {stderr[-300:]}")
+        time.sleep(0.2)
 
-    expr = " ".join(expr_file.read_text().split())
+    if raw_content is None:
+        proc.kill()
+        raise subprocess.TimeoutExpired(cmd=str(EXECUTABLE), timeout=timeout)
+
+    expr = _clean_expression(raw_content)
     line = f"{expr}:{name}"
-    # Clear any stale file we may have left from a previous (aborted) run for
-    # this benchmark so we never append a half-baked expression.
     (tmp / f"{name}.txt").write_text(line + "\n", encoding="utf-8")
     expr_file.unlink(missing_ok=True)
     return line
@@ -90,10 +112,6 @@ def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     DATASET.parent.mkdir(parents=True, exist_ok=True)
 
-    # Resolve the actual full path the runner will dump to (avoid `missing_ok`
-    # edge-case on older pythons).
-    expr_file_path = BUILD_DIR / "benchmarks" / "expression.txt"
-
     done = skipped = failed = 0
     log = []
     for name in selected:
@@ -102,25 +120,34 @@ def main() -> int:
             log.append(f"SKIP  {name}  (already in dataset)")
             continue
 
+        print(f"Extracting expression for {name}...")
         try:
             line = _expr_for(name, args.timeout)
         except subprocess.TimeoutExpired:
             failed += 1
             log.append(f"TIMEOUT  {name}  (>{args.timeout}s)")
             continue
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             failed += 1
             log.append(f"FAIL  {name}  -> {exc}")
             continue
 
         (OUT_DIR / f"{name}.txt").write_text(line + "\n", encoding="utf-8")
-        (DATASET).write_text("\n".join(
-            l for l in (DATASET.read_text(encoding="utf-8").splitlines() if DATASET.exists() else []) 
-            + [line]) + "\n", encoding="utf-8")
+        
+        # Read existing dataset lines and append
+        existing_lines = []
+        if DATASET.exists():
+            existing_lines = [l for l in DATASET.read_text(encoding="utf-8").splitlines() if l.strip()]
+        # Remove any previous line for this benchmark
+        existing_lines = [l for l in existing_lines if not l.endswith(f":{name}")]
+        existing_lines.append(line)
+        DATASET.write_text("\n".join(existing_lines) + "\n", encoding="utf-8")
+
         done += 1
         log.append(f"OK    {name}  ({len(line)} chars)")
+        print(f"OK    {name}  ({len(line)} chars)")
 
-    print("\n".join(log))
+    print("\n" + "\n".join(log))
     print(f"\nDone: {done} ok, {skipped} skipped, {failed} failed")
     return 0 if failed == 0 else 1
 

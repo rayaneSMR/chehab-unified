@@ -12,7 +12,8 @@ OP_CODES = {
     "VecAdd": 10,
     "VecMinus": 11,
     "VecMul": 12,
-    "VecNeg": 13
+    "VecNeg": 13,
+    "rescale": 14
 }
 PAREN_OPEN = 2
 PAREN_CLOSE = 3

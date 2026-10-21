@@ -8,11 +8,12 @@ PYTRS_FRAMEWORK = {
     "morl": "morl",
     "unified": "constrained",
     "baseline": "constrained",
+    "original": "baseline",
 }
 framework_parser = argparse.ArgumentParser(add_help=False)
 framework_parser.add_argument(
     "--framework",
-    choices=["constrained", "morl", "unified", "baseline"],
+    choices=["constrained", "morl", "unified", "baseline", "original"],
     default="unified",
     help="Framework to use (default: unified). Put it BEFORE the sub-command.",
 )
@@ -309,22 +310,46 @@ def parse_arguments(args=None):
         help="Output directory for results",
     )
     test_parser.add_argument(
+        "--output",
+        type=str,
+        default=None,
+        help="Path for output Excel file",
+    )
+    test_parser.add_argument(
         "--v2", action="store_true", default=False, help="Use test_agent_v2"
     )
 
     # ─── RUN COMMAND ──────────────────────────────────────────────────────────
     run_parser = subparsers.add_parser("run", help="Run the agent on a single input file")
     run_parser.add_argument(
+        "pos_input_file",
+        nargs="?",
+        default=None,
+        help="Input file with expressions (positional)",
+    )
+    run_parser.add_argument(
+        "pos_output_file",
+        nargs="?",
+        default=None,
+        help="Output file for rewritten expressions (positional)",
+    )
+    run_parser.add_argument(
         "--input_file",
         type=str,
-        default="fhe_io_example.txt",
+        default=None,
         help="Input file with expressions",
     )
     run_parser.add_argument(
         "--output_file",
         type=str,
-        default="fhe_out.txt",
+        default=None,
         help="Output file for rewritten expressions",
+    )
+    run_parser.add_argument(
+        "--w_ops",
+        type=float,
+        default=None,
+        help="Weight for operations in MORL",
     )
 
     # ─── INTERACTIVE COMMAND ──────────────────────────────────────────────────
@@ -347,6 +372,8 @@ def main(args=None):
         return
 
     framework_name = getattr(parsed_args, "framework", "unified")
+    if framework_name == "original":
+        framework_name = "baseline"
     set_framework(framework_name)
     spec = get_framework_spec()
 
@@ -460,34 +487,39 @@ def main(args=None):
             train_budgets = [int(b.strip()) for b in parsed_args.train_budgets.split(",")]
 
         expressions_file = parsed_args.benchmark or parsed_args.dataset
+        out_file = getattr(parsed_args, "output", None)
+        if not out_file and getattr(parsed_args, "output_dir", None):
+            import os
+            os.makedirs(parsed_args.output_dir, exist_ok=True)
+            model_name = os.path.basename(agent_zip).replace(".zip", "")
+            out_file = os.path.join(parsed_args.output_dir, f"test_results_{model_name}.xlsx")
+
         if parsed_args.v2:
             test_agent_v2(
                 expressions_file,
                 embeddings,
                 agent_zip,
-                output_dir=parsed_args.output_dir,
-                budgets=test_budgets,
-                train_budgets=train_budgets,
+                output_file=out_file,
+                test_budgets=test_budgets,
+                budget_options=train_budgets,
                 constraint_method=parsed_args.method,
-                deterministic=parsed_args.deterministic,
             )
         else:
             test_agent(
                 expressions_file,
                 embeddings,
                 agent_zip,
-                output_dir=parsed_args.output_dir,
-                budgets=test_budgets,
-                train_budgets=train_budgets,
+                output_file=out_file,
+                test_budgets=test_budgets,
+                budget_options=train_budgets,
                 constraint_method=parsed_args.method,
-                deterministic=parsed_args.deterministic,
             )
 
     # ─────────────────────────────── RUN ──────────────────────────────
     elif mode == "run":
         embeddings, tokenizer = load_embeddings_from_config(parsed_args.tokenizer_type, embedder_type=embedder_choice)
-        input_file = parsed_args.input_file
-        output_file = parsed_args.output_file
+        input_file = parsed_args.pos_input_file or parsed_args.input_file or "fhe_io_example.txt"
+        output_file = parsed_args.pos_output_file or parsed_args.output_file or "fhe_out.txt"
 
         if framework_name == "baseline":
             agent_zip = get_model_path("agent_model")
