@@ -33,12 +33,9 @@ MB = 1024.0 * 1024.0
 GALOIS_KEY_FACTOR = 1.76  # measured by finish/rot_probe.py: RSS ~1.9x key size at (16384,4) and (32768,9); 1.76 = GC ratio of the deep group
 CALIB_PATH = os.environ.get("PEAK_RAM_CALIB", os.path.join(_HERE, "memory_calib.json"))
 GPU_CALIB_PATH = os.environ.get("PEAK_RAM_GPU_CALIB", os.path.join(_HERE, "memory_calib_gpu.json"))
-GPU_TARGET = os.environ.get("PEAK_RAM_GPU_TARGET", "pool").strip().lower()
-if GPU_TARGET not in ("pool", "device", "host"):
-    raise ValueError(f"PEAK_RAM_GPU_TARGET must be pool, device or host, got {GPU_TARGET!r}")
-ESTIMATOR_VERSION = "calib-v3-packed" if BACKEND == "cpu" else "gpu-v1-packfix"
-if BACKEND == "gpu" and GPU_TARGET != "pool":
-    ESTIMATOR_VERSION += "-" + GPU_TARGET
+# GPU estimate = pool peak (circuit-dependent) + fixed CUDA context (measured: +427 MiB device, A100)
+GPU_CTX_MB = float(os.environ.get("PEAK_RAM_GPU_CTX_MB", "427"))
+ESTIMATOR_VERSION = "calib-v3-packed" if BACKEND == "cpu" else "gpu-v2-ctx"
 
 _calib = None
 _gpu_calib = None
@@ -72,14 +69,8 @@ def _gpu_mult(margin):
 
 
 def _gpu_target_mb(raw_total_mb, margin):
-    """GPU estimate for the selected target (pool = historical behaviour)."""
-    if GPU_TARGET == "pool":
-        return raw_total_mb * _gpu_mult(margin)
-    try:
-        from . import memory_gpu_full as _full
-    except ImportError:
-        import memory_gpu_full as _full
-    return _full.predict(raw_total_mb, GPU_TARGET, margin)
+    """GPU estimate = pool peak * scale * margin + fixed CUDA context (offset not scaled by margin)."""
+    return raw_total_mb * _gpu_mult(margin) + GPU_CTX_MB
 
 
 def group_of(N):

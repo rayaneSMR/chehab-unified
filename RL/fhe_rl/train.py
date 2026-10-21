@@ -108,6 +108,8 @@ def train_agent(
     # with CPU/Lattigo runs (their glob pattern ends at the embedder tag and cannot match this).
     backend_suffix = "_gpu" if (str(constraint_metric).lower() == "mem"
                                 and os.environ.get("PEAK_RAM_BACKEND", "cpu").strip().lower() == "gpu") else ""
+    if backend_suffix:
+        backend_suffix += "_ctx"   # estimator gpu-v2-ctx (pool + CUDA context); old "_gpu" runs used the pool-only estimator
     run_name = f"model_{job_id}_{constraint_method}_{policy_variant}_{embedder_tag}{backend_suffix}"
     tensorboard_log_dir = f"./tensorboard/{run_name}"
     checkpoint_dir = f"./checkpoints/{run_name}"
