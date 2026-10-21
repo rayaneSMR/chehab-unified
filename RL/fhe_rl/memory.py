@@ -33,7 +33,12 @@ MB = 1024.0 * 1024.0
 GALOIS_KEY_FACTOR = 1.76  # measured by finish/rot_probe.py: RSS ~1.9x key size at (16384,4) and (32768,9); 1.76 = GC ratio of the deep group
 CALIB_PATH = os.environ.get("PEAK_RAM_CALIB", os.path.join(_HERE, "memory_calib.json"))
 GPU_CALIB_PATH = os.environ.get("PEAK_RAM_GPU_CALIB", os.path.join(_HERE, "memory_calib_gpu.json"))
+GPU_TARGET = os.environ.get("PEAK_RAM_GPU_TARGET", "pool").strip().lower()
+if GPU_TARGET not in ("pool", "device", "host"):
+    raise ValueError(f"PEAK_RAM_GPU_TARGET must be pool, device or host, got {GPU_TARGET!r}")
 ESTIMATOR_VERSION = "calib-v3-packed" if BACKEND == "cpu" else "gpu-v1-packfix"
+if BACKEND == "gpu" and GPU_TARGET != "pool":
+    ESTIMATOR_VERSION += "-" + GPU_TARGET
 
 _calib = None
 _gpu_calib = None
@@ -66,6 +71,17 @@ def _gpu_mult(margin):
     return c["scale"] * (c["margin"] if margin else 1.0)
 
 
+def _gpu_target_mb(raw_total_mb, margin):
+    """GPU estimate for the selected target (pool = historical behaviour)."""
+    if GPU_TARGET == "pool":
+        return raw_total_mb * _gpu_mult(margin)
+    try:
+        from . import memory_gpu_full as _full
+    except ImportError:
+        import memory_gpu_full as _full
+    return _full.predict(raw_total_mb, GPU_TARGET, margin)
+
+
 def group_of(N):
     return "16384" if N <= 16384 else "32768"
 
@@ -85,7 +101,7 @@ def _raw_floor_mb(N, L, K, margin):
     """Calibrated floor of an (almost) empty circuit, WITHOUT the monotone clamp."""
     t = estimate_peak_memory(N, L, K, 0, 2 * ciphertext_bytes(N, L - 1), BACKEND)
     if BACKEND == "gpu":
-        return sum(t.values()) / MB * _gpu_mult(margin)
+        return _gpu_target_mb(sum(t.values()) / MB, margin)
     return _apply(group_of(N), sum(t.values()) / MB, L, margin)
 
 
@@ -123,8 +139,7 @@ def peak_ram_breakdown(expr, margin=True):
     non_key_mb = est.total_mb - gal_mb
     g = group_of(p.N)
     if BACKEND == "gpu":
-        mult = _gpu_mult(margin)
-        return dict(mb=est.total_mb * mult, clamped=False, N=p.N, L=p.L, K=p.K, G=est.rotation_steps,
+        return dict(mb=_gpu_target_mb(est.total_mb, margin), clamped=False, N=p.N, L=p.L, K=p.K, G=est.rotation_steps,
                     group=g, raw_net_mb=est.total_mb, galois_mb=gal_mb, live_cts=est.peak_live_ciphertexts,
                     validated=True, packed=packed_ok)
     mult = _load()["groups"][g]["margin"] if margin else 1.0
