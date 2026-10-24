@@ -2,14 +2,13 @@
 #SBATCH -p compute
 #SBATCH --time=06:00:00
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=64GB
+#SBATCH --mem=128GB
 #SBATCH -J dnn-dataset
 #SBATCH -o build_dnn.%j.log
 #SBATCH -e build_dnn.%j.err
 
-set -euo pipefail
-
-# Activate conda environment (support chehabEnv or chehab)
+# Disable strict unbound variable checking during conda activation
+set +u
 if [ -f /share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate ]; then
     source /share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate
 elif [ -f ~/miniconda3/bin/activate ]; then
@@ -21,6 +20,9 @@ if conda info --envs | grep -q "chehabEnv"; then
 elif conda info --envs | grep -q "chehab"; then
     conda activate chehab
 fi
+set -u
+
+set -eo pipefail
 
 # Detect project root dynamically
 NETID=${NETID:-$(whoami)}
