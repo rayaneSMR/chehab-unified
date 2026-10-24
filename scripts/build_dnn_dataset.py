@@ -8,6 +8,7 @@ runner and capture the expression.txt it dumps.
 This builder:
 - Runs without executing any optimizer (terminates the runner immediately once
   expression.txt is written).
+- Live heartbeat progress prints for interactive terminal monitoring.
 - Incremental and resumable (appends to dnn_full_benchmarks.txt).
 - Cleans expressions (e.g. outer rescale) for full pytrs compatibility.
 """
@@ -31,7 +32,7 @@ DNN_BENCHMARKS = [
     "resnet50_relu", "resnet50_silu", "alexnet",
 ]
 
-DEFAULT_TIMEOUT = 600
+DEFAULT_TIMEOUT = 1200
 
 
 def _clean_expression(expr: str) -> str:
@@ -66,8 +67,19 @@ def _expr_for(name: str, timeout: int) -> str:
     )
 
     t0 = time.time()
+    last_print = t0
     raw_content = None
     while time.time() - t0 < timeout:
+        now = time.time()
+        if now - last_print >= 10:
+            elapsed = int(now - t0)
+            if expr_file.is_file():
+                sz = expr_file.stat().st_size
+                print(f"  [{name}] {elapsed}s elapsed (writing expression.txt: {sz / 1e6:.1f} MB)...", flush=True)
+            else:
+                print(f"  [{name}] {elapsed}s elapsed (building C++ graph in memory)...", flush=True)
+            last_print = now
+
         if expr_file.is_file() and expr_file.stat().st_size > 0:
             size1 = expr_file.stat().st_size
             time.sleep(0.5)
@@ -112,24 +124,38 @@ def main() -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     DATASET.parent.mkdir(parents=True, exist_ok=True)
 
+    total_count = len(selected)
+    print(f"\n=======================================================", flush=True)
+    print(f"  Starting DNN Expression Extraction ({total_count} benchmarks)", flush=True)
+    print(f"  Skip existing: {args.skip_existing} | Timeout per benchmark: {args.timeout}s", flush=True)
+    print(f"=======================================================\n", flush=True)
+
     done = skipped = failed = 0
     log = []
-    for name in selected:
+    for idx, name in enumerate(selected, 1):
         if args.skip_existing and _benchmark_already_present(name):
             skipped += 1
-            log.append(f"SKIP  {name}  (already in dataset)")
+            sz = (OUT_DIR / f"{name}.txt").stat().st_size
+            log.append(f"SKIP  [{idx}/{total_count}] {name}  (already exists: {sz / 1e6:.1f} MB)")
+            print(f"--> [{idx}/{total_count}] SKIP: {name} (already exists: {sz / 1e6:.1f} MB)", flush=True)
             continue
 
-        print(f"Extracting expression for {name}...")
+        print(f"--> [{idx}/{total_count}] EXTRACTING: {name} ...", flush=True)
+        t_start = time.time()
         try:
             line = _expr_for(name, args.timeout)
+            dur = time.time() - t_start
         except subprocess.TimeoutExpired:
             failed += 1
-            log.append(f"TIMEOUT  {name}  (>{args.timeout}s)")
+            msg = f"TIMEOUT [{idx}/{total_count}] {name} (>{args.timeout}s)"
+            log.append(msg)
+            print(f"    FAILED: {msg}", flush=True)
             continue
         except Exception as exc:
             failed += 1
-            log.append(f"FAIL  {name}  -> {exc}")
+            msg = f"FAIL [{idx}/{total_count}] {name} -> {exc}"
+            log.append(msg)
+            print(f"    FAILED: {msg}", flush=True)
             continue
 
         (OUT_DIR / f"{name}.txt").write_text(line + "\n", encoding="utf-8")
@@ -144,11 +170,16 @@ def main() -> int:
         DATASET.write_text("\n".join(existing_lines) + "\n", encoding="utf-8")
 
         done += 1
-        log.append(f"OK    {name}  ({len(line)} chars)")
-        print(f"OK    {name}  ({len(line)} chars)")
+        msg = f"OK [{idx}/{total_count}] {name} ({len(line) / 1e6:.2f} MB extracted in {dur:.1f}s)"
+        log.append(msg)
+        print(f"    SUCCESS: {msg}\n", flush=True)
 
-    print("\n" + "\n".join(log))
-    print(f"\nDone: {done} ok, {skipped} skipped, {failed} failed")
+    print("\n=======================================================", flush=True)
+    print("  EXTRACTION SUMMARY", flush=True)
+    print("=======================================================", flush=True)
+    print("\n".join(log), flush=True)
+    print(f"\nTotal: {done} ok, {skipped} skipped, {failed} failed", flush=True)
+    print(f"Dataset location: {DATASET}\n", flush=True)
     return 0 if failed == 0 else 1
 
 
