@@ -112,7 +112,13 @@ def test_agent(
     """
     expressions_file = _resolve_expressions(expressions_file)
     expressions = load_expressions(expressions_file)
-    rules_list = create_rules("rules.txt")
+    rules_p = "rules.txt"
+    rot_p = "rotations_rules.txt"
+    if not os.path.exists(rules_p):
+        rules_p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rules.txt")
+    if not os.path.exists(rot_p):
+        rot_p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rotations_rules.txt")
+    rules_list = create_rules(rules_p, rot_p if os.path.exists(rot_p) else None)
     rules_list["END"] = None
     max_positions = 16
 
@@ -277,7 +283,13 @@ def test_agent_v2(
     expr_names = [name for _, name in named_pairs]
     expressions = load_expressions(expressions_file)
 
-    rules_list = create_rules("rules.txt")
+    rules_p = "rules.txt"
+    rot_p = "rotations_rules.txt"
+    if not os.path.exists(rules_p):
+        rules_p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rules.txt")
+    if not os.path.exists(rot_p):
+        rot_p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rotations_rules.txt")
+    rules_list = create_rules(rules_p, rot_p if os.path.exists(rot_p) else None)
     rules_list["END"] = None
     max_positions = 16
 
