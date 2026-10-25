@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -p compute
-#SBATCH --time=12:00:00
+#SBATCH --time=24:00:00
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=0
 #SBATCH -J dnn-dataset
@@ -39,7 +39,7 @@ echo "[build] project root: $PROJ_ROOT"
 python scripts/build_dnn_dataset.py \
     --benchmarks conv2d,full_dnn,cryptonets,mlp,lola,lenet,resnet20_relu,resnet20_silu,resnet34_relu,resnet34_silu,resnet50_relu,resnet50_silu,alexnet \
     --skip-existing \
-    --timeout 3600
+    --timeout 7200
 
 echo "[build] done $(date)"
 ls -la "$PROJ_ROOT/RL/fhe_rl/datasets/dnn_full_benchmarks.txt"

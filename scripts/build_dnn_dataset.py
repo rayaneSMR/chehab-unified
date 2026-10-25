@@ -32,7 +32,7 @@ DNN_BENCHMARKS = [
     "resnet50_relu", "resnet50_silu", "alexnet",
 ]
 
-DEFAULT_TIMEOUT = 1200
+DEFAULT_TIMEOUT = 7200
 
 
 def _clean_expression(expr: str) -> str:
