@@ -281,7 +281,7 @@ def test_agent_v2(
     expressions_file = _resolve_expressions(expressions_file)
     named_pairs = load_expressions_named(expressions_file)
     expr_names = [name for _, name in named_pairs]
-    expressions = load_expressions(expressions_file)
+    expressions = [expr for expr, _ in named_pairs]
 
     rules_p = "rules.txt"
     rot_p = "rotations_rules.txt"
@@ -327,7 +327,10 @@ def test_agent_v2(
 
         env.set_options({"budget": budget})
 
-        for expr_idx in range(len(expressions)):
+        total_exprs = len(expressions)
+        for expr_idx in range(total_exprs):
+            expr_name = expr_names[expr_idx] if expr_idx < len(expr_names) else f"expr_{expr_idx}"
+            print(f"  [Budget {budget}] [{expr_idx+1}/{total_exprs}] Evaluating '{expr_name}'...", flush=True)
             t0 = time.perf_counter()
 
             obs = env.reset()
@@ -337,7 +340,7 @@ def test_agent_v2(
 
             test_expr = fhe_env.initial_expression
             initial_cost = fhe_env.initial_cost
-            initial_noise = float(noise_estimator.estimate(parse_sexpr(test_expr)))
+            initial_noise = float(getattr(fhe_env, "curr_constraint", None) or noise_estimator.estimate(parse_sexpr(test_expr)))
 
             is_feasible = initial_noise <= budget
 
@@ -363,13 +366,13 @@ def test_agent_v2(
                     # holds the NEXT episode's state. Read the terminal
                     # state from the info dict captured before the reset.
                     terminal = infos[0]
-                    cp_expr = terminal["expression"]
-                    cp_cost = terminal["cost"]
-                    cp_noise = float(terminal["constraint_value"])
+                    cp_expr = terminal.get("expression", fhe_env.expression)
+                    cp_cost = terminal.get("cost", fhe_env.current_cost)
+                    cp_noise = float(terminal.get("constraint_value", getattr(fhe_env, "curr_constraint", 0.0)))
                 else:
                     cp_expr = fhe_env.expression
                     cp_cost = fhe_env.current_cost
-                    cp_noise = float(noise_estimator.estimate(parse_sexpr(cp_expr)))
+                    cp_noise = float(getattr(fhe_env, "curr_constraint", None) or noise_estimator.estimate(parse_sexpr(cp_expr)))
 
                 checkpoints.append({
                     "step": steps,
@@ -433,11 +436,19 @@ def test_agent_v2(
 
             tag = "FEASIBLE" if is_feasible else "INFEAS"
             safe_tag = "SAFE" if safe_noise <= budget else "VIOL"
-            print(f"  [{tag}][{safe_tag}] Expr {expr_idx+1}: "
+            print(f"  [{tag}][{safe_tag}] [{expr_idx+1}/{total_exprs}] '{expr_name}': "
                   f"cost {initial_cost}->{safe_cost} ({safe_cr:+.1f}%), "
-                  f"noise {initial_noise:.0f}->{safe_noise:.0f}, "
-                  f"rl_time={rl_time_ms:.0f}ms, "
-                  f"safety={'ON' if safety_activated else 'off'}")
+                  f"RAM {initial_noise:.1f}->{safe_noise:.1f} MB, "
+                  f"rl_time={rl_time_ms/1000:.1f}s, "
+                  f"safety={'ON' if safety_activated else 'off'}", flush=True)
+
+            # Progressive Excel save (never lose completed expressions)
+            if output_file and all_results:
+                try:
+                    excel_results = [{k: v for k, v in r.items() if not k.startswith("_")} for r in all_results]
+                    pd.DataFrame(excel_results).to_excel(output_file, index=False)
+                except Exception:
+                    pass
 
     # ── Write results to Excel ──────────────────────────────────────────
     excel_results = [{k: v for k, v in r.items() if not k.startswith("_")} for r in all_results]
