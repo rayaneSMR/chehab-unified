@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH -p compute
-#SBATCH --time=06:00:00
+#SBATCH --time=12:00:00
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=128GB
+#SBATCH --mem=0
 #SBATCH -J dnn-dataset
 #SBATCH -o build_dnn.%j.log
 #SBATCH -e build_dnn.%j.err
@@ -15,11 +15,10 @@ elif [ -f ~/miniconda3/bin/activate ]; then
     source ~/miniconda3/bin/activate
 fi
 
-if conda info --envs | grep -q "chehabEnv"; then
-    conda activate chehabEnv
-elif conda info --envs | grep -q "chehab"; then
-    conda activate chehab
-fi
+conda activate /scratch/${USER}/conda/envs/chehabEnv 2>/dev/null || \
+conda activate /scratch/mo3135/conda/envs/chehabEnv 2>/dev/null || \
+conda activate chehabEnv 2>/dev/null || \
+conda activate chehab 2>/dev/null || true
 set -u
 
 set -eo pipefail
@@ -40,7 +39,7 @@ echo "[build] project root: $PROJ_ROOT"
 python scripts/build_dnn_dataset.py \
     --benchmarks conv2d,full_dnn,cryptonets,mlp,lola,lenet,resnet20_relu,resnet20_silu,resnet34_relu,resnet34_silu,resnet50_relu,resnet50_silu,alexnet \
     --skip-existing \
-    --timeout 1200
+    --timeout 3600
 
 echo "[build] done $(date)"
 ls -la "$PROJ_ROOT/RL/fhe_rl/datasets/dnn_full_benchmarks.txt"

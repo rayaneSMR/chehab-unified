@@ -17,11 +17,10 @@ elif [ -f "$HOME/miniconda3/bin/activate" ]; then
     source "$HOME/miniconda3/bin/activate"
 fi
 
-if conda info --envs | grep -q "chehabEnv"; then
-    conda activate chehabEnv
-elif conda info --envs | grep -q "chehab"; then
-    conda activate chehab
-fi
+conda activate /scratch/${USER}/conda/envs/chehabEnv 2>/dev/null || \
+conda activate /scratch/mo3135/conda/envs/chehabEnv 2>/dev/null || \
+conda activate chehabEnv 2>/dev/null || \
+conda activate chehab 2>/dev/null || true
 set -u
 
 set -eo pipefail
@@ -129,6 +128,7 @@ for i in "${!BENCHMARKS[@]}"; do
         --model "$MODEL_PATH" \
         --dataset "$BENCH_FILE" \
         --budgets "$BUDGETS" \
+        --train_budgets "$BUDGETS" \
         --method nato_sc \
         --budget_encoding film \
         --policy_variant film_a \
