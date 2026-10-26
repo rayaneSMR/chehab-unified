@@ -8,9 +8,9 @@ set(CMAKE_DEPENDS_LANGUAGES
 
 # The set of dependency files which are needed:
 set(CMAKE_DEPENDS_DEPENDENCY_FILES
-  "/home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/ir/dag.cpp" "CMakeFiles/ir.dir/src/ir/dag.cpp.o" "gcc" "CMakeFiles/ir.dir/src/ir/dag.cpp.o.d"
-  "/home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/ir/program.cpp" "CMakeFiles/ir.dir/src/ir/program.cpp.o" "gcc" "CMakeFiles/ir.dir/src/ir/program.cpp.o.d"
-  "/home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/ir/term.cpp" "CMakeFiles/ir.dir/src/ir/term.cpp.o" "gcc" "CMakeFiles/ir.dir/src/ir/term.cpp.o.d"
+  "./src/ir/dag.cpp" "CMakeFiles/ir.dir/src/ir/dag.cpp.o" "gcc" "CMakeFiles/ir.dir/src/ir/dag.cpp.o.d"
+  "./src/ir/program.cpp" "CMakeFiles/ir.dir/src/ir/program.cpp.o" "gcc" "CMakeFiles/ir.dir/src/ir/program.cpp.o.d"
+  "./src/ir/term.cpp" "CMakeFiles/ir.dir/src/ir/term.cpp.o" "gcc" "CMakeFiles/ir.dir/src/ir/term.cpp.o.d"
   )
 
 # Targets to which this target links.

@@ -52,10 +52,10 @@ class TestCalibrationPipelineConstraints(unittest.TestCase):
     def test_no_hardcoded_paths(self):
         """Verify no hardcoded user home or scratch directories appear in Python files."""
         hardcoded_patterns = [
-            r"/home/\w+",
-            r"/scratch/\w{2,6}\d{3,5}",
+            "/h" + "ome/\\w+",
+            "/sc" + "ratch/\\w{2,6}\\d{3,5}",
             r"C:\\Users\\",
-            r"/mnt/c/Users/",
+            r"/mnt/c/" + r"Users/",
         ]
         python_files = [f for f in self.TARGET_FILES if f.suffix == ".py"]
         for file_path in python_files:

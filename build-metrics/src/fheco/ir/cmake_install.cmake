@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/ir
+# Install script for directory: ./src/fheco/ir
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,17 +39,17 @@ endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/FHECO/fheco/ir" TYPE FILE FILES
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/ir/common.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/ir/expr.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/ir/func.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/ir/op_code.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/ir/term.hpp"
+    "./src/fheco/ir/common.hpp"
+    "./src/fheco/ir/expr.hpp"
+    "./src/fheco/ir/func.hpp"
+    "./src/fheco/ir/op_code.hpp"
+    "./src/fheco/ir/term.hpp"
     )
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/ir/install_local_manifest.txt"
+  file(WRITE "./build-metrics/src/fheco/ir/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

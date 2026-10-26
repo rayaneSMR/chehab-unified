@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs
+# Install script for directory: ./src/fheco/trs
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,23 +39,23 @@ endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/FHECO/fheco/trs" TYPE FILE FILES
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/common.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/fold_op_gen_matcher.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/op_gen_matcher.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/op_gen_op_code.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/ops_overloads.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/rule.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/ruleset.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/substitution.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/term_matcher.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/term_op_code.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/trs.hpp"
+    "./src/fheco/trs/common.hpp"
+    "./src/fheco/trs/fold_op_gen_matcher.hpp"
+    "./src/fheco/trs/op_gen_matcher.hpp"
+    "./src/fheco/trs/op_gen_op_code.hpp"
+    "./src/fheco/trs/ops_overloads.hpp"
+    "./src/fheco/trs/rule.hpp"
+    "./src/fheco/trs/ruleset.hpp"
+    "./src/fheco/trs/substitution.hpp"
+    "./src/fheco/trs/term_matcher.hpp"
+    "./src/fheco/trs/term_op_code.hpp"
+    "./src/fheco/trs/trs.hpp"
     )
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/trs/install_local_manifest.txt"
+  file(WRITE "./build-metrics/src/fheco/trs/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

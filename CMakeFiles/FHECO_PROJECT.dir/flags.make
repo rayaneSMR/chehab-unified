@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/g++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/home/aimad/Desktop/projects/fhe_compiler/fheco_project/FHECO_PROJECT -I/home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/ir -I/home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/dsl -I/home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/fhecompiler
+CXX_INCLUDES = -I./FHECO_PROJECT -I./src/ir -I./src/dsl -I./src/fhecompiler
 
 CXX_FLAGS = 
 

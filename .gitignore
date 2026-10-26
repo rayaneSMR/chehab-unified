@@ -64,4 +64,8 @@ hpc_results/logs/
 he/tensor_lola_auto.go
 /docs/
 docs/
-.claude/
+
+# Large generated DNN datasets (built via scripts/build_dnn_dataset.sbatch on HPC)
+RL/fhe_rl/datasets/cryptonets.txt
+RL/fhe_rl/datasets/dnn_full_benchmarks.txt
+RL/fhe_rl/datasets/full_dnn.txt

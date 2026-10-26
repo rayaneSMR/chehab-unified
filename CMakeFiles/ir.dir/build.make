@@ -53,10 +53,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/aimad/Desktop/projects/fhe_compiler/fheco_project
+CMAKE_SOURCE_DIR = .
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/aimad/Desktop/projects/fhe_compiler/fheco_project
+CMAKE_BINARY_DIR = .
 
 # Include any dependencies generated for this target.
 include CMakeFiles/ir.dir/depend.make
@@ -72,44 +72,44 @@ include CMakeFiles/ir.dir/flags.make
 CMakeFiles/ir.dir/src/ir/program.cpp.o: CMakeFiles/ir.dir/flags.make
 CMakeFiles/ir.dir/src/ir/program.cpp.o: src/ir/program.cpp
 CMakeFiles/ir.dir/src/ir/program.cpp.o: CMakeFiles/ir.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/aimad/Desktop/projects/fhe_compiler/fheco_project/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/ir.dir/src/ir/program.cpp.o"
-	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ir.dir/src/ir/program.cpp.o -MF CMakeFiles/ir.dir/src/ir/program.cpp.o.d -o CMakeFiles/ir.dir/src/ir/program.cpp.o -c /home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/ir/program.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=./CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/ir.dir/src/ir/program.cpp.o"
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ir.dir/src/ir/program.cpp.o -MF CMakeFiles/ir.dir/src/ir/program.cpp.o.d -o CMakeFiles/ir.dir/src/ir/program.cpp.o -c ./src/ir/program.cpp
 
 CMakeFiles/ir.dir/src/ir/program.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/ir.dir/src/ir/program.cpp.i"
-	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/ir/program.cpp > CMakeFiles/ir.dir/src/ir/program.cpp.i
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E ./src/ir/program.cpp > CMakeFiles/ir.dir/src/ir/program.cpp.i
 
 CMakeFiles/ir.dir/src/ir/program.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ir.dir/src/ir/program.cpp.s"
-	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/ir/program.cpp -o CMakeFiles/ir.dir/src/ir/program.cpp.s
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S ./src/ir/program.cpp -o CMakeFiles/ir.dir/src/ir/program.cpp.s
 
 CMakeFiles/ir.dir/src/ir/term.cpp.o: CMakeFiles/ir.dir/flags.make
 CMakeFiles/ir.dir/src/ir/term.cpp.o: src/ir/term.cpp
 CMakeFiles/ir.dir/src/ir/term.cpp.o: CMakeFiles/ir.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/aimad/Desktop/projects/fhe_compiler/fheco_project/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/ir.dir/src/ir/term.cpp.o"
-	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ir.dir/src/ir/term.cpp.o -MF CMakeFiles/ir.dir/src/ir/term.cpp.o.d -o CMakeFiles/ir.dir/src/ir/term.cpp.o -c /home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/ir/term.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=./CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Building CXX object CMakeFiles/ir.dir/src/ir/term.cpp.o"
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ir.dir/src/ir/term.cpp.o -MF CMakeFiles/ir.dir/src/ir/term.cpp.o.d -o CMakeFiles/ir.dir/src/ir/term.cpp.o -c ./src/ir/term.cpp
 
 CMakeFiles/ir.dir/src/ir/term.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/ir.dir/src/ir/term.cpp.i"
-	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/ir/term.cpp > CMakeFiles/ir.dir/src/ir/term.cpp.i
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E ./src/ir/term.cpp > CMakeFiles/ir.dir/src/ir/term.cpp.i
 
 CMakeFiles/ir.dir/src/ir/term.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ir.dir/src/ir/term.cpp.s"
-	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/ir/term.cpp -o CMakeFiles/ir.dir/src/ir/term.cpp.s
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S ./src/ir/term.cpp -o CMakeFiles/ir.dir/src/ir/term.cpp.s
 
 CMakeFiles/ir.dir/src/ir/dag.cpp.o: CMakeFiles/ir.dir/flags.make
 CMakeFiles/ir.dir/src/ir/dag.cpp.o: src/ir/dag.cpp
 CMakeFiles/ir.dir/src/ir/dag.cpp.o: CMakeFiles/ir.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/aimad/Desktop/projects/fhe_compiler/fheco_project/CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/ir.dir/src/ir/dag.cpp.o"
-	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ir.dir/src/ir/dag.cpp.o -MF CMakeFiles/ir.dir/src/ir/dag.cpp.o.d -o CMakeFiles/ir.dir/src/ir/dag.cpp.o -c /home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/ir/dag.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=./CMakeFiles --progress-num=$(CMAKE_PROGRESS_3) "Building CXX object CMakeFiles/ir.dir/src/ir/dag.cpp.o"
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/ir.dir/src/ir/dag.cpp.o -MF CMakeFiles/ir.dir/src/ir/dag.cpp.o.d -o CMakeFiles/ir.dir/src/ir/dag.cpp.o -c ./src/ir/dag.cpp
 
 CMakeFiles/ir.dir/src/ir/dag.cpp.i: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/ir.dir/src/ir/dag.cpp.i"
-	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/ir/dag.cpp > CMakeFiles/ir.dir/src/ir/dag.cpp.i
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E ./src/ir/dag.cpp > CMakeFiles/ir.dir/src/ir/dag.cpp.i
 
 CMakeFiles/ir.dir/src/ir/dag.cpp.s: cmake_force
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/ir.dir/src/ir/dag.cpp.s"
-	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/aimad/Desktop/projects/fhe_compiler/fheco_project/src/ir/dag.cpp -o CMakeFiles/ir.dir/src/ir/dag.cpp.s
+	/usr/bin/g++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S ./src/ir/dag.cpp -o CMakeFiles/ir.dir/src/ir/dag.cpp.s
 
 # Object files for target ir
 ir_OBJECTS = \
@@ -125,7 +125,7 @@ libir.a: CMakeFiles/ir.dir/src/ir/term.cpp.o
 libir.a: CMakeFiles/ir.dir/src/ir/dag.cpp.o
 libir.a: CMakeFiles/ir.dir/build.make
 libir.a: CMakeFiles/ir.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/aimad/Desktop/projects/fhe_compiler/fheco_project/CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX static library libir.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=./CMakeFiles --progress-num=$(CMAKE_PROGRESS_4) "Linking CXX static library libir.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/ir.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/ir.dir/link.txt --verbose=$(VERBOSE)
 
@@ -138,6 +138,6 @@ CMakeFiles/ir.dir/clean:
 .PHONY : CMakeFiles/ir.dir/clean
 
 CMakeFiles/ir.dir/depend:
-	cd /home/aimad/Desktop/projects/fhe_compiler/fheco_project && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /home/aimad/Desktop/projects/fhe_compiler/fheco_project /home/aimad/Desktop/projects/fhe_compiler/fheco_project /home/aimad/Desktop/projects/fhe_compiler/fheco_project /home/aimad/Desktop/projects/fhe_compiler/fheco_project /home/aimad/Desktop/projects/fhe_compiler/fheco_project/CMakeFiles/ir.dir/DependInfo.cmake --color=$(COLOR)
+	cd . && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" . . . . ./CMakeFiles/ir.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/ir.dir/depend
 

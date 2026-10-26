@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco
+# Install script for directory: ./src/fheco
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -38,26 +38,26 @@ if(NOT DEFINED CMAKE_OBJDUMP)
 endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/FHECO/fheco" TYPE FILE FILES "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/fheco.hpp")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/FHECO/fheco" TYPE FILE FILES "./src/fheco/fheco.hpp")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/ckks/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/code_gen/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/dsl/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/ir/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/param_select/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/passes/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/trs/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/trs/reduct_order/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/util/cmake_install.cmake")
+  include("./build-metrics/src/fheco/ckks/cmake_install.cmake")
+  include("./build-metrics/src/fheco/code_gen/cmake_install.cmake")
+  include("./build-metrics/src/fheco/dsl/cmake_install.cmake")
+  include("./build-metrics/src/fheco/ir/cmake_install.cmake")
+  include("./build-metrics/src/fheco/param_select/cmake_install.cmake")
+  include("./build-metrics/src/fheco/passes/cmake_install.cmake")
+  include("./build-metrics/src/fheco/trs/cmake_install.cmake")
+  include("./build-metrics/src/fheco/trs/reduct_order/cmake_install.cmake")
+  include("./build-metrics/src/fheco/util/cmake_install.cmake")
 
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/install_local_manifest.txt"
+  file(WRITE "./build-metrics/src/fheco/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

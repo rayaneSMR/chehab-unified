@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/reduct_order
+# Install script for directory: ./src/fheco/trs/reduct_order
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,15 +39,15 @@ endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/FHECO/fheco/trs/reduct_order" TYPE FILE FILES
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/reduct_order/check_ruleset.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/reduct_order/common.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/trs/reduct_order/compon_orders.hpp"
+    "./src/fheco/trs/reduct_order/check_ruleset.hpp"
+    "./src/fheco/trs/reduct_order/common.hpp"
+    "./src/fheco/trs/reduct_order/compon_orders.hpp"
     )
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/trs/reduct_order/install_local_manifest.txt"
+  file(WRITE "./build-metrics/src/fheco/trs/reduct_order/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

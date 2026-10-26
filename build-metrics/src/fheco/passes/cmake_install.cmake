@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/passes
+# Install script for directory: ./src/fheco/passes
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -39,20 +39,20 @@ endif()
 
 if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include/FHECO/fheco/passes" TYPE FILE FILES
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/passes/cse_commut.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/passes/get_rotation_keys_steps.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/passes/insert_relin.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/passes/insert_rescale.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/passes/passes.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/passes/prepare_code_gen.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/passes/reduce_rotation_keys.hpp"
-    "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/src/fheco/passes/scalar_mul_to_add.hpp"
+    "./src/fheco/passes/cse_commut.hpp"
+    "./src/fheco/passes/get_rotation_keys_steps.hpp"
+    "./src/fheco/passes/insert_relin.hpp"
+    "./src/fheco/passes/insert_rescale.hpp"
+    "./src/fheco/passes/passes.hpp"
+    "./src/fheco/passes/prepare_code_gen.hpp"
+    "./src/fheco/passes/reduce_rotation_keys.hpp"
+    "./src/fheco/passes/scalar_mul_to_add.hpp"
     )
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/passes/install_local_manifest.txt"
+  file(WRITE "./build-metrics/src/fheco/passes/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()

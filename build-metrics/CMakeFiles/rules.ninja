@@ -479,7 +479,7 @@ rule CXX_EXECUTABLE_LINKER__veclang_runner_
 # Rule for re-running cmake.
 
 rule RERUN_CMAKE
-  command = C:\c_files\mingw64\bin\cmake.exe --regenerate-during-build -SC:\Users\Nazne\PFE\CHEHAB\Merged_Framework_2\CHEHAB -BC:\Users\Nazne\PFE\CHEHAB\Merged_Framework_2\CHEHAB\build-metrics
+  command = C:\c_files\mingw64\bin\cmake.exe --regenerate-during-build -S. -B.\build-metrics
   description = Re-running CMake...
   generator = 1
 

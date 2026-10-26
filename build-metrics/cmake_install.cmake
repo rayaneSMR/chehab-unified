@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB
+# Install script for directory: .
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -46,39 +46,39 @@ if(CMAKE_INSTALL_COMPONENT STREQUAL "Unspecified" OR NOT CMAKE_INSTALL_COMPONENT
   if(CMAKE_ERROR_ON_ABSOLUTE_INSTALL_DESTINATION)
     message(FATAL_ERROR "ABSOLUTE path INSTALL DESTINATION forbidden (by caller): ${CMAKE_ABSOLUTE_DESTINATION_FILES}")
   endif()
-  file(INSTALL DESTINATION "C:/Program Files (x86)/FHECo/lib" TYPE STATIC_LIBRARY FILES "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/libfheco.a")
+  file(INSTALL DESTINATION "C:/Program Files (x86)/FHECo/lib" TYPE STATIC_LIBRARY FILES "./build-metrics/libfheco.a")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/src/fheco/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/box_blur/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/sort/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/max/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/dot_product/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/gx_kernel/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/gy_kernel/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/sobel/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/roberts_cross/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/hamming_dist/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/l2_distance/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/lin_reg/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/matrix_mul/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/poly_reg/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/polynomials_coyote/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/poly_derivative/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/discrete_cosin_transform/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/conv2d/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/deep_network/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/benchmarks/dnn_tensor/cmake_install.cmake")
-  include("C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/RL/veclang_runner/cmake_install.cmake")
+  include("./build-metrics/src/fheco/cmake_install.cmake")
+  include("./build-metrics/benchmarks/box_blur/cmake_install.cmake")
+  include("./build-metrics/benchmarks/sort/cmake_install.cmake")
+  include("./build-metrics/benchmarks/max/cmake_install.cmake")
+  include("./build-metrics/benchmarks/dot_product/cmake_install.cmake")
+  include("./build-metrics/benchmarks/gx_kernel/cmake_install.cmake")
+  include("./build-metrics/benchmarks/gy_kernel/cmake_install.cmake")
+  include("./build-metrics/benchmarks/sobel/cmake_install.cmake")
+  include("./build-metrics/benchmarks/roberts_cross/cmake_install.cmake")
+  include("./build-metrics/benchmarks/hamming_dist/cmake_install.cmake")
+  include("./build-metrics/benchmarks/l2_distance/cmake_install.cmake")
+  include("./build-metrics/benchmarks/lin_reg/cmake_install.cmake")
+  include("./build-metrics/benchmarks/matrix_mul/cmake_install.cmake")
+  include("./build-metrics/benchmarks/poly_reg/cmake_install.cmake")
+  include("./build-metrics/benchmarks/polynomials_coyote/cmake_install.cmake")
+  include("./build-metrics/benchmarks/poly_derivative/cmake_install.cmake")
+  include("./build-metrics/benchmarks/discrete_cosin_transform/cmake_install.cmake")
+  include("./build-metrics/benchmarks/conv2d/cmake_install.cmake")
+  include("./build-metrics/benchmarks/deep_network/cmake_install.cmake")
+  include("./build-metrics/benchmarks/dnn_tensor/cmake_install.cmake")
+  include("./build-metrics/RL/veclang_runner/cmake_install.cmake")
 
 endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
 if(CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/install_local_manifest.txt"
+  file(WRITE "./build-metrics/install_local_manifest.txt"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()
 if(CMAKE_INSTALL_COMPONENT)
@@ -94,6 +94,6 @@ else()
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
-  file(WRITE "C:/Users/Nazne/PFE/CHEHAB/Merged_Framework_2/CHEHAB/build-metrics/${CMAKE_INSTALL_MANIFEST}"
+  file(WRITE "./build-metrics/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")
 endif()
