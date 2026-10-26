@@ -206,6 +206,20 @@ def parse_arguments(args=None):
         help="KL-divergence bonus weight (default: 0.0)",
     )
     train_parser.add_argument(
+        "--mo_objective2",
+        type=str,
+        default="keys",
+        choices=["keys", "memory"],
+        help="Second MORL objective: unique rotation keys or CKKS peak memory (default: keys)",
+    )
+    train_parser.add_argument(
+        "--mem_backend",
+        type=str,
+        default="gpu",
+        choices=["gpu", "cpu"],
+        help="Backend for CKKS peak memory estimator: gpu (HEonGPU) or cpu (Lattigo) (default: gpu)",
+    )
+    train_parser.add_argument(
         "--checkpoint",
         type=str,
         default=None,
@@ -431,6 +445,8 @@ def main(args=None):
                 lambda_env=parsed_args.lambda_env,
                 lambda_kl=parsed_args.lambda_kl,
                 eval_freq=parsed_args.eval_freq,
+                objective2=parsed_args.mo_objective2,
+                mem_backend=parsed_args.mem_backend,
                 budget_options=budget_options,
                 constraint_method=parsed_args.method,
                 algo=parsed_args.algo,

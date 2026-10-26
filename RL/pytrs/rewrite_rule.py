@@ -588,35 +588,15 @@ class RewriteRule:
             return self._apply_rule_match(expr, match)
         return self.apply(expr) or expr
 
-    def _apply_rule_everywhere(self, expr: Expr, max_iters: int = 200) -> Expr:
-        """Apply this rule repeatedly until a fixed point or max_iters.
-
-        Fixes a hang (SubprocVecEnv worker stuck for minutes):
-        _apply_via_path NEVER returns None -- rec() falls back to the input
-        node (`self.apply(node) or node`) when apply() rejects the rewrite --
-        so the old `is not None` filter kept every match and the loop only
-        ended when zero matches existed.  If a match produced no change
-        (apply() -> None via validate_expression, or a self-re-matching
-        output) the loop repeated forever; with many matches each iteration
-        also re-applied + re-validated the whole tree M times (O(M^2 * N)).
-
-        Now: apply the first match that actually CHANGES the expression
-        (Expr.__eq__ is structural: Op compares op+args, Const/Var compare
-        value/name), otherwise stop.  A max_iters cap logs and bails out.
-        """
-        for _ in range(max_iters):
-            matches: List[Tuple[List[int], Expr]] = []
+    def _apply_rule_everywhere(self, expr: Expr) -> Expr:
+        while True:
+            matches = []
             self._find_matches_recursive(expr, [], matches)
-            changed = False
-            for p, _m in matches:
-                cand = self._apply_via_path(expr, p)
-                if cand is not None and cand != expr:
-                    expr = cand
-                    changed = True
-                    break          # re-scan from scratch after one rewrite
-            if not changed:
-                return expr        # fixed point: no match alters the expr
-        print(f"[rewrite] de-rotate hit max_iters ({max_iters})")
+            valid = [(p, m) for p, m in matches
+                    if self._apply_via_path(expr, p) is not None]
+            if not valid:
+                break
+            expr = self._apply_via_path(expr, valid[0][0])
         return expr
 
     def _apply_rule_match(self, expr: Expr, match: Expr) -> Expr:

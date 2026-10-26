@@ -1,0 +1,1 @@
+(Vec ( + ( + ( * ( + ( + ( << image 2 ) ( << image 1 ) ) image ) const_$31 ) ( << ( + ( + ( * ( << image 2 ) const_$37 ) ( * ( << image 1 ) const_$39 ) ) ( * image const_$37 ) ) 16 ) ) ( * ( << ( + ( + ( << image 2 ) ( << image 1 ) ) image ) 32 ) const_$31 ) ) ) :conv2d
