@@ -505,7 +505,6 @@ def main(args=None):
         expressions_file = parsed_args.benchmark or parsed_args.dataset
         out_file = getattr(parsed_args, "output", None)
         if not out_file and getattr(parsed_args, "output_dir", None):
-            import os
             os.makedirs(parsed_args.output_dir, exist_ok=True)
             model_name = os.path.basename(agent_zip).replace(".zip", "")
             out_file = os.path.join(parsed_args.output_dir, f"test_results_{model_name}.xlsx")
