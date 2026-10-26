@@ -1,6 +1,6 @@
 benchmark,backend,repetitions,dsl_generation_ms,encrypt_ms,compute_ms,decrypt_ms,total_measured_ms,rotation_keys,bootstrap_count,level_start,level_end,levels_consumed,max_abs_error,precision_checked,run_status,generated_file,error_message
 conv2d,lattigo,1,TIMEOUT,,,,,,,,,,,False,TIMEOUT,,DSL generation exceeded the 10s timeout
-full_dnn,lattigo,1,,,,,,,,,,,,False,DSL_FAILED_3221226505,C:\Users\Nazne\PFE\CHEHAB\Merged_Framework_2\CHEHAB\build\benchmarks\dnn_tensor\he\tensor_full_dnn_auto.go,CRITICAL ERROR in optimizer (original_rl): std::bad_alloc terminate called after throwing an instance of 'std::bad_alloc' what():  std::bad_alloc
+full_dnn,lattigo,1,,,,,,,,,,,,False,DSL_FAILED_3221226505,.,CRITICAL ERROR in optimizer (original_rl): std::bad_alloc terminate called after throwing an instance of 'std::bad_alloc' what():  std::bad_alloc
 cryptonets,lattigo,1,TIMEOUT,,,,,,,,,,,False,TIMEOUT,,DSL generation exceeded the 10s timeout
-mlp,lattigo,1,,,,,,,,,,,,False,DSL_FAILED_3221226505,C:\Users\Nazne\PFE\CHEHAB\Merged_Framework_2\CHEHAB\build\benchmarks\dnn_tensor\he\tensor_mlp_auto.go,CRITICAL ERROR in optimizer (original_rl): std::bad_alloc terminate called after throwing an instance of 'std::bad_alloc' what():  std::bad_alloc
+mlp,lattigo,1,,,,,,,,,,,,False,DSL_FAILED_3221226505,.,CRITICAL ERROR in optimizer (original_rl): std::bad_alloc terminate called after throwing an instance of 'std::bad_alloc' what():  std::bad_alloc
 lola,lattigo,1,TIMEOUT,,,,,,,,,,,False,TIMEOUT,,DSL generation exceeded the 10s timeout

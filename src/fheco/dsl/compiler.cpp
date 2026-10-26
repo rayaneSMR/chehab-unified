@@ -877,8 +877,8 @@ void Compiler::call_rl_vectorizer(int vector_width, float w_ops, float w_keys, c
     python_bin = py_env;
   } else {
     for (const auto& candidate_py : {
-      "/home/imed/miniconda3/envs/chehabEnv/bin/python",
-      "/home/imed/miniconda3/envs/chehab/bin/python",
+      "/usr/bin/python3",
+      "/usr/bin/python3",
       "python3"
     }) {
       if (fs::exists(candidate_py)) {

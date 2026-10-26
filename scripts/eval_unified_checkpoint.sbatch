@@ -8,7 +8,7 @@
 #SBATCH -t 02:00:00
 
 # Email notifications
-#SBATCH --mail-user=mo3135@nyu.edu
+#SBATCH --mail-user=${USER}@nyu.edu
 #SBATCH --mail-type=END,FAIL
 
 # Standard output and error logs
@@ -21,7 +21,7 @@ set +u
 if [ -f "/share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate" ]; then
     source /share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate
 fi
-conda activate /scratch/${USER}/conda/envs/chehabEnv 2>/dev/null || conda activate /scratch/mo3135/conda/envs/chehabEnv 2>/dev/null || conda activate chehabEnv 2>/dev/null || conda activate chehab 2>/dev/null || true
+conda activate /scratch/${USER}/conda/envs/chehabEnv 2>/dev/null || conda activate /scratch/${USER}/conda/envs/chehabEnv 2>/dev/null || conda activate chehabEnv 2>/dev/null || conda activate chehab 2>/dev/null || true
 set -u
 
 export PYTHONUNBUFFERED=1
@@ -31,8 +31,8 @@ if [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -d "${SLURM_SUBMIT_DIR}/RL" ]; then
     PROJ_ROOT="$SLURM_SUBMIT_DIR"
 elif [ -d "/scratch/${USER}/chehab-unified/RL" ]; then
     PROJ_ROOT="/scratch/${USER}/chehab-unified"
-elif [ -d "/scratch/mo3135/chehab-unified/RL" ]; then
-    PROJ_ROOT="/scratch/mo3135/chehab-unified"
+elif [ -d "/scratch/${NETID:-$(whoami)}/chehab-unified/RL" ]; then
+    PROJ_ROOT="/scratch/${NETID:-$(whoami)}/chehab-unified"
 else
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     PROJ_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

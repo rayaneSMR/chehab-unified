@@ -76,7 +76,7 @@ ws1.append(headers1)
 
 methods_data = [
     # V1
-    ["V1", "Unconstrained PPO\n(Bilel & Raouf)", "NONE",
+    ["V1", "Unconstrained PPO\n(Baseline)", "NONE",
      "Pure PPO. No budget info at all. Agent only optimizes cost. Trained by previous team.",
      "None", "None (infinite)", "Old (small)",
      "test_unconstrained_ppo_baseline.xlsx\ntest_aug_unconstrained_ppo.xlsx", "Done"],
@@ -587,7 +587,7 @@ ws5.append(headers5)
 style_header(ws5, 2)
 
 legend = [
-    (UNCONSTRAINED, "Comparison against unconstrained agent (Bilel & Raouf)"),
+    (UNCONSTRAINED, "Comparison against unconstrained agent (Baseline)"),
     (LAGRANGIAN, "Lagrangian methods (OD_OV, Per-Step, Always-Done)"),
     (MARGIN_BARRIER, "Margin Barrier methods"),
     (NOISE_MASKING, "Noise Masking methods"),

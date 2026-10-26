@@ -8,12 +8,12 @@
 #SBATCH -c 16
 #SBATCH -t 7-00:00:00
 
-#SBATCH --mail-user=mxa5343@nyu.edu
+#SBATCH --mail-user=${USER}@nyu.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
 
 #SBATCH -J training-10budgets-8envs-denom2
-#SBATCH -o /scratch/mxa5343/chehab-constr-updated/logs/output.train_10budgets.%j.txt
-#SBATCH -e /scratch/mxa5343/chehab-constr-updated/logs/error.train_10budgets.%j.txt
+#SBATCH -o logs/output.train_10budgets.%j.txt
+#SBATCH -e logs/error.train_10budgets.%j.txt
 
 set +u
 source /share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate
@@ -21,7 +21,7 @@ conda activate chehab
 set -u
 
 export PYTHONUNBUFFERED=1
-export NETID=mxa5343
+export NETID=${NETID:-$(whoami)}
 export PROJ_ROOT="/scratch/${NETID}/chehab-constr-updated"
 cd "$PROJ_ROOT/RL"
 export PYTHONPATH="$PROJ_ROOT/RL:$PROJ_ROOT/RL/pytrs:${PYTHONPATH:-}"

@@ -1,8 +1,8 @@
-repo: /home/maroua/chehab-unified | python: /home/maroua/miniconda3/envs/chehabEnv/bin/python3 | Wed Oct 14 08:18:06 CET 2026
+repo: /home/${USER}/chehab-unified | python: /home/${USER}/miniconda3/envs/chehabEnv/bin/python3 | Wed Oct 14 08:18:06 CET 2026
 branch: peakModel-integration @ 4392c70f
 
 ================ STEP 1: apply the final edits ================
-[calib] backup written: /home/maroua/chehab-unified/RL/fhe_rl/memory_calib_v2_unpacked.json
+[calib] backup written: /home/${USER}/chehab-unified/RL/fhe_rl/memory_calib_v2_unpacked.json
 [calib] memory_calib.json replaced by v3
 [calib] active: {'16384': {'model': 'loglog', 'a': -0.14, 'b': 1.2226, 'cL': -0.0668, 'margin': 1.0488}, '32768': {'model': 'ratio', 'ratio': 1.7605, 'margin': 1.056}}
 [env budgets] applied
@@ -29,7 +29,7 @@ Measuring 10 pending / 10 total expressions...
 [9/10] raw 8...
 [10/10] raw 9...
 Wrote temp/top16384_measured.csv
-calibration file: /home/maroua/chehab-unified/RL/fhe_rl/memory_calib.json | cap already active: False
+calibration file: /home/${USER}/chehab-unified/RL/fhe_rl/memory_calib.json | cap already active: False
 candidate cap_ratio (= N=32768 ratio): 1.7605
 
   id      N    L   net_MB  measured  loglog  err%    capped  err%   spread
@@ -92,7 +92,7 @@ deep : baseline g=0 failed -> no marginal figure
 (The current model multiplies the estimator's key term by GALOIS_KEY_FACTOR=1.20; the 'ratio meas/est' above is the figure to replace it.)
 
 ================ STEP 5: final check of the active model ================
-version: calib-v3-packed | calibration: /home/maroua/chehab-unified/RL/fhe_rl/memory_calib.json
+version: calib-v3-packed | calibration: /home/${USER}/chehab-unified/RL/fhe_rl/memory_calib.json
 PASS estimator version is calib-v3-packed
 PASS active calibration is the packed one (N=32768 ratio ~1.76) : 1.7604568299728758
 cap_ratio active: no

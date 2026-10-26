@@ -7,12 +7,12 @@
 #SBATCH -c 8
 #SBATCH -t 1-00:00:00
 
-#SBATCH --mail-user=mxa5343@nyu.edu
+#SBATCH --mail-user=${USER}@nyu.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
 
 #SBATCH -J validate-rollback
-#SBATCH -o /scratch/mxa5343/chehab-constr-updated/logs/output.validate_rollback.%j.txt
-#SBATCH -e /scratch/mxa5343/chehab-constr-updated/logs/error.validate_rollback.%j.txt
+#SBATCH -o logs/output.validate_rollback.%j.txt
+#SBATCH -e logs/error.validate_rollback.%j.txt
 
 module load gcc 2>/dev/null || true
 module load go 2>/dev/null || true
@@ -24,7 +24,7 @@ conda activate chehab
 set -u
 
 export PYTHONUNBUFFERED=1
-export NETID=mxa5343
+export NETID=${NETID:-$(whoami)}
 export PROJ_ROOT="/scratch/${NETID}/chehab-constr-updated"
 cd "$PROJ_ROOT"
 export PYTHONPATH="$PROJ_ROOT/RL:$PROJ_ROOT/RL/pytrs:${PYTHONPATH:-}"

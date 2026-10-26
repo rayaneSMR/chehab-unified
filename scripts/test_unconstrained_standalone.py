@@ -1,6 +1,6 @@
 """Standalone test for the unconstrained PPO agent on augmented benchmarks.
 
-The unconstrained agent (Bilel & Raouf) was trained with an older observation
+The unconstrained agent (baseline) was trained with an older observation
 space that does NOT include budget_one_hot_encoding.  The current fheEnv always
 adds it, but after the backwards-compat fix in policy.py the model loads fine
 and simply ignores the budget keys.

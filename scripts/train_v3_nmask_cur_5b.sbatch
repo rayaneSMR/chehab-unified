@@ -8,12 +8,12 @@
 #SBATCH -c 16
 #SBATCH -t 7-00:00:00
 
-#SBATCH --mail-user=mxa5343@nyu.edu
+#SBATCH --mail-user=${USER}@nyu.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
 
 #SBATCH -J v3-nmask_cur-5b
-#SBATCH -o /scratch/mxa5343/chehab-constr-updated/logs/output.v3_nmask_cur_5b.%j.txt
-#SBATCH -e /scratch/mxa5343/chehab-constr-updated/logs/error.v3_nmask_cur_5b.%j.txt
+#SBATCH -o logs/output.v3_nmask_cur_5b.%j.txt
+#SBATCH -e logs/error.v3_nmask_cur_5b.%j.txt
 
 set +u
 source /share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate
@@ -21,7 +21,7 @@ conda activate chehab
 set -u
 
 export PYTHONUNBUFFERED=1
-export NETID=mxa5343
+export NETID=${NETID:-$(whoami)}
 export PROJ_ROOT="/scratch/${NETID}/chehab-constr-updated"
 cd "$PROJ_ROOT/RL"
 export PYTHONPATH="$PROJ_ROOT/RL:$PROJ_ROOT/RL/pytrs:${PYTHONPATH:-}"

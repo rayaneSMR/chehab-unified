@@ -17,7 +17,7 @@ elif [ -f "$HOME/miniconda3/bin/activate" ]; then
 fi
 
 conda activate /scratch/${USER}/conda/envs/chehabEnv 2>/dev/null || \
-conda activate /scratch/mo3135/conda/envs/chehabEnv 2>/dev/null || \
+conda activate /scratch/${USER}/conda/envs/chehabEnv 2>/dev/null || \
 conda activate chehabEnv 2>/dev/null || \
 conda activate chehab 2>/dev/null || true
 set -u

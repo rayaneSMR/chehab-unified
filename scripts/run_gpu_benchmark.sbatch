@@ -8,16 +8,16 @@
 #SBATCH -c 4
 #SBATCH -t 4:00:00
 
-#SBATCH --mail-user=mxa5343@nyu.edu
+#SBATCH --mail-user=${USER}@nyu.edu
 #SBATCH --mail-type=BEGIN,END,FAIL
 
 #SBATCH -J gpu-benchmark
-#SBATCH -o /scratch/mxa5343/chehab-constr-updated/logs/output.gpu_bench.%j.txt
-#SBATCH -e /scratch/mxa5343/chehab-constr-updated/logs/error.gpu_bench.%j.txt
+#SBATCH -o logs/output.gpu_bench.%j.txt
+#SBATCH -e logs/error.gpu_bench.%j.txt
 
 set -euo pipefail
 
-export NETID=mxa5343
+export NETID=${NETID:-$(whoami)}
 export PROJ_ROOT="/scratch/${NETID}/chehab-constr-updated"
 export HEONGPU_DIR="${HOME}/local/heongpu"
 

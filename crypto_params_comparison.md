@@ -6,11 +6,11 @@
 
 | Parameter | SEAL (backend=0) | HEonGPU BFV (backend=2, scheme=0) | Match? |
 |---|---|---|---|
-| **poly_modulus_degree** | `16384` (hardcoded in [gen_func.cpp:L57](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func.cpp#L57)) | `16384` (hardcoded in [gen_func_heongpu.cpp:L86](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func_heongpu.cpp#L86)) | ✅ Yes |
-| **plain_modulus** | `PlainModulus::Batching(n, <bit_size>)` — SEAL selects a prime of the requested bit size that satisfies `p ≡ 1 mod 2n` ([gen_func.cpp:L378](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func.cpp#L378)) | `1032193` (hardcoded literal in [gen_func_heongpu.cpp:L90](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func_heongpu.cpp#L90)) | ⚠️ **MAYBE** |
-| **coeff_modulus (q_bits)** | `CoeffModulus::BFVDefault(16384)` when auto params disabled ([gen_func.cpp:L384](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func.cpp#L384)), or `CoeffModulus::Create(n, {...})` from param selector | `{60, 40, 40, 60}` (hardcoded in [gen_func_heongpu.cpp:L88](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func_heongpu.cpp#L88)) | ❌ **MISMATCH** |
-| **coeff_modulus (p_bits)** | Implicit in `CoeffModulus::BFVDefault` (includes special prime) | `{60}` (hardcoded in [gen_func_heongpu.cpp:L89](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func_heongpu.cpp#L89)) | ❌ **MISMATCH** |
-| **Security level** | `sec_level_type::tc128` (128-bit, [gen_func.cpp:L400](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func.cpp#L400)) | Implicit (no SEAL-like security enforcement) | ⚠️ Unverified |
+| **poly_modulus_degree** | `16384` (hardcoded in [gen_func.cpp:L57](src/fheco/code_gen/gen_func.cpp#L57)) | `16384` (hardcoded in [gen_func_heongpu.cpp:L86](src/fheco/code_gen/gen_func_heongpu.cpp#L86)) | ✅ Yes |
+| **plain_modulus** | `PlainModulus::Batching(n, <bit_size>)` — SEAL selects a prime of the requested bit size that satisfies `p ≡ 1 mod 2n` ([gen_func.cpp:L378](src/fheco/code_gen/gen_func.cpp#L378)) | `1032193` (hardcoded literal in [gen_func_heongpu.cpp:L90](src/fheco/code_gen/gen_func_heongpu.cpp#L90)) | ⚠️ **MAYBE** |
+| **coeff_modulus (q_bits)** | `CoeffModulus::BFVDefault(16384)` when auto params disabled ([gen_func.cpp:L384](src/fheco/code_gen/gen_func.cpp#L384)), or `CoeffModulus::Create(n, {...})` from param selector | `{60, 40, 40, 60}` (hardcoded in [gen_func_heongpu.cpp:L88](src/fheco/code_gen/gen_func_heongpu.cpp#L88)) | ❌ **MISMATCH** |
+| **coeff_modulus (p_bits)** | Implicit in `CoeffModulus::BFVDefault` (includes special prime) | `{60}` (hardcoded in [gen_func_heongpu.cpp:L89](src/fheco/code_gen/gen_func_heongpu.cpp#L89)) | ❌ **MISMATCH** |
+| **Security level** | `sec_level_type::tc128` (128-bit, [gen_func.cpp:L400](src/fheco/code_gen/gen_func.cpp#L400)) | Implicit (no SEAL-like security enforcement) | ⚠️ Unverified |
 
 ### Key Differences (SEAL vs HEonGPU BFV)
 
@@ -31,10 +31,10 @@
 
 | Parameter | Lattigo (backend=1) | HEonGPU CKKS (backend=2, scheme=1) | Match? |
 |---|---|---|---|
-| **LogN / poly_modulus_degree** | Dynamic: computed by `CKKSParamSelector::default_params(mult_depth)` → typically `14` (N=16384) for depth ≤ ~8 ([ckks_params.cpp:L155](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/ckks/ckks_params.cpp#L155)) | `16384` (hardcoded, [gen_func_heongpu.cpp:L86](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func_heongpu.cpp#L86)) | ✅ Typically yes (both N=16384) |
-| **LogQ (modulus chain)** | Dynamic: `{55, 40, 40, ..., 40}` with `mult_depth + 1` primes. First prime=55, rest=40 ([ckks_params.cpp:L135-L139](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/ckks/ckks_params.cpp#L135-L139)) | `{60, 40, 40, 40, 40, 40, 40, 40}` (hardcoded 8 primes, [gen_func_heongpu.cpp:L92](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func_heongpu.cpp#L92)) | ❌ **MISMATCH** |
-| **LogP (special primes)** | `{45, 45}` (2 primes of 45 bits, [ckks_params.cpp:L142](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/ckks/ckks_params.cpp#L142)) | `{60}` (1 prime of 60 bits, [gen_func_heongpu.cpp:L93](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func_heongpu.cpp#L93)) | ❌ **MISMATCH** |
-| **LogDefaultScale** | `40` ([ckks_params.cpp:L132](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/ckks/ckks_params.cpp#L132)) | `pow(2.0, 40)` → log_scale = `40` ([gen_func_heongpu.cpp:L94](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func_heongpu.cpp#L94)) | ✅ Yes |
+| **LogN / poly_modulus_degree** | Dynamic: computed by `CKKSParamSelector::default_params(mult_depth)` → typically `14` (N=16384) for depth ≤ ~8 ([ckks_params.cpp:L155](src/fheco/ckks/ckks_params.cpp#L155)) | `16384` (hardcoded, [gen_func_heongpu.cpp:L86](src/fheco/code_gen/gen_func_heongpu.cpp#L86)) | ✅ Typically yes (both N=16384) |
+| **LogQ (modulus chain)** | Dynamic: `{55, 40, 40, ..., 40}` with `mult_depth + 1` primes. First prime=55, rest=40 ([ckks_params.cpp:L135-L139](src/fheco/ckks/ckks_params.cpp#L135-L139)) | `{60, 40, 40, 40, 40, 40, 40, 40}` (hardcoded 8 primes, [gen_func_heongpu.cpp:L92](src/fheco/code_gen/gen_func_heongpu.cpp#L92)) | ❌ **MISMATCH** |
+| **LogP (special primes)** | `{45, 45}` (2 primes of 45 bits, [ckks_params.cpp:L142](src/fheco/ckks/ckks_params.cpp#L142)) | `{60}` (1 prime of 60 bits, [gen_func_heongpu.cpp:L93](src/fheco/code_gen/gen_func_heongpu.cpp#L93)) | ❌ **MISMATCH** |
+| **LogDefaultScale** | `40` ([ckks_params.cpp:L132](src/fheco/ckks/ckks_params.cpp#L132)) | `pow(2.0, 40)` → log_scale = `40` ([gen_func_heongpu.cpp:L94](src/fheco/code_gen/gen_func_heongpu.cpp#L94)) | ✅ Yes |
 | **Slot count** | `N/2 = 8192` | `poly_modulus_degree / 2 = 8192` | ✅ Yes |
 
 ### Key Differences (Lattigo vs HEonGPU CKKS)
@@ -102,7 +102,7 @@ graph TD
 
 ### For BFV (SEAL ↔ HEonGPU)
 
-In [gen_func_heongpu.cpp:L87-L90](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func_heongpu.cpp#L87-L90):
+In [gen_func_heongpu.cpp:L87-L90](src/fheco/code_gen/gen_func_heongpu.cpp#L87-L90):
 
 ```diff
   if (scheme == 0) { // BFV
@@ -121,7 +121,7 @@ In [gen_func_heongpu.cpp:L87-L90](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/s
 
 ### For CKKS (Lattigo ↔ HEonGPU)
 
-In [gen_func_heongpu.cpp:L91-L94](file:///c:/Users/imed/Desktop/bacckup/CHEHAB/src/fheco/code_gen/gen_func_heongpu.cpp#L91-L94):
+In [gen_func_heongpu.cpp:L91-L94](src/fheco/code_gen/gen_func_heongpu.cpp#L91-L94):
 
 ```diff
   } else { // CKKS

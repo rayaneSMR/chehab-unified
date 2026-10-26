@@ -8,13 +8,13 @@
 #SBATCH -t 0-04:00:00
 
 #SBATCH -J tb-ablation
-#SBATCH -o /scratch/mxa5343/chehab-constr-updated/logs/output.tb_ablation.%j.txt
-#SBATCH -e /scratch/mxa5343/chehab-constr-updated/logs/error.tb_ablation.%j.txt
+#SBATCH -o logs/output.tb_ablation.%j.txt
+#SBATCH -e logs/error.tb_ablation.%j.txt
 
 source /share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate
 module load tensorboard
 
-cd /scratch/mxa5343/chehab-constr-updated/RL/tensorboard
+cd /scratch/${NETID:-$(whoami)}/chehab-unified/RL/tensorboard
 
 stdbuf -oL -eL tensorboard --logdir_spec="\
 V5_LagPID:./model_14529416_nato_sc,\

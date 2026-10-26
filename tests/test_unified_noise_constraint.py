@@ -5,7 +5,7 @@ import torch
 from pathlib import Path
 
 # Set up paths
-REPO_ROOT = Path("/home/maroua/chehab-unified")
+REPO_ROOT = Path(__file__).resolve().parent.parent
 RL_DIR = REPO_ROOT / "RL"
 sys.path.insert(0, str(RL_DIR))
 sys.path.insert(0, str(RL_DIR / "pytrs"))

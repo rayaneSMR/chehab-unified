@@ -3,7 +3,7 @@
 Demo 4: Unconstrained vs Constrained Agent Comparison
 
 Runs the SAME expression with:
-  1. Old unconstrained agent (Bilel & Raouf PPO) -- NO safety rollback
+  1. Old unconstrained agent (Baseline Model PPO) -- NO safety rollback
      Setup matches scripts/test_unconstrained_standalone.py exactly.
   2. New constrained agent (NATO-SC + Lag-PID + FiLM) -- WITH safety rollback
      Setup matches fhe_rl/test.py::test_agent_v2 exactly.
@@ -49,7 +49,7 @@ LOCAL_EXPR_IDX = 23  # load_expressions() index matching Excel #47
 
 BUDGET = 369
 
-# Unconstrained agent (Bilel & Raouf, Oct 2025)
+# Unconstrained agent (Baseline Model)
 UNC_MODEL_PATH = "fhe_rl/trained_models/agent_dynamic_llm_data.zip"
 UNC_EMB_PATH = "fhe_rl/trained_models/embeddings_ROT_15_32_5m_10742576.pth"
 UNC_BUDGET_OPTIONS = [9_000_000]
@@ -75,7 +75,7 @@ def run_unconstrained(expression, all_expressions, rules_list, noise_estimator):
     from stable_baselines3 import PPO
     from pytrs import parse_sexpr
 
-    print_section("UNCONSTRAINED AGENT (Bilel & Raouf, 2024)")
+    print_section("UNCONSTRAINED AGENT (Baseline Model)")
     print(f"  {RED}{CROSS}{RESET} Safety rollback: {BOLD}DISABLED{RESET}")
     print(f"  {GRAY}Model: {UNC_MODEL_PATH}{RESET}")
     print(f"  {GRAY}Setup: budget_options=[9M], constraint_method=none{RESET}")
@@ -176,7 +176,7 @@ def run_unconstrained(expression, all_expressions, rules_list, noise_estimator):
     save_rl_trajectory("demo4", trajectory, BUDGET, rl_time, prefix="unconstrained_")
 
     return {
-        "name": "Unconstrained (Bilel & Raouf)",
+        "name": "Unconstrained (Baseline Model)",
         "initial_cost": initial_cost,
         "initial_noise": initial_noise,
         "final_cost": final["cost"],
