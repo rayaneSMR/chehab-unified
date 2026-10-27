@@ -54,6 +54,7 @@ def train_agent(
     fresh_start: bool = False,
     n_pref: int = 11,
     embedder_type: str = "gnn",
+    n_steps: int = 2048,
 ):
     set_random_seed(seed)
     
@@ -209,7 +210,7 @@ def train_agent(
         "policy": policy_cls,
         "env": env,
         "learning_rate": 1e-4,
-        "n_steps": 2048,
+        "n_steps": n_steps,  # rollout = n_steps * num_envs samples per PPO update
         "batch_size": 256,
         "gamma": 0.99,
         "gae_lambda": 0.98,
@@ -239,7 +240,8 @@ def train_agent(
     else:
         if checkpoint_path:
             print(f"Loading model from checkpoint: {checkpoint_path}")
-            model = PPO.load(checkpoint_path, env=env, tensorboard_log=tensorboard_log_dir)
+            # Pass n_steps explicitly: SB3 otherwise reuses the value stored in the checkpoint.
+            model = PPO.load(checkpoint_path, env=env, tensorboard_log=tensorboard_log_dir, n_steps=n_steps)
         else:
             model = PPO(**model_params)
 
@@ -273,7 +275,7 @@ def train_agent(
             return res
 
     checkpoint_callback = PIDCheckpointCallback(
-        save_freq=5000,
+        save_freq=max(40000 // num_envs, 1),  # counted in vec-env calls -> every ~40k timesteps
         save_path=checkpoint_dir,
         name_prefix="rl_model",
         save_replay_buffer=False,

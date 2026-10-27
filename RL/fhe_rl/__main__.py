@@ -126,6 +126,12 @@ def parse_arguments(args=None):
         help="Alias for --num_envs",
     )
     train_parser.add_argument(
+        "--n_steps",
+        type=int,
+        default=2048,
+        help="Rollout steps per env; samples per PPO update = n_steps * num_envs (default: 2048)",
+    )
+    train_parser.add_argument(
         "--denom_factor",
         type=int,
         default=4,
@@ -509,6 +515,7 @@ def main(args=None):
                 checkpoint_path=parsed_args.checkpoint,
                 fresh_start=parsed_args.fresh_start,
                 n_pref=parsed_args.n_pref,
+                n_steps=parsed_args.n_steps,
             )
 
     # ─────────────────────────────── TEST ─────────────────────────────

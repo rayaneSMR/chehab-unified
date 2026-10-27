@@ -1,5 +1,6 @@
 import os
 import signal
+from collections import deque
 
 import numpy as np
 import gymnasium as gym
@@ -9,7 +10,7 @@ import torch
 
 from .config import get_tokenizer_type
 from .memory import MemoryEstimator, rotation_steps
-from pytrs import NoiseEstimator
+from pytrs import NoiseEstimator, Op
 
 if get_tokenizer_type() == "bpe":
     from .TRAE_bpe import get_expression_cls_embedding
@@ -378,7 +379,7 @@ class fheEnvUnified(gym.Env):
             try:
                 parsed = parse_sexpr(self.expression)
                 rule_obj = self.rules[rule_name]
-                matches = rule_obj.find_matching_subexpressions(parsed)
+                matches = self._find_matches(rule_obj, parsed)
             except Exception as e:
                 # Never kill a SubprocVecEnv worker on a bad expression/rule:
                 # fall back to a safe no-op terminal transition.
@@ -613,6 +614,37 @@ class fheEnvUnified(gym.Env):
     def get_cost(self, expr: str) -> float:
         return calculate_cost(parse_sexpr(expr))
 
+    _NON_REGULAR_RULE_TYPES = (
+        "vectorize", "vectorize-flexible", "vectorize-rotation",
+        "vectorize-rotation-flexible", "de-rotate",
+    )
+
+    def _find_matches(self, rule_obj, parsed):
+        """Same result as rule_obj.find_matching_subexpressions(parsed)[:max_positions].
+
+        Regular rules: same BFS, but stops after max_positions matches (higher
+        positions can never be chosen) and skips the per-match _apply_via_path
+        check, which never returns None and only rebuilt the tree for nothing.
+        Vectorize and de-rotate rules keep the original matcher.
+        Set FHE_FAST_MATCH=0 to use the original matcher for every rule.
+        """
+        if (os.environ.get("FHE_FAST_MATCH", "1") == "0"
+                or rule_obj.rule_type in self._NON_REGULAR_RULE_TYPES):
+            return rule_obj.find_matching_subexpressions(parsed)
+        matches = []
+        queue = deque([([], parsed)])
+        while queue and len(matches) < self.max_positions:
+            path, node = queue.popleft()
+            if rule_obj.lhs.match(node) is not None:
+                matches.append((path.copy(), node))
+            if isinstance(node, Op):
+                if any(r.lhs.match(node) is not None for r in rule_obj.rotation_rules):
+                    queue.append((path + [0], node.args[0]))
+                else:
+                    for i, child in enumerate(node.args):
+                        queue.append((path + [i], child))
+        return matches
+
     def _embed_expression(self, expr: str) -> np.ndarray:
         fallback = np.zeros((self.embedding_dim,), dtype=np.float32)
         try:
@@ -702,7 +734,7 @@ class fheEnvUnified(gym.Env):
                 continue
             try:
                 rule_obj = self.rules[rule_name]
-                matches = rule_obj.find_matching_subexpressions(parsed)
+                matches = self._find_matches(rule_obj, parsed)
             except Exception:
                 continue
             valid_positions = min(len(matches), self.max_positions)
