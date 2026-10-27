@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ufhe/seal_backend/batch_encoder.hpp"
+#include "ufhe/seal_backend/bfv_noise_estimator.hpp"
 #include "ufhe/seal_backend/ciphertext.hpp"
 #include "ufhe/seal_backend/coeff_modulus.hpp"
 #include "ufhe/seal_backend/decryptor.hpp"

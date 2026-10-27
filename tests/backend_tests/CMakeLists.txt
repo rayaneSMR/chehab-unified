@@ -16,3 +16,6 @@ include_directories(${INCLUDE_HEADERS_DIR})
 find_package(SEAL 4.0.0 EXACT REQUIRED)
 
 target_link_libraries(backendtests ufhe SEAL::seal)
+
+add_executable(bfv_noise_estimator_smoke bfv_noise_estimator_smoke.cpp)
+target_link_libraries(bfv_noise_estimator_smoke ufhe SEAL::seal)

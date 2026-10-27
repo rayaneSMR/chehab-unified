@@ -332,6 +332,36 @@ def parse_arguments(args=None):
     test_parser.add_argument(
         "--v2", action="store_true", default=False, help="Use test_agent_v2"
     )
+    test_parser.add_argument(
+        "--seal-noise-bound-executable",
+        type=str,
+        default=None,
+        help="Path to bfv_noise_bound_cli for the BFV rollback certificate",
+    )
+    test_parser.add_argument(
+        "--seal-poly-modulus-degree",
+        type=int,
+        default=None,
+        help="Exact BFV polynomial modulus degree used by the generated SEAL program",
+    )
+    test_parser.add_argument(
+        "--seal-plain-modulus",
+        type=int,
+        default=None,
+        help="Exact BFV plaintext modulus used by the generated SEAL program",
+    )
+    test_parser.add_argument(
+        "--seal-coeff-modulus",
+        type=str,
+        default=None,
+        help="Exact comma-separated BFV coefficient moduli used by the generated SEAL program",
+    )
+    test_parser.add_argument(
+        "--seal-coeff-modulus-bits",
+        type=str,
+        default=None,
+        help="Comma-separated SEAL CoeffModulus::Create bit sizes used by the generated BFV program",
+    )
 
     # ─── RUN COMMAND ──────────────────────────────────────────────────────────
     run_parser = subparsers.add_parser("run", help="Run the agent on a single input file")
@@ -510,6 +540,35 @@ def main(args=None):
             out_file = os.path.join(parsed_args.output_dir, f"test_results_{model_name}.xlsx")
 
         if parsed_args.v2:
+            bfv_noise_bound_verifier = None
+            bfv_noise_bound_options = [
+                parsed_args.seal_noise_bound_executable,
+                parsed_args.seal_poly_modulus_degree,
+                parsed_args.seal_plain_modulus,
+                parsed_args.seal_coeff_modulus,
+                parsed_args.seal_coeff_modulus_bits,
+            ]
+            if any(option is not None for option in bfv_noise_bound_options):
+                required_bfv_noise_bound_options = [
+                    parsed_args.seal_noise_bound_executable,
+                    parsed_args.seal_poly_modulus_degree,
+                    parsed_args.seal_plain_modulus,
+                ]
+                if not all(option is not None for option in required_bfv_noise_bound_options) or (
+                    bool(parsed_args.seal_coeff_modulus) == bool(parsed_args.seal_coeff_modulus_bits)
+                ):
+                    raise ValueError(
+                        "--seal-noise-bound-executable, --seal-poly-modulus-degree, --seal-plain-modulus, "
+                        "and exactly one of --seal-coeff-modulus or --seal-coeff-modulus-bits must be supplied together"
+                    )
+                from .seal_noise_bound import BFVNoiseBoundVerifier
+                bfv_noise_bound_verifier = BFVNoiseBoundVerifier(
+                    parsed_args.seal_noise_bound_executable,
+                    parsed_args.seal_poly_modulus_degree,
+                    parsed_args.seal_plain_modulus,
+                    parsed_args.seal_coeff_modulus.split(",") if parsed_args.seal_coeff_modulus else None,
+                    parsed_args.seal_coeff_modulus_bits.split(",") if parsed_args.seal_coeff_modulus_bits else None,
+                )
             test_agent_v2(
                 expressions_file,
                 embeddings,
@@ -518,6 +577,8 @@ def main(args=None):
                 test_budgets=test_budgets,
                 budget_options=train_budgets,
                 constraint_method=parsed_args.method,
+                constraint_metric=parsed_args.constraint,
+                bfv_noise_bound_verifier=bfv_noise_bound_verifier,
             )
         else:
             test_agent(

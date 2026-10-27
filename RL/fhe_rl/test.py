@@ -5,6 +5,7 @@ from .utils import load_expressions, load_expressions_named, create_rules
 from pytrs import parse_sexpr
 from .memory import MemoryEstimator, extra_metrics
 from .config import get_env_class, get_policy_class
+from .seal_noise_bound import BFVNoiseBoundError, BFVNoiseBoundVerifier
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
 import pandas as pd
@@ -267,6 +268,8 @@ def test_agent_v2(
     budget_options: list = None,
     test_budgets: list = None,
     constraint_method: str = "nato_sc",
+    constraint_metric: str = "mem",
+    bfv_noise_bound_verifier=None,
     output_file: str = None,
     save_optimized: str = None,
 ):
@@ -309,6 +312,7 @@ def test_agent_v2(
                 embeddings_model=embeddings_model,
                 budget_options=budget_options,
                 constraint_method=constraint_method,
+                constraint_metric=constraint_metric,
             )
         )
     ])
@@ -317,6 +321,8 @@ def test_agent_v2(
     sys.modules["fhe_rl_new"] = importlib.import_module("fhe_rl")
     model = model.load(model_filepath)
     noise_estimator = MemoryEstimator()
+    if constraint_metric == "noise" and bfv_noise_bound_verifier is None:
+        bfv_noise_bound_verifier = BFVNoiseBoundVerifier.from_environment()
 
     all_results = []
 
@@ -388,14 +394,31 @@ def test_agent_v2(
 
             # Safety rollback: pick best valid checkpoint (lowest cost among valid)
             valid_checkpoints = [cp for cp in checkpoints if cp["noise"] <= budget]
-            if valid_checkpoints:
+            certificate = None
+            if constraint_metric == "noise":
+                best = None
+                for checkpoint in sorted(valid_checkpoints, key=lambda cp: cp["cost"]):
+                    candidate_certificate = bfv_noise_bound_verifier.BFV_noise_bound(checkpoint["expression"])
+                    if candidate_certificate.decryptable and candidate_certificate.remaining_noise_budget_bits > 0:
+                        best = checkpoint
+                        certificate = candidate_certificate
+                        break
+            elif valid_checkpoints:
                 best = min(valid_checkpoints, key=lambda cp: cp["cost"])
+            else:
+                best = None
+            if best is not None:
                 safe_expr = best["expression"]
                 safe_cost = best["cost"]
                 safe_noise = best["noise"]
                 best_valid_step = best["step"]
                 safety_activated = (best["step"] != agent_final["step"])
             else:
+                if constraint_metric == "noise":
+                    initial_certificate = bfv_noise_bound_verifier.BFV_noise_bound(test_expr)
+                    if not initial_certificate.decryptable or initial_certificate.remaining_noise_budget_bits <= 0:
+                        raise BFVNoiseBoundError("no rollback checkpoint has a positive certified BFV remaining noise budget")
+                    certificate = initial_certificate
                 safe_expr = test_expr
                 safe_cost = initial_cost
                 safe_noise = initial_noise
@@ -427,6 +450,9 @@ def test_agent_v2(
                 "Total Steps": steps,
                 "RL Time (ms)": round(rl_time_ms, 1),
                 "RAM Headroom (MB)": round(budget - safe_noise, 2),
+                "BFV Bound Remaining Budget (bits)": (
+                    certificate.remaining_noise_budget_bits if certificate is not None else None
+                ),
                 "Trajectory Costs": "|".join(str(cp["cost"]) for cp in checkpoints),
                 "Trajectory RAM (MB)": "|".join(f'{cp["noise"]:.2f}' for cp in checkpoints),
                 "_safe_expr": safe_expr,
