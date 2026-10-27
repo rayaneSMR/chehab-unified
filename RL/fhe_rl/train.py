@@ -55,6 +55,7 @@ def train_agent(
     n_pref: int = 11,
     embedder_type: str = "gnn",
     n_steps: int = 2048,
+    rules_subset: str = "all",
 ):
     set_random_seed(seed)
     
@@ -100,12 +101,14 @@ def train_agent(
         rules_p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rules.txt")
     if not os.path.exists(rot_p):
         rot_p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rotations_rules.txt")
-    rules_list = create_rules(rules_p, rot_p)
+    rules_list = create_rules(rules_p, rot_p, rules_subset=rules_subset)
     rules_list["END"] = None
+    print(f"[Rules] Mode: {rules_subset.upper()} | Loaded {len(rules_list)} rules (including END)")
     
     embedder_tag = "gnn" if "gnn" in str(embedder_type).lower() else "trae"
     job_id = os.environ.get("SLURM_JOB_ID", "jobid")
-    run_name = f"model_{job_id}_{constraint_method}_{policy_variant}_{embedder_tag}"
+    subset_tag = f"_{rules_subset}" if rules_subset != "all" else ""
+    run_name = f"model_{job_id}_{constraint_method}_{policy_variant}_{embedder_tag}{subset_tag}"
     tensorboard_log_dir = f"./tensorboard/{run_name}"
     checkpoint_dir = f"./checkpoints/{run_name}"
     os.makedirs(checkpoint_dir, exist_ok=True)
@@ -137,7 +140,7 @@ def train_agent(
         # 2. Search other run dirs matching this configuration (e.g. model_*_nato_sc_film_a)
         if os.path.exists("./checkpoints"):
             import glob
-            config_pattern = f"./checkpoints/model_*_{constraint_method}_{policy_variant}_{embedder_tag}"
+            config_pattern = f"./checkpoints/model_*_{constraint_method}_{policy_variant}_{embedder_tag}{subset_tag}"
             for d in glob.glob(config_pattern):
                 if os.path.isdir(d):
                     for f in os.listdir(d):

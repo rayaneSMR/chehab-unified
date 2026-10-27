@@ -260,8 +260,11 @@ class fheEnvUnified(gym.Env):
         if not hasattr(self, "current_index"):
             self.current_index = 0
 
-        self.expression = self.expressions[self.current_index]
-        self.current_index = (self.current_index + 1) % len(self.expressions)
+        if isinstance(options, dict) and "expression" in options:
+            self.expression = options["expression"]
+        else:
+            self.expression = self.expressions[self.current_index]
+            self.current_index = (self.current_index + 1) % len(self.expressions)
         self.initial_expression = self.expression
         self.steps = 0
 

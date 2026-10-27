@@ -69,20 +69,25 @@ def load_embeddings_from_config(tokenizer_type=None, embedder_type=None):
         print(f"Error: {e}")
         sys.exit(1)
 
-def create_rules(path: str, rotations_rules_path: str = None):
+def create_rules(path: str = None, rotations_rules_path: str = None, rules_subset: str = "all"):
     import os
-    if rotations_rules_path is None:
-        base_dir = os.path.dirname(path) if os.path.dirname(path) else "."
-        cand = os.path.join(base_dir, "rotations_rules.txt")
-        if os.path.exists(cand):
-            rotations_rules_path = cand
-        elif os.path.exists("rotations_rules.txt"):
-            rotations_rules_path = "rotations_rules.txt"
-        else:
-            repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            cand2 = os.path.join(repo_root, "rotations_rules.txt")
-            if os.path.exists(cand2):
-                rotations_rules_path = cand2
+    if rules_subset == "ops":
+        rotations_rules_path = None
+    elif rules_subset == "rotations":
+        path = None
+    else:
+        if rotations_rules_path is None and path is not None:
+            base_dir = os.path.dirname(path) if os.path.dirname(path) else "."
+            cand = os.path.join(base_dir, "rotations_rules.txt")
+            if os.path.exists(cand):
+                rotations_rules_path = cand
+            elif os.path.exists("rotations_rules.txt"):
+                rotations_rules_path = "rotations_rules.txt"
+            else:
+                repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                cand2 = os.path.join(repo_root, "rotations_rules.txt")
+                if os.path.exists(cand2):
+                    rotations_rules_path = cand2
     return _create_rules(path, rotations_rules_path)
 
 def load_embedding_model_dynamic(checkpoint_path=None, device=DEVICE):

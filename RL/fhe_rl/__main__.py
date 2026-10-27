@@ -250,6 +250,13 @@ def parse_arguments(args=None):
         default="gnn",
         help="Embedder architecture to use (default: gnn)",
     )
+    train_parser.add_argument(
+        "--rules-subset", "--rules_subset",
+        type=str,
+        choices=["all", "ops", "rotations"],
+        default="all",
+        help="Rule subset to train on: 'all' (joint pipeline), 'ops' (separated Stage 1), 'rotations' (separated Stage 2)",
+    )
 
     # ─── TEST COMMAND ─────────────────────────────────────────────────────────
     test_parser = subparsers.add_parser("test", help="Test the agent")
@@ -336,7 +343,27 @@ def parse_arguments(args=None):
         help="Path for output Excel file",
     )
     test_parser.add_argument(
+        "--pipeline", "--pipeline-mode",
+        type=str,
+        choices=["joint", "separated"],
+        default="joint",
+        help="Evaluation pipeline: 'joint' (default single-pass) or 'separated' (Stage 1 ops -> Stage 2 rotations)",
+    )
+    test_parser.add_argument(
+        "--model-stage2", "--model_stage2",
+        type=str,
+        default=None,
+        help="Path to trained Stage 2 (rotations) model .zip for separated pipeline evaluation",
+    )
+    test_parser.add_argument(
         "--v2", action="store_true", default=False, help="Use test_agent_v2"
+    )
+    test_parser.add_argument(
+        "--test_mode",
+        type=str,
+        default="v2",
+        choices=["v1", "v2"],
+        help="Evaluation mode: 'v2' (safety rollback + checkpointing, default) or 'v1'",
     )
     test_parser.add_argument(
         "--seal-noise-bound-executable",
@@ -516,6 +543,7 @@ def main(args=None):
                 fresh_start=parsed_args.fresh_start,
                 n_pref=parsed_args.n_pref,
                 n_steps=parsed_args.n_steps,
+                rules_subset=getattr(parsed_args, "rules_subset", "all"),
             )
 
     # ─────────────────────────────── TEST ─────────────────────────────
@@ -546,7 +574,7 @@ def main(args=None):
             model_name = os.path.basename(agent_zip).replace(".zip", "")
             out_file = os.path.join(parsed_args.output_dir, f"test_results_{model_name}.xlsx")
 
-        if parsed_args.v2:
+        if parsed_args.v2 or getattr(parsed_args, "test_mode", "v2") == "v2":
             bfv_noise_bound_verifier = None
             bfv_noise_bound_options = [
                 parsed_args.seal_noise_bound_executable,
@@ -586,6 +614,8 @@ def main(args=None):
                 constraint_method=parsed_args.method,
                 constraint_metric=parsed_args.constraint,
                 bfv_noise_bound_verifier=bfv_noise_bound_verifier,
+                pipeline=getattr(parsed_args, "pipeline", "joint"),
+                model_stage2_filepath=getattr(parsed_args, "model_stage2", None),
             )
         else:
             test_agent(
