@@ -415,6 +415,15 @@ def test_agent_v2(
         from .pareto import generate_pref_list
         pref_list = generate_pref_list(11)
     print(f"[Preferences] Evaluating at {len(pref_list)} preference(s): {pref_list}")
+
+    # Output labels: internal columns are named "... RAM (MB)"; when the model runs
+    # on noise they hold noise bits, so relabel them when writing the files.
+    cname, cunit = ("Noise", "bits") if constraint_metric == "noise" else ("RAM", "MB")
+
+    def _labels(frame):
+        return frame.rename(columns=lambda c: c.replace("RAM Headroom (MB)", f"{cname} Headroom ({cunit})")
+                                               .replace("RAM Increase (MB)", f"{cname} Increase ({cunit})")
+                                               .replace("RAM (MB)", f"{cname} ({cunit})"))
     expressions_file = _resolve_expressions(expressions_file)
     named_pairs = load_expressions_named(expressions_file)
     expr_names = [name for _, name in named_pairs]
@@ -553,6 +562,10 @@ def test_agent_v2(
                 safe_cr = ((initial_cost - safe_cost) / initial_cost * 100) if initial_cost > 0 else 0
                 ops_red = ((initial_ops - final_ops) / initial_ops * 100) if initial_ops > 0 else 0
                 keys_red = ((initial_keys - final_keys) / max(initial_keys, 1) * 100)
+                # Raw agent result (before rollback), split into the two objectives
+                agent_ops, agent_keys = _get_split_costs(agent_final["expression"])
+                agent_ops_red = ((initial_ops - agent_ops) / initial_ops * 100) if initial_ops > 0 else 0
+                agent_keys_red = ((initial_keys - agent_keys) / max(initial_keys, 1) * 100)
 
                 all_results.append({
                     "Pipeline": "separated",
@@ -573,8 +586,12 @@ def test_agent_v2(
                     "Stage1 Steps": res1["steps"],
                     "Stage1 Time (ms)": round(res1["elapsed_ms"], 1),
                     "Agent Final Cost": agent_final["cost"],
+                    "Agent Final Ops": agent_ops,
+                    "Agent Final Keys": agent_keys,
                     "Agent Final RAM (MB)": round(agent_final["noise"], 2),
                     "Agent Cost Reduction (%)": round(agent_cr, 2),
+                    "Agent Ops Reduction (%)": round(agent_ops_red, 2),
+                    "Agent Keys Reduction (%)": round(agent_keys_red, 2),
                     "Agent Violated": agent_final["noise"] > budget,
                     "Safe Final Cost": safe_cost,
                     "Safe Final Ops": final_ops,
@@ -617,6 +634,10 @@ def test_agent_v2(
                 safe_cr = ((initial_cost - safe_cost) / initial_cost * 100) if initial_cost > 0 else 0
                 ops_red = ((initial_ops - final_ops) / initial_ops * 100) if initial_ops > 0 else 0
                 keys_red = ((initial_keys - final_keys) / max(initial_keys, 1) * 100)
+                # Raw agent result (before rollback), split into the two objectives
+                agent_ops, agent_keys = _get_split_costs(agent_final["expression"])
+                agent_ops_red = ((initial_ops - agent_ops) / initial_ops * 100) if initial_ops > 0 else 0
+                agent_keys_red = ((initial_keys - agent_keys) / max(initial_keys, 1) * 100)
 
                 all_results.append({
                     "Pipeline": "joint",
@@ -631,8 +652,12 @@ def test_agent_v2(
                     "Initial Keys": initial_keys,
                     "Initial RAM (MB)": round(initial_noise, 2),
                     "Agent Final Cost": agent_final["cost"],
+                    "Agent Final Ops": agent_ops,
+                    "Agent Final Keys": agent_keys,
                     "Agent Final RAM (MB)": round(agent_final["noise"], 2),
                     "Agent Cost Reduction (%)": round(agent_cr, 2),
+                    "Agent Ops Reduction (%)": round(agent_ops_red, 2),
+                    "Agent Keys Reduction (%)": round(agent_keys_red, 2),
                     "Agent Violated": agent_final["noise"] > budget,
                     "Safe Final Cost": safe_cost,
                     "Safe Final Ops": final_ops,
@@ -663,14 +688,14 @@ def test_agent_v2(
                   f"cost {initial_cost}->{safe_cost} ({safe_cr:+.1f}%), "
                   f"ops {initial_ops}->{final_ops} ({ops_red:+.1f}%), "
                   f"keys {initial_keys}->{final_keys} ({keys_red:+.1f}%), "
-                  f"RAM {initial_noise:.1f}->{safe_noise:.1f} MB, "
+                  f"{cname} {initial_noise:.1f}->{safe_noise:.1f} {cunit}, "
                   f"safety={'ON' if safety_activated else 'off'}", flush=True)
 
             # Progressive Excel save (never lose completed expressions)
             if output_file and all_results:
                 try:
                     excel_results = [{k: v for k, v in r.items() if not k.startswith("_")} for r in all_results]
-                    pd.DataFrame(excel_results).to_excel(output_file, index=False)
+                    _labels(pd.DataFrame(excel_results)).to_excel(output_file, index=False)
                 except Exception:
                     pass
 
@@ -685,13 +710,13 @@ def test_agent_v2(
 
     csv_file = os.path.splitext(output_file)[0] + ".csv"
     try:
-        df.to_csv(csv_file, index=False)
+        _labels(df).to_csv(csv_file, index=False)
         print(f"Results CSV written to: {csv_file}")
     except Exception as e:
         print(f"Failed to write CSV: {e}")
 
     with pd.ExcelWriter(output_file, engine="openpyxl") as writer:
-        df.to_excel(writer, sheet_name="all_results", index=False)
+        _labels(df).to_excel(writer, sheet_name="all_results", index=False)
 
         # Summary per budget (all expressions)
         summary_rows = []
@@ -712,7 +737,7 @@ def test_agent_v2(
                 "Avg RAM Headroom (MB)": round(bdf["RAM Headroom (MB)"].mean(), 2),
                 "Avg RL Time (s)": round(bdf["RL Time (ms)"].mean() / 1000.0, 2),
             })
-        pd.DataFrame(summary_rows).to_excel(writer, sheet_name="summary_per_budget", index=False)
+        _labels(pd.DataFrame(summary_rows)).to_excel(writer, sheet_name="summary_per_budget", index=False)
 
         # Summary per (budget, preference): one point per preference, to compare
         # the joint and separated fronts as in the original MORL experiment
@@ -729,10 +754,19 @@ def test_agent_v2(
                     "Avg Safe Final Keys": round(g["Safe Final Keys"].mean(), 3),
                     "Safe Avg Ops Red (%)": round(g["Safe Ops Reduction (%)"].mean(), 2),
                     "Safe Avg Keys Red (%)": round(g["Safe Keys Reduction (%)"].mean(), 2),
+                    "Agent Avg Ops Red (%)": round(g["Agent Ops Reduction (%)"].mean(), 2),
+                    "Agent Avg Keys Red (%)": round(g["Agent Keys Reduction (%)"].mean(), 2),
+                    "Avg Safe Final RAM (MB)": round(g["Safe Final RAM (MB)"].mean(), 2),
+                    "Safe Violations": int(g["Safe Violated"].sum()),
                     "Safe Violation Rate (%)": round(g["Safe Violated"].mean() * 100, 1),
+                    "Safety Activation Rate (%)": round(g["Safety Activated"].mean() * 100, 1),
+                    "Avg BFV Remaining Budget (bits)": (
+                        round(pd.to_numeric(g["BFV Bound Remaining Budget (bits)"], errors="coerce").mean(), 2)
+                        if g["BFV Bound Remaining Budget (bits)"].notna().any() else None
+                    ),
                     "Avg RL Time (s)": round(g["RL Time (ms)"].mean() / 1000.0, 2),
                 })
-            pd.DataFrame(pref_rows).to_excel(writer, sheet_name="summary_per_pref", index=False)
+            _labels(pd.DataFrame(pref_rows)).to_excel(writer, sheet_name="summary_per_pref", index=False)
 
         # Feasible-only summary (primary metric for paper)
         feasible_rows = []
@@ -754,7 +788,7 @@ def test_agent_v2(
                 "Avg RL Time (s)": round(fdf["RL Time (ms)"].mean() / 1000.0, 2),
             })
         if feasible_rows:
-            pd.DataFrame(feasible_rows).to_excel(writer, sheet_name="feasible_summary", index=False)
+            _labels(pd.DataFrame(feasible_rows)).to_excel(writer, sheet_name="feasible_summary", index=False)
 
         # Infeasible-only summary
         infeasible_rows = []
@@ -772,7 +806,7 @@ def test_agent_v2(
                 "Avg RAM Increase (MB)": round((idf["Agent Final RAM (MB)"] - idf["Initial RAM (MB)"]).mean(), 2),
             })
         if infeasible_rows:
-            pd.DataFrame(infeasible_rows).to_excel(writer, sheet_name="infeasible_summary", index=False)
+            _labels(pd.DataFrame(infeasible_rows)).to_excel(writer, sheet_name="infeasible_summary", index=False)
 
     print(f"\n{'='*60}")
     print(f"Results (v2, {pipeline}) written to: {output_file}")
