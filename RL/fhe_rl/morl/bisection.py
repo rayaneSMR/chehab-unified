@@ -4,7 +4,7 @@ hidden Pareto trade-offs (Algorithm 3 in the thesis).
 """
 
 from __future__ import annotations
-from typing import Optional
+from typing import Callable, Optional
 
 from .benchmark_runner import run_one_point
 from .display import _warn, _err
@@ -48,6 +48,7 @@ def _bisect(
     max_depth:  int,
     extra_args: Optional[dict] = None,
     depth:      int = 0,
+    run_point:  Optional[Callable[[float], Optional[dict]]] = None,
 ) -> None:
     if depth >= max_depth or target in found:
         return
@@ -55,7 +56,12 @@ def _bisect(
     w_mid = round((w_hi + w_lo) / 2, 10)
     print(f"  {'  ' * depth}[bisect d={depth}] w_mid={w_mid:.6f}  target_keys={target}")
 
-    result = run_one_point(benchmark, slot_count, w_mid, extra_args)
+    # run_point(w) lets other agents (e.g. the unified agent) reuse this search;
+    # by default the compiled MORL benchmark is run, as before.
+    if run_point is not None:
+        result = run_point(w_mid)
+    else:
+        result = run_one_point(benchmark, slot_count, w_mid, extra_args)
     if result is None:
         return
 
@@ -73,10 +79,10 @@ def _bisect(
 
     if ks_mid < target:
         _bisect(benchmark, slot_count, w_hi, ks_hi, w_mid, ks_mid,
-                target, found, all_results, max_depth, extra_args, depth + 1)
+                target, found, all_results, max_depth, extra_args, depth + 1, run_point)
     else:
         _bisect(benchmark, slot_count, w_mid, ks_mid, w_lo, ks_lo,
-                target, found, all_results, max_depth, extra_args, depth + 1)
+                target, found, all_results, max_depth, extra_args, depth + 1, run_point)
 
 
 def bisect_interval(
@@ -89,10 +95,12 @@ def bisect_interval(
     all_results: list[dict],
     max_depth:   int,
     extra_args:  Optional[dict] = None,
+    run_point:   Optional[Callable[[float], Optional[dict]]] = None,
 ) -> None:
     """
     Search independently for every missing integer key-size level between
     ks_lo and ks_hi. Each target gets its own max_depth budget.
+    run_point(w_ops) -> result dict (or None); defaults to run_one_point.
     """
     lo, hi  = min(ks_lo, ks_hi), max(ks_lo, ks_hi)
     targets = list(range(lo + 1, hi))
@@ -106,4 +114,4 @@ def bisect_interval(
             continue
         print(_warn(f"\n  searching for keys={t} in w_ops in [{w_lo:.4f}, {w_hi:.4f}]"))
         _bisect(benchmark, slot_count, w_hi, ks_hi, w_lo, ks_lo,
-                t, found, all_results, max_depth, extra_args)
+                t, found, all_results, max_depth, extra_args, run_point=run_point)

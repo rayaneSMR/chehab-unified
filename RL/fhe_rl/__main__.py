@@ -403,6 +403,24 @@ def parse_arguments(args=None):
         help="Comma-separated SEAL CoeffModulus::Create bit sizes used by the generated BFV program",
     )
 
+    # ─── BISECTION COMMAND (unified joint agent, Algorithm 3) ─────────────────
+    bis_parser = subparsers.add_parser(
+        "bisection", help="Bisection experiment (coarse grid + bisection + Pareto front) on the unified agent"
+    )
+    bis_parser.add_argument("--model", type=str, required=True, help="Trained unified (joint) model .zip")
+    bis_parser.add_argument("--benchmarks", type=str, default="./fhe_rl/datasets/benchmarks.txt",
+                            help="Expressions file (expr or expr:name per line)")
+    bis_parser.add_argument("--budgets", type=str, required=True, help="Comma-separated budgets to TEST on")
+    bis_parser.add_argument("--train_budgets", type=str, default=None,
+                            help="Comma-separated budgets the model was TRAINED on (default: --budgets)")
+    bis_parser.add_argument("--constraint", type=str, default="noise", choices=["mem", "noise"],
+                            help="Constraint metric the model was trained with (default: noise)")
+    bis_parser.add_argument("--method", type=str, default="nato_sc", help="Constraint method used in training")
+    bis_parser.add_argument("--w_lo", type=float, default=0.1, help="Lowest w_ops of the grid (default 0.1)")
+    bis_parser.add_argument("--w_hi", type=float, default=1.0, help="Highest w_ops of the grid (default 1.0)")
+    bis_parser.add_argument("--max_depth", type=int, default=3, help="Maximum bisection depth (default 3)")
+    bis_parser.add_argument("--output", type=str, default=None, help="Output Excel file")
+
     # ─── RUN COMMAND ──────────────────────────────────────────────────────────
     run_parser = subparsers.add_parser("run", help="Run the agent on a single input file")
     run_parser.add_argument(
@@ -652,6 +670,32 @@ def main(args=None):
         else:
             agent_zip = get_model_path("agent_model")
             run_agent(input_file, embeddings, agent_zip, output_file, noise_budget=1500)
+
+    # ─────────────────────────────── BISECTION ────────────────────────
+    elif mode == "bisection":
+        if framework_name != "unified":
+            print("The 'bisection' command runs on the unified joint agent: use --framework unified.")
+            sys.exit(1)
+        from .unified_bisection import run_unified_bisection
+        embeddings, tokenizer = load_embeddings_from_config(parsed_args.tokenizer_type, embedder_type=embedder_choice)
+        test_budgets = [int(b.strip()) for b in parsed_args.budgets.split(",")]
+        train_budgets = (
+            [int(b.strip()) for b in parsed_args.train_budgets.split(",")]
+            if parsed_args.train_budgets else test_budgets
+        )
+        run_unified_bisection(
+            parsed_args.benchmarks,
+            embeddings,
+            parsed_args.model,
+            test_budgets=test_budgets,
+            train_budgets=train_budgets,
+            constraint_metric=parsed_args.constraint,
+            constraint_method=parsed_args.method,
+            w_lo=parsed_args.w_lo,
+            w_hi=parsed_args.w_hi,
+            max_depth=parsed_args.max_depth,
+            output_file=parsed_args.output,
+        )
 
     elif mode == "interactive":
         run_interactive(mode=getattr(parsed_args, "interactive_mode", None))

@@ -1,3 +1,4 @@
+
 import os
 import random
 import re
@@ -245,8 +246,10 @@ def train_agent(
         env = WrapperCls(env)
         val_env = WrapperCls(val_env)
         print(f"[Constraint] Lagrangian wrapper: {WrapperCls.__name__}")
-    # The lambda outer loop runs only when the wrapper exposes lambda updates.
-    use_lagrange = hasattr(env, "update_lambda_penalty")
+    # The lambda outer loop runs only for the Lagrangian wrappers above (both env
+    # and val_env are wrapped). Not for PID: PIDLagrangianWrapper also has
+    # update_lambda_penalty, but it updates lambda itself inside step_wait.
+    use_lagrange = WrapperCls is not None and hasattr(WrapperCls, "update_lambda_penalty")
 
     # PPO model params
     ent_schedule = linear_schedule(ent_coef)
