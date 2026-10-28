@@ -36,18 +36,47 @@ unset CXX CC CXXFLAGS CFLAGS CPPFLAGS LDFLAGS DEBUG_CXXFLAGS DEBUG_CFLAGS
 echo "Compiler: $SYSTEM_GXX ($("$SYSTEM_GXX" --version | head -1))"
 
 # Locate SEAL (find_package(SEAL 4.1 REQUIRED) in the CLI's CMakeLists).
+SEAL_PREFIX="/scratch/${USER}/opt/SEAL-4.1"   # where SEAL is installed if it has to be built
 if [ -z "${SEAL_DIR:-}" ]; then
-    SEAL_CONFIG="$(find ${CONDA_PREFIX:-} "$HOME/.local" /usr/local /usr/lib64 /scratch/${USER} \
-                    -maxdepth 7 -name "SEALConfig.cmake" 2>/dev/null | head -n 1 || true)"
+    SEAL_CONFIG="$(find "$SEAL_PREFIX" ${CONDA_PREFIX:-} "$HOME/.local" /usr/local /usr/lib64 /share/apps /scratch/${USER} \
+                    -maxdepth 7 -path "*SEAL-4.1*" -name "SEALConfig.cmake" 2>/dev/null | head -n 1 || true)"
     if [ -n "$SEAL_CONFIG" ]; then
         SEAL_DIR="$(dirname "$SEAL_CONFIG")"
     fi
 fi
+
+# Not installed: build SEAL 4.1.1 once into $SEAL_PREFIX with the same system g++.
+# Optional dependencies are off (not needed for the noise bound), so only the SEAL
+# repository itself is downloaded.
 if [ -z "${SEAL_DIR:-}" ]; then
-    echo "ERROR: SEAL (SEALConfig.cmake) not found in the conda env, ~/.local, /usr/local or /scratch/${USER}." >&2
-    echo "Find it with:  find / -name SEALConfig.cmake 2>/dev/null | head" >&2
-    echo "then run:      SEAL_DIR=<folder containing SEALConfig.cmake> bash scripts/build_bfv_noise_cli.sh" >&2
-    exit 1
+    echo "SEAL 4.1 not found: building SEAL v4.1.1 into $SEAL_PREFIX (one time, ~5-10 min) ..."
+    SEAL_SRC="/scratch/${USER}/opt/src/SEAL"
+    mkdir -p "$(dirname "$SEAL_SRC")"
+    if [ ! -d "$SEAL_SRC" ]; then
+        git clone --depth 1 --branch v4.1.1 https://github.com/microsoft/SEAL.git "$SEAL_SRC"
+    fi
+    rm -rf "$SEAL_SRC/build"
+    cmake -S "$SEAL_SRC" -B "$SEAL_SRC/build" \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_CXX_COMPILER="$SYSTEM_GXX" \
+        -DCMAKE_INSTALL_PREFIX="$SEAL_PREFIX" \
+        -DSEAL_BUILD_DEPS=OFF \
+        -DSEAL_USE_MSGSL=OFF \
+        -DSEAL_USE_ZLIB=OFF \
+        -DSEAL_USE_ZSTD=OFF \
+        -DSEAL_USE_INTEL_HEXL=OFF \
+        -DSEAL_BUILD_EXAMPLES=OFF \
+        -DSEAL_BUILD_TESTS=OFF \
+        -DSEAL_BUILD_BENCH=OFF \
+        -DBUILD_SHARED_LIBS=OFF
+    cmake --build "$SEAL_SRC/build" -j8
+    cmake --install "$SEAL_SRC/build"
+    SEAL_CONFIG="$(find "$SEAL_PREFIX" -name "SEALConfig.cmake" 2>/dev/null | head -n 1 || true)"
+    if [ -z "$SEAL_CONFIG" ]; then
+        echo "ERROR: SEAL build finished but SEALConfig.cmake was not found under $SEAL_PREFIX" >&2
+        exit 1
+    fi
+    SEAL_DIR="$(dirname "$SEAL_CONFIG")"
 fi
 echo "SEAL:     $SEAL_DIR"
 
