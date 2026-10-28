@@ -67,9 +67,25 @@ if [ -z "$MODEL_SEP_ROT" ]; then
 fi
 
 BUDGETS="230,236,369,9000000"
-BENCHMARK="benchmarks.txt"
+BENCHMARK="./fhe_rl/datasets/benchmarks.txt"   # same file as the training evaluations and the bisection
 METHOD="nato_sc"
 CONSTRAINT="noise"
+
+# ── BFV rollback certificate (required by `test --constraint noise`) ─────────
+# Parameters of CHEHAB's generated SEAL programs (gen_func.cpp, veclang_runner.cpp):
+#   N = 16384, plain modulus = PlainModulus::Batching(16384, 20) = 786433,
+#   coeff modulus = CoeffModulus::BFVDefault(16384) = 48,48,48,49,49,49,49,49,49 bits
+#   (initial budget 389 - 20 = 369 bits). Build the CLI once with:
+#   bash scripts/build_bfv_noise_cli.sh
+export FHE_BFV_NOISE_BOUND_EXECUTABLE="$PROJ_ROOT/build_bfv_noise/bfv_noise_bound_cli"
+export FHE_BFV_POLY_MODULUS_DEGREE=16384
+export FHE_BFV_PLAIN_MODULUS=786433
+export FHE_BFV_COEFF_MODULUS_BITS=48,48,48,49,49,49,49,49,49
+if [ ! -x "$FHE_BFV_NOISE_BOUND_EXECUTABLE" ]; then
+    echo "ERROR: BFV noise-bound CLI not found at $FHE_BFV_NOISE_BOUND_EXECUTABLE"
+    echo "Build it first: bash scripts/build_bfv_noise_cli.sh"
+    exit 1
+fi
 
 echo "════════════════════════════════════════════════════════════"
 echo "  EXPERIMENT 3: JOINT VS. SEPARATED PIPELINE COMPARISON"
@@ -79,6 +95,7 @@ echo "  Separated Stage 2:    $MODEL_SEP_ROT"
 echo "  Benchmark:            $BENCHMARK"
 echo "  Budgets:              $BUDGETS"
 echo "  Constraint:           $CONSTRAINT ($METHOD)"
+echo "  BFV certificate:      N=$FHE_BFV_POLY_MODULUS_DEGREE t=$FHE_BFV_PLAIN_MODULUS q_bits=$FHE_BFV_COEFF_MODULUS_BITS"
 echo "════════════════════════════════════════════════════════════"
 
 # ── 1. Evaluate Joint Pipeline ──────────────────────────────────────────

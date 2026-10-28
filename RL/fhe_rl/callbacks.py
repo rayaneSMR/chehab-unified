@@ -143,6 +143,8 @@ class ParetoEvalCallback(BaseCallback):
                             "initial_ops": float(info.get("initial_ops", 1.0)),
                             "initial_keys": float(info.get("initial_keys", 1.0)),
                             "initial_constraint": float(info.get("initial_constraint", 0.0)),
+                            "constraint_name": info.get("constraint_name", "Peak RAM"),
+                            "constraint_unit": info.get("constraint_unit", "MB"),
                         })
 
                     rl_time_ms = (time.perf_counter() - t_start) * 1000.0
@@ -237,6 +239,11 @@ class ParetoEvalCallback(BaseCallback):
                 self.logger.record(f"eval/safe_exec_red_w_{w[1]:.2f}", mean_safe_exec_red)
                 self.logger.record(f"eval/safe_cost_red_w_{w[1]:.2f}", mean_safe_cost_red)
                 self.logger.record(f"eval/raw_exec_red_w_{w[1]:.2f}", mean_exec_red)
+                self.logger.record(f"eval/safe_keys_red_w_{w[1]:.2f}", mean_safe_keys_red)
+                self.logger.record(f"eval/raw_keys_red_w_{w[1]:.2f}", mean_keys_red)
+                self.logger.record(f"eval/raw_cost_red_w_{w[1]:.2f}", mean_cost_red)
+                self.logger.record(f"eval/violation_w_{w[1]:.2f}", mean_viol)
+                self.logger.record(f"eval/constraint_w_{w[1]:.2f}", mean_cons)
                 self.logger.record(f"eval/safety_act_rate_w_{w[1]:.2f}", safety_act_rate)
                 self.logger.record(f"eval/rl_time_ms_w_{w[1]:.2f}", mean_rl_time)
 
@@ -294,18 +301,18 @@ class ParetoEvalCallback(BaseCallback):
 
             # Print Detailed Evaluation Table
             if self.verbose > 0:
-                print(f"{BOLD}{'Pt':<3} | {'Preference w':<24} | {'Exec Red% (Safe/Raw)':<22} | {'Cost Red% (Safe/Raw)':<22} | {'Avg ' + metric_name:<14} | {'Safe Status / Rollback'}{RESET}")
+                print(f"{BOLD}{'Pt':<3} | {'Preference w':<24} | {'Exec Red% (Safe/Raw)':<22} | {'Keys Red% (Safe/Raw)':<22} | {'Avg ' + metric_name:<14} | {'Safe Status / Rollback'}{RESET}")
                 print(f"{'-'*105}")
                 for s in point_summaries:
                     safe_color = GREEN if s["safe_rate"] >= 100.0 else (YELLOW if s["safe_rate"] >= 80.0 else RED)
                     safe_str = f"{safe_color}{s['safe_rate']:>5.1f}% SAFE{RESET} (Rollback: {s['safety_act']:.0f}%)"
                     exec_str = f"{s['safe_exec_red']:>+5.1f}% / {s['raw_exec_red']:>+5.1f}%"
-                    cost_str = f"{s['safe_cost_red']:>+5.1f}% / {s['raw_cost_red']:>+5.1f}%"
+                    keys_str = f"{s['safe_keys_red']:>+5.1f}% / {s['raw_keys_red']:>+5.1f}%"
                     print(
                         f"#{s['p_idx']:<2} | "
                         f"[ops={s['w'][0]:.2f}, keys={s['w'][1]:.2f}] | "
                         f"{exec_str:<22} | "
-                        f"{cost_str:<22} | "
+                        f"{keys_str:<22} | "
                         f"{s['constraint']:>5.1f} / {s['budget']:<4.0f} {s['metric_unit']} | "
                         f"{safe_str}"
                     )
