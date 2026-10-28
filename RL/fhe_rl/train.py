@@ -10,7 +10,20 @@ from stable_baselines3.common.monitor import Monitor
 from stable_baselines3 import PPO
 from stable_baselines3.common.callbacks import CheckpointCallback
 
-from .config import get_env_class, get_framework_spec
+from .config import get_env_class, get_framework_spec, get_framework, get_wrapper_class
+from .wrappers import (
+    LagrangianVecEnvWrapper,
+    LagrangianPerStepWrapper,
+    LagrangianAlwaysDoneWrapper,
+)
+
+# Wrapper class for each Lagrangian variant (used when wrapper_class = "auto";
+# constraint methods not listed here train without a wrapper).
+WRAPPER_MAP = {
+    "lagrangian_od_ov":        LagrangianVecEnvWrapper,
+    "lagrangian_perstep":      LagrangianPerStepWrapper,
+    "lagrangian_always_done":  LagrangianAlwaysDoneWrapper,
+}
 from .policy import HierarchicalMaskablePolicy
 from .policy_film_b import HierarchicalMaskablePolicyFiLMB
 from .utils import load_expressions, create_rules
@@ -101,6 +114,11 @@ def train_agent(
         rules_p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rules.txt")
     if not os.path.exists(rot_p):
         rot_p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rotations_rules.txt")
+    framework = get_framework()
+    if framework == "constrained" and rules_subset != "ops":
+        # The constrained framework has no access to rotation rules.
+        print(f"[Rules] constrained framework: ignoring rules_subset='{rules_subset}', using 'ops' (no rotation rules)")
+        rules_subset = "ops"
     rules_list = create_rules(rules_p, rot_p, rules_subset=rules_subset)
     rules_list["END"] = None
     print(f"[Rules] Mode: {rules_subset.upper()} | Loaded {len(rules_list)} rules (including END)")
@@ -157,6 +175,16 @@ def train_agent(
         else:
             print(f"[Resume] No existing checkpoints found for '{constraint_method}_{policy_variant}'. Starting fresh training.")
 
+    # Env options: only the unified env takes the MORL (preference) options;
+    # the constrained env does not accept them.
+    morl_env_kwargs = {}
+    if framework == "unified":
+        morl_env_kwargs = dict(
+            pref_list=pref_list,
+            lambda_env=lambda_env, lambda_kl=lambda_kl,
+            n_cycle=n_cycle, n_budget=n_budget,
+        )
+
     # Environment creation
     def make_env(rank, exprs, is_eval=False):
         def _init():
@@ -172,16 +200,15 @@ def train_agent(
             if worker_emb is None:
                 from .utils import load_embeddings_from_config
                 worker_emb, _ = load_embeddings_from_config(embedder_type=embedder_type)
+            extra = dict(morl_env_kwargs, env_idx=rank) if morl_env_kwargs else {}
             env = EnvCls(
                 rules_list, exprs, max_positions=max_positions,
                 embeddings_model=worker_emb,
                 budget_options=budget_options,
                 constraint_method=constraint_method,
                 constraint_metric=constraint_metric,
-                pref_list=pref_list,
-                lambda_env=lambda_env, lambda_kl=lambda_kl,
-                n_cycle=n_cycle, n_budget=n_budget, env_idx=rank,
-                verbose=False
+                verbose=False,
+                **extra,
             )
             return Monitor(env)
         return _init
@@ -202,6 +229,21 @@ def train_agent(
 
     val_env = DummyVecEnv([make_env(0, benchmarks, is_eval=True)])
     val_env.seed(seed)
+
+    # Lagrangian wrappers (lagrangian_od_ov / perstep / always_done).
+    # "auto" picks the wrapper matching the constraint method; None disables
+    # wrapping; a custom class from COMPONENT_CONFIG is used as-is.
+    wrapper_setting = get_wrapper_class()
+    if wrapper_setting == "auto":
+        WrapperCls = WRAPPER_MAP.get(constraint_method)
+    else:
+        WrapperCls = wrapper_setting
+    if WrapperCls is not None:
+        env = WrapperCls(env)
+        val_env = WrapperCls(val_env)
+        print(f"[Constraint] Lagrangian wrapper: {WrapperCls.__name__}")
+    # The lambda outer loop runs only when the wrapper exposes lambda updates.
+    use_lagrange = hasattr(env, "update_lambda_penalty")
 
     # PPO model params
     ent_schedule = linear_schedule(ent_coef)
@@ -354,13 +396,81 @@ def train_agent(
     except Exception:
         pass
 
-    model.learn(
-        total_timesteps=remaining_steps, 
-        log_interval=1, 
-        progress_bar=True, 
-        callback=[ent_callback, pareto_eval_cb, checkpoint_callback, unified_metrics_cb],
-        reset_num_timesteps=(checkpoint_path is None)
-    )
-    
+    callbacks = [ent_callback, pareto_eval_cb, checkpoint_callback, unified_metrics_cb]
+    if use_lagrange:
+        _train_lagrangian_loop(
+            model, env, val_env,
+            total_timesteps=remaining_steps,
+            n_steps=n_steps,
+            num_envs=num_envs,
+            denom_factor=denom_factor,
+            num_benchmarks=len(benchmarks),
+            callbacks=callbacks,
+            tensorboard_log_dir=tensorboard_log_dir,
+            reset_num_timesteps=(checkpoint_path is None),
+        )
+    else:
+        model.learn(
+            total_timesteps=remaining_steps,
+            log_interval=1,
+            progress_bar=True,
+            callback=callbacks,
+            reset_num_timesteps=(checkpoint_path is None)
+        )
+
     model.save(run_name)
     print(f"\nModel saved as: {run_name}")
+
+
+def _train_lagrangian_loop(
+    model, env, val_env, *,
+    total_timesteps, n_steps, num_envs, denom_factor,
+    num_benchmarks, callbacks, tensorboard_log_dir,
+    reset_num_timesteps=True,
+):
+    """Lagrangian PPO outer loop (from the original constrained repo):
+    train a chunk -> run the benchmarks -> update lambda -> repeat."""
+    from torch.utils.tensorboard import SummaryWriter
+    tensorboard_writer = SummaryWriter(tensorboard_log_dir)
+
+    lagrange_iterations = total_timesteps // ((n_steps * num_envs) * denom_factor)
+    lagrange_iterations = max(1, lagrange_iterations)
+    timesteps_per_iter = total_timesteps // lagrange_iterations
+
+    print(f"Lagrangian loop: {lagrange_iterations} iterations x {timesteps_per_iter:,} timesteps each")
+
+    for lagrange_iteration in range(lagrange_iterations):
+        model.learn(
+            total_timesteps=timesteps_per_iter,
+            reset_num_timesteps=(reset_num_timesteps and lagrange_iteration == 0),
+            log_interval=1,
+            progress_bar=True,
+            callback=callbacks,
+        )
+
+        # ── Evaluate the constraint on the validation benchmarks ──────────
+        total_value = 0.0
+        for _ in range(num_benchmarks):
+            obs = val_env.reset()
+            done, ep_value, ep_budget = False, 0.0, None
+            while not done:
+                action, _ = model.predict(obs, deterministic=True)
+                obs, reward, dones, infos = val_env.step(action)
+                done = bool(dones[0])
+                ep_value = infos[0].get("constraint_value", 0.0)
+                ep_budget = infos[0].get("budget", ep_budget)
+            total_value += ep_value
+
+            # Update lambda on both train and val wrappers
+            val_env.update_lambda_penalty(constraint_value=ep_value, budget=ep_budget)
+            env.update_lambda_penalty(constraint_value=ep_value, budget=ep_budget)
+
+        lambda_penalty = val_env.lambda_penalty
+        avg_value = total_value / max(num_benchmarks, 1)
+
+        print(f"[Step {model.num_timesteps}] Avg constraint value: {avg_value:.2f}, "
+              f"λ: {lambda_penalty:.3f}")
+        tensorboard_writer.add_scalar("Lagrange/lambda_penalty", lambda_penalty, model.num_timesteps)
+        tensorboard_writer.add_scalar("Lagrange/avg_constraint", avg_value, model.num_timesteps)
+
+    tensorboard_writer.close()

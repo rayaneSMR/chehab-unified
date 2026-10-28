@@ -93,8 +93,11 @@ class ParetoEvalCallback(BaseCallback):
             point_summaries = []
 
             for p_idx, w in enumerate(self.pref_list):
-                # Lock eval env to this specific preference vector
-                self.eval_env.env_method("set_preference_vector", w)
+                # Lock eval env to this preference vector (constrained env has no preferences)
+                try:
+                    self.eval_env.env_method("set_preference_vector", w)
+                except AttributeError:
+                    pass
 
                 pt_rewards = []
                 pt_lengths = []

@@ -95,5 +95,6 @@ stdbuf -oL -eL python -u -m fhe_rl \
     --budget_encoding "$ENCODING" \
     --policy_variant "$VARIANT" \
     --embedder gnn \
+    --fresh_start \
     "$@" \
     > "$PROJ_ROOT/logs/train_unified_noise_${SLURM_JOB_ID:-local}.log" 2>&1

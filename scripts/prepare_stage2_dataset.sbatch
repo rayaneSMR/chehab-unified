@@ -74,6 +74,8 @@ python -u -m fhe_rl.preoptimize_dataset \
     --model "$STAGE1_MODEL" \
     --embedder gnn \
     --budget 9000000 \
+    --budget-options 230,236,369,9000000 \
+    --preference 1.0,0.0 \
     --constraint noise \
     --method nato_sc
 

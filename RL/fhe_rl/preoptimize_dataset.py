@@ -32,7 +32,18 @@ def preoptimize_dataset(
     constraint_method: str = "nato_sc",
     constraint_metric: str = "mem",
     max_positions: int = 16,
+    budget_options: list = None,
+    preference: list = None,
 ):
+    # budget_options must be the budgets the Stage 1 model was TRAINED with
+    # (the budget one-hot input has one slot per training budget).
+    if budget_options is None:
+        budget_options = [budget]
+    if budget not in budget_options:
+        raise ValueError(f"budget {budget} is not one of the training budgets {budget_options}")
+    # Stage 1 is the ops agent: default to the speed-focused preference.
+    if preference is None:
+        preference = [1.0, 0.0]
     set_framework("unified")
     set_embeddings_model_type(embedder)
 
@@ -42,7 +53,8 @@ def preoptimize_dataset(
     print(f"  Output Dataset:   {output_file}")
     print(f"  Stage 1 Model:    {model_path}")
     print(f"  Embedder:         {embedder}")
-    print(f"  Budget:           {budget}")
+    print(f"  Budget:           {budget} (training budgets: {budget_options})")
+    print(f"  Preference:       {preference}")
     print(f"  Constraint:       {constraint_metric}")
     print("=" * 60)
 
@@ -75,12 +87,14 @@ def preoptimize_dataset(
                 expressions,
                 max_positions=max_positions,
                 embeddings_model=embeddings,
-                budget_options=[budget],
+                budget_options=budget_options,
                 constraint_method=constraint_method,
                 constraint_metric=constraint_metric,
             )
         )
     ])
+    # Lock the preference so every expression is optimized the same way
+    env.env_method("set_preference_vector", preference)
 
     print(f"Loading Stage 1 model from: {model_path}")
     model = PPO(policy=PolicyCls, env=env).load(model_path)
@@ -174,6 +188,10 @@ def main():
                         help="Constraint metric: 'noise' or 'mem'")
     parser.add_argument("--method", type=str, default="nato_sc",
                         help="Constraint method (default: nato_sc)")
+    parser.add_argument("--budget-options", "--budget_options", type=str, default=None,
+                        help="Comma-separated budgets the Stage 1 model was trained with, e.g. 230,236,369,9000000")
+    parser.add_argument("--preference", type=str, default="1.0,0.0",
+                        help="Preference vector w=[ops,keys] used for every expression (default: 1.0,0.0)")
 
     args = parser.parse_args()
     preoptimize_dataset(
@@ -184,6 +202,8 @@ def main():
         budget=args.budget,
         constraint_method=args.method,
         constraint_metric=args.constraint,
+        budget_options=[int(b) for b in args.budget_options.split(",")] if args.budget_options else None,
+        preference=[float(x) for x in args.preference.split(",")],
     )
 
 

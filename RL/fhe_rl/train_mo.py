@@ -31,17 +31,21 @@ def train_agent_mo(expressions_file: str, embeddings_model, total_timesteps: int
                 lambda_env: float = 0.0, lambda_kl: float = 0.0, n_cycle: int = 1, n_budget: int = 5, eval_freq: int = 10000,
                 objective2: str = "keys", mem_backend: str = "gpu",
                 budget_options: list = None, constraint_method: str = "lagrangian_od_ov", algo: str = "ppo",
-                checkpoint_path: str = None, fresh_start: bool = False, n_pref: int = 11):
+                checkpoint_path: str = None, fresh_start: bool = False, n_pref: int = 11,
+                rules_subset: str = "all"):
     set_random_seed(seed)
     N=2
     pref_list = generate_pref_list(N)
     benchmarks = load_expressions("./fhe_rl/datasets/benchmarks.txt") 
     expressions = load_expressions(expressions_file, benchmarks)
     max_positions = 16
-    rules_list  = create_rules("rules.txt", "rotations_rules.txt")
+    # Separated architecture: "ops" (stage 1), "rotations" (stage 2) or "all" (joint)
+    rules_list  = create_rules("rules.txt", "rotations_rules.txt", rules_subset=rules_subset)
     rules_list["END"] = None
+    print(f"[Rules] Mode: {rules_subset.upper()} | Loaded {len(rules_list)} rules (including END)")
     job_id = os.environ.get("SLURM_JOB_ID", "jobid")
-    run_name = f"model_{job_id}"
+    subset_tag = f"_{rules_subset}" if rules_subset != "all" else ""
+    run_name = f"model_{job_id}{subset_tag}"
     tensorboard_log_dir = f"./tensorboard/{run_name}"
 
     checkpoint_dir = f"./checkpoints/{run_name}"
@@ -72,7 +76,10 @@ def train_agent_mo(expressions_file: str, embeddings_model, total_timesteps: int
         if not candidates and os.path.exists("./checkpoints"):
             import glob
             for d in glob.glob("./checkpoints/model_*"):
-                if os.path.isdir(d):
+                # Only resume runs of the same stage (ops / rotations / joint)
+                name = os.path.basename(d)
+                same_stage = name.endswith(subset_tag) if subset_tag else not name.endswith(("_ops", "_rotations"))
+                if os.path.isdir(d) and same_stage:
                     for f in os.listdir(d):
                         m = _CKPT_RE.match(f)
                         if m:
@@ -104,17 +111,10 @@ def train_agent_mo(expressions_file: str, embeddings_model, total_timesteps: int
     env = SubprocVecEnv([make_env(i, expressions) for i in range(num_envs)])
     env.seed(seed)     
     val_env = DummyVecEnv([make_env(0, benchmarks)])
-    if budget_options and constraint_method != "none":
-        # same Lagrangian wrappers as the constrained framework (train.py)
-        from .train import WRAPPER_MAP
-        WrapperCls = WRAPPER_MAP.get(constraint_method)
-        if WrapperCls is not None:
-            env = WrapperCls(env)
-            val_env = WrapperCls(val_env)
-        if algo == "lagrangian_pid":
-            from .algos.lagrangian_pid import PIDLagrangianWrapper
-            env = PIDLagrangianWrapper(env)
-        print(f"[unified] budgets={budget_options} method={constraint_method} algo={algo}")
+    # MORL has no constraints: budget_options / constraint_method / algo are
+    # accepted for backward compatibility but not used.
+    if budget_options:
+        print(f"[MORL] No constraints in this framework; ignoring budgets={budget_options}, method={constraint_method}, algo={algo}")
     ent_schedule = linear_schedule(0.1)
     ent_callback = EntCoefScheduler(ent_schedule, verbose=1)
     model_params = {
@@ -134,7 +134,7 @@ def train_agent_mo(expressions_file: str, embeddings_model, total_timesteps: int
         "seed": seed,
         "policy_kwargs": {
             "ent_coef": ent_coef,
-            "features_dim": 258 + ((len(budget_options) + 1) if budget_options else 0),
+            "features_dim": 258,   # 256 expression embedding + 2 preference weights
             "rule_dim":      len(rules_list),
             "max_positions": max_positions,
             "rule_hidden_dims":   [64, 32],

@@ -2,9 +2,10 @@ from stable_baselines3 import PPO
 import sys, importlib, time, os, subprocess, tempfile
 from pathlib import Path
 from .utils import load_expressions, load_expressions_named, create_rules
-from pytrs import parse_sexpr, calculate_cost
+from pytrs import parse_sexpr
+from pytrs.cost import split_cost_mo
 from .memory import MemoryEstimator, extra_metrics
-from .config import get_env_class, get_policy_class
+from .config import get_env_class, get_policy_class, get_framework
 from .seal_noise_bound import BFVNoiseBoundError, BFVNoiseBoundVerifier
 from stable_baselines3.common.vec_env import DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
@@ -119,7 +120,9 @@ def test_agent(
         rules_p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rules.txt")
     if not os.path.exists(rot_p):
         rot_p = os.path.join(os.path.dirname(os.path.dirname(__file__)), "rotations_rules.txt")
-    rules_list = create_rules(rules_p, rot_p if os.path.exists(rot_p) else None)
+    # The constrained framework has no access to rotation rules.
+    subset = "ops" if get_framework() == "constrained" else "all"
+    rules_list = create_rules(rules_p, rot_p if os.path.exists(rot_p) else None, rules_subset=subset)
     rules_list["END"] = None
     max_positions = 16
 
@@ -262,9 +265,7 @@ def test_agent(
 
 def _get_split_costs(expr_str):
     try:
-        parsed = parse_sexpr(expr_str)
-        ops = calculate_cost(parsed, w_keys=0.0)
-        keys = calculate_cost(parsed, w_keys=1.0) - ops
+        ops, keys = split_cost_mo(parse_sexpr(expr_str))   # (C_exec, C_keys)
         return float(ops), float(keys)
     except Exception:
         return 0.0, 0.0
@@ -473,7 +474,9 @@ def test_agent_v2(
         print(f"  Model: {model_filepath}")
         print(f"{'='*60}")
 
-        rules_list = create_rules(rules_p, rot_p if os.path.exists(rot_p) else None, rules_subset="all")
+        # The constrained framework has no access to rotation rules.
+        subset = "ops" if get_framework() == "constrained" else "all"
+        rules_list = create_rules(rules_p, rot_p if os.path.exists(rot_p) else None, rules_subset=subset)
         rules_list["END"] = None
         env = DummyVecEnv([
             lambda: Monitor(

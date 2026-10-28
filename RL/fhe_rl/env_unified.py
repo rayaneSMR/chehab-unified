@@ -5,7 +5,8 @@ from collections import deque
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
-from pytrs import parse_sexpr, calculate_cost, expr_to_str
+from pytrs import parse_sexpr, expr_to_str
+from pytrs.cost import split_cost_mo, exec_cost_mo
 import torch
 
 from .config import get_tokenizer_type
@@ -230,10 +231,8 @@ class fheEnvUnified(gym.Env):
         self.pref_locked = False
 
     def get_split_costs(self, expr_str):
-        parsed = parse_sexpr(expr_str)
-        ops = calculate_cost(parsed, w_keys=0.0)
-        keys = calculate_cost(parsed, w_keys=1.0) - ops
-        return ops, keys
+        # (C_exec, C_keys): C_exec = C_ops + rotations_cost + D_circ + D_mult, C_keys = unique rotation keys
+        return split_cost_mo(parse_sexpr(expr_str))
 
     def _sample_preference(self) -> tuple[np.ndarray, str]:
         if self.n_cycle > 0 and (self.episode_count % (self.n_cycle + 1)) < self.n_cycle:
@@ -615,7 +614,8 @@ class fheEnvUnified(gym.Env):
         return self._compose_reward(r_vec) * 100
 
     def get_cost(self, expr: str) -> float:
-        return calculate_cost(parse_sexpr(expr))
+        # "Total cost" reported in logs/tests = C_exec (keys are tracked separately)
+        return exec_cost_mo(parse_sexpr(expr))
 
     _NON_REGULAR_RULE_TYPES = (
         "vectorize", "vectorize-flexible", "vectorize-rotation",
@@ -729,7 +729,7 @@ class fheEnvUnified(gym.Env):
             parsed = parse_sexpr(self.expression)
         except Exception:
             # Unparseable expression: allow only END so the episode can close.
-            mask[0] = 1.0
+            mask[self._end_action()] = 1.0
             return mask
         for rule_idx, rule_name in enumerate(self.rules.keys()):
             if rule_name == "END":
@@ -756,8 +756,13 @@ class fheEnvUnified(gym.Env):
                 else:
                     mask[start:start + valid_positions] = 1.0
         if not np.any(mask):
-            mask[0] = 1.0  # never return an all-zero mask (would stall sampling)
+            mask[self._end_action()] = 1.0  # never return an all-zero mask (would stall sampling)
         return self._store_mask(cache_key, mask)
+
+    def _end_action(self) -> int:
+        """Action index of END (position 0 of the END rule; END is not always rule 0)."""
+        keys = list(self.rules.keys())
+        return keys.index("END") * self.max_positions if "END" in keys else 0
 
     def _store_mask(self, key, mask: np.ndarray) -> np.ndarray:
         """Cache the pristine mask and hand the caller a copy, so caller-side

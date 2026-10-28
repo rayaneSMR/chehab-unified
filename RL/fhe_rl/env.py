@@ -1,7 +1,8 @@
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
-from pytrs import parse_sexpr, calculate_cost, expr_to_str
+from pytrs import parse_sexpr, expr_to_str
+from pytrs.cost import cost_constrained
 import torch
 
 from .config import get_tokenizer_type
@@ -259,7 +260,8 @@ class fheEnv(gym.Env):
         return (self.current_cost - new_cost) / self.current_cost
 
     def get_cost(self, expr: str) -> float:
-        return calculate_cost(parse_sexpr(expr))
+        # Constrained cost: C_ops + rotations_cost + D_circ + D_mult (original constrained repo)
+        return cost_constrained(parse_sexpr(expr))
 
     def _embed_expression(self, expr: str) -> np.ndarray:
         if self.embeddings_model is None:

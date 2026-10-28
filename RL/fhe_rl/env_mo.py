@@ -4,7 +4,7 @@ from gymnasium import spaces
 from pytrs import parse_sexpr, calculate_cost, Expr, Const, Var, Op, expr_to_str
 import torch
 from .config import get_tokenizer_type
-from pytrs.cost import _calculate_cost_mo
+from pytrs.cost import _calculate_cost_mo, exec_cost_mo, keys_cost
 from pytrs.ckks_memory_estimator import CKKSMemoryEstimator
 
 if get_tokenizer_type() == "bpe":
@@ -107,11 +107,11 @@ class fheEnvMO(gym.Env):
 
     def get_split_costs(self, expr_str):
         parsed = parse_sexpr(expr_str)
-        ops = _calculate_cost_mo(parsed, w_keys=0.0)
+        ops = exec_cost_mo(parsed)          # C_exec = C_ops + rotations_cost + D_circ + D_mult
         if self.objective2 == "memory":
             obj2 = self._mem_estimator.estimate(expr_str)
         else:
-            obj2 = _calculate_cost_mo(parsed, w_keys=1.0) - ops
+            obj2 = keys_cost(parsed)        # C_keys = unique rotation keys
         return ops, obj2
 
     def _sample_preference(self) -> tuple[np.ndarray, str]:
@@ -272,7 +272,7 @@ class fheEnvMO(gym.Env):
                     k, _ = match
                     new_expr_tree = rule_obj.apply_rule(expr_tree, path=k)
                     temp = expr_to_str(new_expr_tree)
-                    if calculate_cost(new_expr_tree) < self.current_cost:
+                    if _calculate_cost_mo(new_expr_tree) < self.current_cost:
                         isValid = False
                         break
                     if self.vectorisation_potential(temp) > vectorization_potenial:

@@ -11,7 +11,12 @@ import subprocess
 try:
     from . import config as pytrs_config
 except ImportError:
-    import config as pytrs_config
+    # Imported as top-level "rules" by pytrs/__init__.py: use the package's
+    # config so pytrs.config.framework is seen here (see cost.py).
+    try:
+        import pytrs.config as pytrs_config
+    except ImportError:
+        import config as pytrs_config
 
 
 def _create_rules_constrained(path: str = None, rotations_rules_path: str = None) -> dict:

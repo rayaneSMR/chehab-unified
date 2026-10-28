@@ -454,8 +454,9 @@ def main(args=None):
     set_framework(framework_name)
     spec = get_framework_spec()
 
-    # Embedder selection & propagation (GNN only for unified; keep original for morl/constrained)
-    if framework_name == "unified":
+    # Embedder selection: constrained and unified use --embedder (default GNN);
+    # morl and baseline keep the original TRAE embedder.
+    if framework_name in ("unified", "constrained"):
         embedder_choice = getattr(parsed_args, "embedder", "gnn")
         set_embeddings_model_type(embedder_choice)
     else:
@@ -475,7 +476,9 @@ def main(args=None):
 
         # Parse budgets with smart defaults based on constraint metric
         budget_options = None
-        if parsed_args.budgets:
+        if framework_name == "morl":
+            pass  # MORL has no constraints, so no budgets
+        elif parsed_args.budgets:
             budget_options = [int(b.strip()) for b in parsed_args.budgets.split(",")]
             print(f"Using custom budgets: {budget_options}")
         else:
@@ -510,12 +513,10 @@ def main(args=None):
                 eval_freq=parsed_args.eval_freq,
                 objective2=parsed_args.mo_objective2,
                 mem_backend=parsed_args.mem_backend,
-                budget_options=budget_options,
-                constraint_method=parsed_args.method,
-                algo=parsed_args.algo,
                 checkpoint_path=parsed_args.checkpoint,
                 fresh_start=parsed_args.fresh_start,
                 n_pref=parsed_args.n_pref,
+                rules_subset=getattr(parsed_args, "rules_subset", "all"),
             )
         else:
             # Unified & Constrained frameworks

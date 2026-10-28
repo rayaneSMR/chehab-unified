@@ -27,7 +27,12 @@ def tokenize(s):
 try:
     from . import config as pytrs_config
 except ImportError:
-    import config as pytrs_config
+    # Imported as top-level "parser" by pytrs/__init__.py: use the package's
+    # config so pytrs.config.framework is seen here (see cost.py).
+    try:
+        import pytrs.config as pytrs_config
+    except ImportError:
+        import config as pytrs_config
 
 def _parse_tokens_constrained(tokens, parent=None):
     """

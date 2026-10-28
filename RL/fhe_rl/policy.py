@@ -28,6 +28,10 @@ class CustomFeaturesExtractor(nn.Module):
         self._margin_dim = observation_space["budget_margin"].shape[0] if self._has_margin else 0
         self._has_noise_ratio = "noise_ratio" in observation_space.spaces
         self._noise_ratio_dim = observation_space["noise_ratio"].shape[0] if self._has_noise_ratio else 0
+        # Unified only: preference vector, concatenated at the end (FiLM design A).
+        # Constrained has no preference_vector in its observation, so it is unaffected.
+        self._has_pref = "preference_vector" in observation_space.spaces
+        self._pref_dim = observation_space["preference_vector"].shape[0] if self._has_pref else 0
         self._budget_encoding = budget_encoding if self._has_budget else "none"
 
         if budget_encoding == "embed":
@@ -90,6 +94,8 @@ class CustomFeaturesExtractor(nn.Module):
             parts.append(obs_dict["budget_margin"])
         if self._has_noise_ratio:
             parts.append(obs_dict["noise_ratio"])
+        if self._has_pref:
+            parts.append(obs_dict["preference_vector"])
         return torch.cat(parts, dim=1)
 
     @property
@@ -100,7 +106,7 @@ class CustomFeaturesExtractor(nn.Module):
             base = self._embed_dim + self._budget_dim
         else:  # "embed" or "film"
             base = self._embed_dim + self.BUDGET_EMBED_DIM
-        return base + self._margin_dim + self._noise_ratio_dim
+        return base + self._margin_dim + self._noise_ratio_dim + self._pref_dim
 
 
 class HierarchicalMaskablePolicy(nn.Module):

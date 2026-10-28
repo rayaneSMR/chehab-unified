@@ -76,7 +76,7 @@ FRAMEWORKS = {
         model_key="agent_model",
         pytrs="constrained",
         pref_mode="single",
-        embeddings_model_type=EmbeddingsModelType.TRANSFORMER_AUTOENCODER,
+        embeddings_model_type=EmbeddingsModelType.GNN_AUTOENCODER,
     ),
     "morl": dict(
         env="fhe_rl.env_mo.fheEnvMO",

@@ -5,7 +5,14 @@ from rules import create_rules
 try:
     from . import config as pytrs_config
 except ImportError:
-    import config as pytrs_config
+    # pytrs/__init__.py imports this file as a top-level module ("cost"), so the
+    # relative import fails. Use the package's config so that setting
+    # pytrs.config.framework is seen here (a bare "import config" would load a
+    # second, separate copy of config.py).
+    try:
+        import pytrs.config as pytrs_config
+    except ImportError:
+        import config as pytrs_config
 
 LITERAL = 0
 STRUCTURE = 2000
@@ -197,6 +204,17 @@ def get_total_rotations(expr: Expr) -> int:
             count += get_total_rotations(child)
     return count
 
+# ── Per-framework cost functions ─────────────────────────────────────────────
+# Each framework calls its own function explicitly; none of these depend on
+# pytrs.config.framework.
+#
+#   constrained : Cost   = C_ops + rotations_cost + D_circ + D_mult  (as in the
+#                 original constrained repo, w_rot = 1; rules.txt has no
+#                 rotations, so the rotation term is normally 0)
+#   morl/unified: C_exec = C_ops + rotations_cost + D_circ + D_mult  (as in the
+#                 original MORL repo, w_rot = 1)
+#                 C_keys = number of unique rotation keys
+
 def _calculate_cost_constrained(expr: Expr,
                w_ops=1.0,
                w_rot=1.0,
@@ -205,27 +223,45 @@ def _calculate_cost_constrained(expr: Expr,
                w_vec=-1.0,
                ) -> float:
     return (
-        w_ops * operations_cost(expr) +
+        w_ops * _operations_cost_constrained(expr) +
         w_rot * rotations_cost(expr) +
         w_depth * get_normal_depth(expr) +
-        w_muldepth * get_multiplicative_depth(expr) 
+        w_muldepth * get_multiplicative_depth(expr)
     )
 
 def _calculate_cost_mo(expr: Expr,
                w_ops=1.0,
-               w_rot=0.0,
+               w_rot=1.0,
                w_depth=1.0,
                w_muldepth=1.0,
                w_keys=1.0
                ) -> float:
     return (
-        w_ops * operations_cost(expr) +
+        w_ops * _operations_cost_mo(expr) +
         w_rot * rotations_cost(expr) +
         w_depth * get_normal_depth(expr) +
         w_muldepth * get_multiplicative_depth(expr) +
         w_keys * get_unique_rotations(expr)
     )
 
+def cost_constrained(expr: Expr) -> float:
+    """Constrained framework cost: C_ops + rotations_cost + D_circ + D_mult."""
+    return _calculate_cost_constrained(expr)
+
+def exec_cost_mo(expr: Expr) -> float:
+    """MORL / unified execution cost: C_ops + rotations_cost + D_circ + D_mult."""
+    return _calculate_cost_mo(expr, w_keys=0.0)
+
+def keys_cost(expr: Expr) -> int:
+    """MORL / unified second objective: number of unique rotation keys."""
+    return get_unique_rotations(expr)
+
+def split_cost_mo(expr: Expr) -> tuple:
+    """(C_exec, C_keys) for MORL / unified."""
+    return exec_cost_mo(expr), keys_cost(expr)
+
+# Legacy entry point that picks a formula from pytrs.config.framework. The envs
+# no longer use it; prefer cost_constrained / split_cost_mo above.
 def calculate_cost(expr: Expr,
                w_ops=1.0,
                w_rot=None,
@@ -238,17 +274,17 @@ def calculate_cost(expr: Expr,
         return _calculate_cost_mo(
             expr, 
             w_ops=w_ops, 
-            w_rot=0.0 if w_rot is None else w_rot, 
+            w_rot=1.0 if w_rot is None else w_rot,
             w_depth=w_depth, 
             w_muldepth=w_muldepth, 
             w_keys=1.0 if w_keys is None else w_keys
         )
         
     return _calculate_cost_constrained(
-        expr, 
-        w_ops=w_ops, 
-        w_rot=1.0 if w_rot is None else w_rot, 
-        w_depth=w_depth, 
-        w_muldepth=w_muldepth, 
+        expr,
+        w_ops=w_ops,
+        w_rot=1.0 if w_rot is None else w_rot,
+        w_depth=w_depth,
+        w_muldepth=w_muldepth,
         w_vec=w_vec
     )
