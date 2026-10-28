@@ -5,7 +5,7 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -c 4
-#SBATCH -t 1-00:00:00
+#SBATCH -t 7-00:00:00
 
 # Email notifications
 #SBATCH --mail-user=${USER}@nyu.edu

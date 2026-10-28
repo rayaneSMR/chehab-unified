@@ -350,6 +350,13 @@ def parse_arguments(args=None):
         help="Evaluation pipeline: 'joint' (default single-pass) or 'separated' (Stage 1 ops -> Stage 2 rotations)",
     )
     test_parser.add_argument(
+        "--preferences",
+        type=str,
+        default=None,
+        help="Preferences to evaluate, as 'w_ops,w_keys' pairs separated by ';' "
+             "(e.g. '1.0,0.0;0.5,0.5'). Default: the 10 training preferences [1,0] ... [0.1,0.9]",
+    )
+    test_parser.add_argument(
         "--model-stage2", "--model_stage2",
         type=str,
         default=None,
@@ -617,6 +624,10 @@ def main(args=None):
                 bfv_noise_bound_verifier=bfv_noise_bound_verifier,
                 pipeline=getattr(parsed_args, "pipeline", "joint"),
                 model_stage2_filepath=getattr(parsed_args, "model_stage2", None),
+                pref_list=(
+                    [[float(x) for x in p.split(",")] for p in parsed_args.preferences.split(";")]
+                    if getattr(parsed_args, "preferences", None) else None
+                ),
             )
         else:
             test_agent(

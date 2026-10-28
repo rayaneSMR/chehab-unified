@@ -396,12 +396,25 @@ def test_agent_v2(
     save_optimized: str = None,
     pipeline: str = "joint",
     model_stage2_filepath: str = None,
+    pref_list: list = None,
 ):
     """Test with trajectory checkpointing, safety rollback, and feasible/infeasible split.
 
     Supports both 'joint' (single-agent pass) and 'separated' (Stage 1 ops -> Stage 2 rotations)
     pipeline architectures.
+
+    As in the original MORL separated experiment (run_benchmarks.py), every expression is
+    evaluated at every preference in pref_list (default: generate_pref_list(11), the 10
+    training preferences). Joint: the agent runs at w. Separated: Stage 1 runs at [1, 0]
+    (single-objective ops agent), then Stage 2 runs at w. The constrained framework has no
+    preference and runs once.
     """
+    if get_framework() == "constrained":
+        pref_list = [None]
+    elif pref_list is None:
+        from .pareto import generate_pref_list
+        pref_list = generate_pref_list(11)
+    print(f"[Preferences] Evaluating at {len(pref_list)} preference(s): {pref_list}")
     expressions_file = _resolve_expressions(expressions_file)
     named_pairs = load_expressions_named(expressions_file)
     expr_names = [name for _, name in named_pairs]
@@ -505,21 +518,24 @@ def test_agent_v2(
         print(f"{'='*60}")
 
         total_exprs = len(expressions)
-        for expr_idx in range(total_exprs):
+        # Every expression x every preference (as in the original MORL experiment)
+        for expr_idx, w in [(i, w) for i in range(total_exprs) for w in pref_list]:
             expr_name = expr_names[expr_idx] if expr_idx < len(expr_names) else f"expr_{expr_idx}"
             test_expr = expressions[expr_idx]
             initial_noise = float(noise_estimator.estimate(parse_sexpr(test_expr)))
             is_feasible = initial_noise <= budget
             initial_ops, initial_keys = _get_split_costs(test_expr)
+            w_ops, w_keys = (w[0], w[1]) if w is not None else (None, None)
+            w_tag = f"w=[{w_ops}, {w_keys}]" if w is not None else "no preference"
 
             if pipeline == "separated":
-                print(f"  [Budget {budget}] [{expr_idx+1}/{total_exprs}] '{expr_name}' -> Stage 1 (Ops, w=[1.0, 0.0])...", flush=True)
+                print(f"  [Budget {budget}] [{expr_idx+1}/{total_exprs}] '{expr_name}' ({w_tag}) -> Stage 1 (Ops, w=[1.0, 0.0])...", flush=True)
                 res1 = _run_single_episode(model_ops, env_ops, test_expr, budget, noise_estimator, bfv_noise_bound_verifier, constraint_metric, preference_vector=[1.0, 0.0])
                 stage1_safe_expr = res1["safe_expr"]
                 stage1_ops, stage1_keys = _get_split_costs(stage1_safe_expr)
 
-                print(f"  [Budget {budget}] [{expr_idx+1}/{total_exprs}] '{expr_name}' -> Stage 2 (Rotations, w=[0.0, 1.0])...", flush=True)
-                res2 = _run_single_episode(model_rot, env_rot, stage1_safe_expr, budget, noise_estimator, bfv_noise_bound_verifier, constraint_metric, preference_vector=[0.0, 1.0])
+                print(f"  [Budget {budget}] [{expr_idx+1}/{total_exprs}] '{expr_name}' -> Stage 2 (Rotations, {w_tag})...", flush=True)
+                res2 = _run_single_episode(model_rot, env_rot, stage1_safe_expr, budget, noise_estimator, bfv_noise_bound_verifier, constraint_metric, preference_vector=w)
                 final_safe_expr = res2["safe_expr"]
                 final_ops, final_keys = _get_split_costs(final_safe_expr)
 
@@ -541,6 +557,8 @@ def test_agent_v2(
                 all_results.append({
                     "Pipeline": "separated",
                     "Budget": budget,
+                    "w_ops": w_ops,
+                    "w_keys": w_keys,
                     "Expression #": expr_idx + 1,
                     "Expression Name": expr_name,
                     "Is Feasible": is_feasible,
@@ -581,8 +599,8 @@ def test_agent_v2(
                     **extra_metrics(test_expr, final_safe_expr, initial_noise, safe_noise, budget, prefix="Safe "),
                 })
             else:
-                print(f"  [Budget {budget}] [{expr_idx+1}/{total_exprs}] Evaluating '{expr_name}'...", flush=True)
-                res = _run_single_episode(model, env, test_expr, budget, noise_estimator, bfv_noise_bound_verifier, constraint_metric)
+                print(f"  [Budget {budget}] [{expr_idx+1}/{total_exprs}] Evaluating '{expr_name}' ({w_tag})...", flush=True)
+                res = _run_single_episode(model, env, test_expr, budget, noise_estimator, bfv_noise_bound_verifier, constraint_metric, preference_vector=w)
                 initial_cost = res["initial_cost"]
                 agent_final = res["agent_final"]
                 safe_expr = res["safe_expr"]
@@ -603,6 +621,8 @@ def test_agent_v2(
                 all_results.append({
                     "Pipeline": "joint",
                     "Budget": budget,
+                    "w_ops": w_ops,
+                    "w_keys": w_keys,
                     "Expression #": expr_idx + 1,
                     "Expression Name": expr_name,
                     "Is Feasible": is_feasible,
@@ -639,7 +659,7 @@ def test_agent_v2(
 
             tag = "FEASIBLE" if is_feasible else "INFEAS"
             safe_tag = "SAFE" if safe_noise <= budget else "VIOL"
-            print(f"  [{tag}][{safe_tag}] [{expr_idx+1}/{total_exprs}] '{expr_name}': "
+            print(f"  [{tag}][{safe_tag}] [{expr_idx+1}/{total_exprs}] '{expr_name}' ({w_tag}): "
                   f"cost {initial_cost}->{safe_cost} ({safe_cr:+.1f}%), "
                   f"ops {initial_ops}->{final_ops} ({ops_red:+.1f}%), "
                   f"keys {initial_keys}->{final_keys} ({keys_red:+.1f}%), "
@@ -693,6 +713,26 @@ def test_agent_v2(
                 "Avg RL Time (s)": round(bdf["RL Time (ms)"].mean() / 1000.0, 2),
             })
         pd.DataFrame(summary_rows).to_excel(writer, sheet_name="summary_per_budget", index=False)
+
+        # Summary per (budget, preference): one point per preference, to compare
+        # the joint and separated fronts as in the original MORL experiment
+        if df["w_ops"].notna().any():
+            pref_rows = []
+            for (b, wo, wk), g in df.groupby(["Budget", "w_ops", "w_keys"], sort=True):
+                pref_rows.append({
+                    "Budget": b,
+                    "w_ops": wo,
+                    "w_keys": wk,
+                    "Pipeline": pipeline,
+                    "Num Expressions": len(g),
+                    "Avg Safe Final Ops": round(g["Safe Final Ops"].mean(), 2),
+                    "Avg Safe Final Keys": round(g["Safe Final Keys"].mean(), 3),
+                    "Safe Avg Ops Red (%)": round(g["Safe Ops Reduction (%)"].mean(), 2),
+                    "Safe Avg Keys Red (%)": round(g["Safe Keys Reduction (%)"].mean(), 2),
+                    "Safe Violation Rate (%)": round(g["Safe Violated"].mean() * 100, 1),
+                    "Avg RL Time (s)": round(g["RL Time (ms)"].mean() / 1000.0, 2),
+                })
+            pd.DataFrame(pref_rows).to_excel(writer, sheet_name="summary_per_pref", index=False)
 
         # Feasible-only summary (primary metric for paper)
         feasible_rows = []

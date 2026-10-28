@@ -72,15 +72,12 @@ def train_agent(
 ):
     set_random_seed(seed)
     
-    # MORL setup:
-    # Stage 1 (ops only) -> Pure speed focus w = [1.0, 0.0]
-    # Stage 2 (rotations only) -> Pure rotation keys focus w = [0.0, 1.0]
+    # Preferences (same as the original MORL separated experiment):
+    # - Stage 1 (ops only): single-objective -> fixed speed focus w = [1.0, 0.0]
+    # - Stage 2 (rotations only) and the joint agent: the normal preference list
     if rules_subset == "ops" or pref_mode == "single":
         pref_list = [[1.0, 0.0]]
-        print(f"[Preferences] Stage 1 (Ops Agent): Preference vector fixed to pure speed focus: {pref_list}")
-    elif rules_subset == "rotations":
-        pref_list = [[0.0, 1.0]]
-        print(f"[Preferences] Stage 2 (Rotations Agent): Preference vector fixed to rotation keys focus: {pref_list}")
+        print(f"[Preferences] Single-objective / Stage 1 (Ops Agent): preference fixed to speed focus: {pref_list}")
     elif n_pref == 9:
         # Drop 2 least important extreme-keys vectors ([0.1, 0.9] and [0.2, 0.8])
         # Preserves speed focus [1.0, 0.0], balanced [0.5, 0.5], down to [0.3, 0.7] (8 vectors)
