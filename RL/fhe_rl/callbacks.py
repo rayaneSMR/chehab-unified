@@ -167,7 +167,7 @@ class ParetoEvalCallback(BaseCallback):
 
                     init_c = max(terminal["initial_cost"], 1e-6)
                     init_o = max(terminal["initial_ops"], 1e-6)
-                    init_k = max(terminal["initial_keys"], 1e-6)
+                    init_k = max(terminal["initial_keys"], 1)  # keys are integers; avoid /1e-6 when 0
 
                     # Raw agent reductions
                     raw_cost_red = (init_c - terminal["cost"]) / init_c * 100.0

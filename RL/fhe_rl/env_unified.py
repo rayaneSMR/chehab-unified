@@ -495,7 +495,7 @@ class fheEnvUnified(gym.Env):
 
         cost_red = ((self.initial_cost - self.current_cost) / max(self.initial_cost, 1e-6)) * 100.0
         ops_red = ((self.initial_ops - self.curr_ops) / max(self.initial_ops, 1e-6)) * 100.0
-        keys_red = ((self.initial_keys - self.curr_keys) / max(self.initial_keys, 1e-6)) * 100.0
+        keys_red = ((self.initial_keys - self.curr_keys) / max(self.initial_keys, 1)) * 100.0  # keys are integers; avoid /1e-6 when 0
         is_compliant = bool(self.curr_constraint <= self.budget)
 
         info = self._step_info(reward, terminated, truncated)
@@ -532,7 +532,7 @@ class fheEnvUnified(gym.Env):
         except Exception:
             ops_red = 0.0
         try:
-            keys_red = ((self.initial_keys - self.curr_keys) / max(self.initial_keys, 1e-6)) * 100.0
+            keys_red = ((self.initial_keys - self.curr_keys) / max(self.initial_keys, 1)) * 100.0
         except Exception:
             keys_red = 0.0
         try:
