@@ -10,7 +10,9 @@ import sys, importlib
 from stable_baselines3.common.monitor import Monitor
 def run_agent(expressions_file: str,embeddings_model, model_filepath: str,output_file: str):
     start_time = time.perf_counter()
-    expressions = load_expressions(expressions_file)
+    # Unfiltered loader: load_expressions() drops vector sizes 3/5 (max_3, max_5, sort_3).
+    from ..utils import load_expressions_named
+    expressions = [e for e, _ in load_expressions_named(expressions_file)]
     if not len(expressions):
         print("No valid expressions found in the file.")
         sys.exit(1)

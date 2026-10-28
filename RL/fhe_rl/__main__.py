@@ -453,6 +453,22 @@ def parse_arguments(args=None):
         default=None,
         help="Weight for operations in MORL",
     )
+    # Unified-agent inference options. Each falls back to a CHEHAB_RL_* environment
+    # variable (see run_unified.py) because the C++ compiler only forwards --w_ops.
+    run_parser.add_argument("--model", type=str, default=None,
+                            help="Agent .zip to load (unified/morl); default from config or CHEHAB_RL_MODEL")
+    run_parser.add_argument("--budget", type=int, default=None,
+                            help="Noise budget for this compilation (unified); env CHEHAB_RL_BUDGET")
+    run_parser.add_argument("--train_budgets", type=str, default=None,
+                            help="Comma list of budgets the agent was trained on; env CHEHAB_RL_TRAIN_BUDGETS")
+    run_parser.add_argument("--method", type=str, default=None,
+                            help="Constraint method used in training (unified); env CHEHAB_RL_METHOD")
+    run_parser.add_argument("--constraint", type=str, default=None, choices=["noise", "mem"],
+                            help="Constraint metric (unified); env CHEHAB_RL_CONSTRAINT")
+    run_parser.add_argument("--no_rollback", action="store_true",
+                            help="Return the raw agent output even if it violates the budget (unified)")
+    run_parser.add_argument("--info_json", type=str, default=None,
+                            help="Write an episode summary JSON here; env CHEHAB_RL_INFO_JSON")
 
     # ─── INTERACTIVE COMMAND ──────────────────────────────────────────────────
     add_subparser(subparsers)
@@ -667,6 +683,27 @@ def main(args=None):
         if framework_name == "baseline":
             agent_zip = get_model_path("agent_model")
             run_agent_baseline(input_file, embeddings, agent_zip, output_file)
+        elif framework_name == "unified":
+            from .run_unified import run_agent_unified
+            train_budgets = (
+                [int(b) for b in parsed_args.train_budgets.split(",")] if parsed_args.train_budgets else None
+            )
+            run_agent_unified(
+                input_file, embeddings, output_file,
+                model=parsed_args.model, w_ops=parsed_args.w_ops, budget=parsed_args.budget,
+                train_budgets=train_budgets, method=parsed_args.method,
+                constraint=parsed_args.constraint,
+                rollback=False if parsed_args.no_rollback else None,
+                info_json=parsed_args.info_json,
+            )
+        elif framework_name == "morl":
+            # Reference MORL agent (env_mo / policy_mo), locked to the requested preference.
+            from .run_mo import run_agent_mo
+            w_ops = parsed_args.w_ops
+            if w_ops is None:
+                w_ops = float(os.environ.get("CHEHAB_RL_W_OPS", 1.0))
+            agent_zip = parsed_args.model or os.environ.get("CHEHAB_RL_MODEL") or get_model_path("mo_agent_model")
+            run_agent_mo(input_file, embeddings, str(agent_zip), output_file, w_ops, round(1.0 - w_ops, 10))
         else:
             agent_zip = get_model_path("agent_model")
             run_agent(input_file, embeddings, agent_zip, output_file, noise_budget=1500)
