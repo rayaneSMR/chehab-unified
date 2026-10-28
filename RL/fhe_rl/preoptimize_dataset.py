@@ -106,7 +106,7 @@ def preoptimize_dataset(
     t_start = time.perf_counter()
 
     for i, (orig_expr, name) in enumerate(zip(expressions, expr_names)):
-        env.set_options({"budget": budget, "expression": orig_expr})
+        env.set_options({"budget": budget, "expression": orig_expr, "preference_vector": [1.0, 0.0]})
         obs = env.reset()
 
         wrapper = env.envs[0]

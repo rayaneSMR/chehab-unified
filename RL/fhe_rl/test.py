@@ -279,9 +279,13 @@ def _run_single_episode(
     noise_estimator,
     bfv_noise_bound_verifier=None,
     constraint_metric: str = "mem",
+    preference_vector=None,
 ):
     t0 = time.perf_counter()
-    env.set_options({"budget": budget, "expression": expr_str})
+    opts = {"budget": budget, "expression": expr_str}
+    if preference_vector is not None:
+        opts["preference_vector"] = preference_vector
+    env.set_options(opts)
     obs = env.reset()
 
     wrapper = env.envs[0]
@@ -509,13 +513,13 @@ def test_agent_v2(
             initial_ops, initial_keys = _get_split_costs(test_expr)
 
             if pipeline == "separated":
-                print(f"  [Budget {budget}] [{expr_idx+1}/{total_exprs}] '{expr_name}' -> Stage 1 (Ops)...", flush=True)
-                res1 = _run_single_episode(model_ops, env_ops, test_expr, budget, noise_estimator, bfv_noise_bound_verifier, constraint_metric)
+                print(f"  [Budget {budget}] [{expr_idx+1}/{total_exprs}] '{expr_name}' -> Stage 1 (Ops, w=[1.0, 0.0])...", flush=True)
+                res1 = _run_single_episode(model_ops, env_ops, test_expr, budget, noise_estimator, bfv_noise_bound_verifier, constraint_metric, preference_vector=[1.0, 0.0])
                 stage1_safe_expr = res1["safe_expr"]
                 stage1_ops, stage1_keys = _get_split_costs(stage1_safe_expr)
 
-                print(f"  [Budget {budget}] [{expr_idx+1}/{total_exprs}] '{expr_name}' -> Stage 2 (Rotations)...", flush=True)
-                res2 = _run_single_episode(model_rot, env_rot, stage1_safe_expr, budget, noise_estimator, bfv_noise_bound_verifier, constraint_metric)
+                print(f"  [Budget {budget}] [{expr_idx+1}/{total_exprs}] '{expr_name}' -> Stage 2 (Rotations, w=[0.0, 1.0])...", flush=True)
+                res2 = _run_single_episode(model_rot, env_rot, stage1_safe_expr, budget, noise_estimator, bfv_noise_bound_verifier, constraint_metric, preference_vector=[0.0, 1.0])
                 final_safe_expr = res2["safe_expr"]
                 final_ops, final_keys = _get_split_costs(final_safe_expr)
 

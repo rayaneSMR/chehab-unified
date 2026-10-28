@@ -281,7 +281,10 @@ class fheEnvUnified(gym.Env):
         self.initial_constraint = self.curr_constraint = self._estimate(self.expression)
 
         # Preference sampling
-        if self.pref_locked:
+        if isinstance(options, dict) and "preference_vector" in options:
+            self.current_w = np.array(options["preference_vector"], dtype=np.float32)
+            mode_name = f"EXPLICIT (w=[ops={self.current_w[0]:.2f}, keys={self.current_w[1]:.2f}])"
+        elif self.pref_locked:
             mode_name = "LOCKED (EVALUATION)"
         else:
             self.current_w, mode_name = self._sample_preference()
