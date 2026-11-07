@@ -36,9 +36,13 @@ PREFERENCES="${4:-}"
 
 # System compiler for the generated SEAL programs, found before conda (see build_e2e_benchmarks.sh)
 module load gcc 2>/dev/null || true
+# cmake builds the generated SEAL programs; the fhe_rl conda env has none (base conda had it)
+module load cmake/3.28.0 2>/dev/null || true
+command -v cmake >/dev/null || { echo "ERROR: cmake not found (module load cmake/3.28.0 failed)"; exit 1; }
 export FHE_E2E_CXX="${FHE_E2E_CXX:-$(which g++ 2>/dev/null || echo /usr/bin/g++)}"
 
 set +u
+set --   # arguments are already read above; otherwise conda's activate receives them (ArgumentError)
 if [ -f "/share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate" ]; then
     source /share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate
 fi
