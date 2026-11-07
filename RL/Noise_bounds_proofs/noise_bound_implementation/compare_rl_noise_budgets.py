@@ -188,6 +188,7 @@ def main() -> int:
         outputs_match = measurement.get("actual_outputs_match", "")
         actual_valid = outputs_match in ("", "True", True)
         rows.append({
+            "benchmark": name,
             "actual_remaining_budget_bits": actual_remaining,
             "bound_remaining_budget_bits": bound_remaining,
             "actual_minus_bound_bits": (
