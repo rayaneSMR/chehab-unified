@@ -6,7 +6,9 @@
 #   scripts/eval_unified_e2e.sbatch -> run_benchmarks_unified.py, every C++ benchmark of the MORL
 #   suite, the generated SEAL program built and run 3 times (median), outputs checked.
 # Here: the 5 ten-preference agents (unconstrained v4_mb v4_nmask v4_mb_film v5_focops), their
-# constraint method, the 10 training preferences (eval_unified_e2e default), with or without rollback.
+# constraint method, with or without rollback, at the 4 preferences of the 4-pref agents
+# w = [1.0,0.0] [0.9,0.1] [0.8,0.2] [0.6,0.4] (same points as e2e_4pref.sh, directly comparable).
+# PREFERENCES=all evaluates the 10 training preferences instead (output in e2e_10pref_allprefs/).
 #
 # Model: each run's CURRENT best eval checkpoint, so it can start while training is still running.
 # RL/eval/best_model_model_<jobid>_*_abl_<agent>/best_model.zip is frozen once into
@@ -35,15 +37,18 @@ mkdir -p logs
 AGENT="${1:?usage: bash scripts/ablation_unified/e2e_10pref.sh <agent|all> [ROLLBACK] [BUDGETS]}"
 ROLLBACK="${2:-1}"
 BUDGETS="${3:-230 236 369 9000000}"
-PREFERENCES=""                 # empty = the 10 training preferences (eval_unified_e2e / run_benchmarks_unified default)
+# default: the 4 preferences of e2e_4pref.sh; PREFERENCES=all -> the 10 training preferences
+PREFERENCES="${PREFERENCES:-1.0,0.0;0.9,0.1;0.8,0.2;0.6,0.4}"
+SUFFIX=""
+if [ "$PREFERENCES" = "all" ]; then PREFERENCES=""; SUFFIX="_allprefs"; fi
 CONDA_ENV="${CONDA_ENV:-/home/rs10728/.conda/envs/fhe_rl}"   # same env as the training / eval scripts
 BENCHES=(box_blur gx_kernel gy_kernel roberts_cross matrix_mul dot_product hamming_dist
          l2_distance lin_reg poly_reg max sort polynomials_coyote)
 case "$ROLLBACK" in 1) MODE=rollback ;; 0) MODE=no_rollback ;; *) echo "[FAIL] ROLLBACK must be 1 or 0"; exit 1 ;; esac
 DRY="${DRY_RUN:-0}"
 
-if [ "${MODEL_SOURCE:-best_now}" = "final" ]; then ROOT="results/ablation_unified/e2e_10pref_final"
-else ROOT="results/ablation_unified/e2e_10pref"; fi
+if [ "${MODEL_SOURCE:-best_now}" = "final" ]; then ROOT="results/ablation_unified/e2e_10pref_final$SUFFIX"
+else ROOT="results/ablation_unified/e2e_10pref$SUFFIX"; fi
 SNAP="$ROOT/models"
 
 method_of() {
@@ -100,7 +105,7 @@ for a in $AGENTS; do
     METHOD="$(method_of "$a")"
     OUT_DIR="$ROOT/$MODE/$a"
     [ "$DRY" = "1" ] || { mkdir -p "$OUT_DIR"; echo "$MODEL" > "$OUT_DIR/model.txt"; }
-    echo "== $a  method=$METHOD  mode=$MODE  model=$MODEL  -> $OUT_DIR/"
+    echo "== $a  method=$METHOD  mode=$MODE  prefs=${PREFERENCES:-10 training}  model=$MODEL  -> $OUT_DIR/"
     for budget in $BUDGETS; do
         for bench in "${BENCHES[@]}"; do
             if [ "$DRY" = "1" ]; then
