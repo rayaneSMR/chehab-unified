@@ -1,0 +1,14 @@
+Python: /home/rs10728/.conda/envs/fhe_rl/bin/python
+════════════════════════════════════════════
+  ABLATION (unified):  Unconstrained
+  Method / Algo:       none / ppo
+  Budget encoding:     film   (policy variant film_a, gnn)
+  Constraint:          noise  budgets=230,236,369,9000000
+  Preferences:         1.0,0.0;0.9,0.1;0.8,0.2;0.6,0.4  (4 vectors, n_cycle=1)
+  Timesteps:           5000000  (eval every 200000)
+  Rollout:             512 steps/env x 32 envs = 16384
+  Job ID:              19083055
+  Run name:            model_19083055_none_film_a_gnn_abl_unconstrained_4pref
+  Agent folder:        /scratch/rs10728/chehab-unified/results/ablation_unified/unconstrained_4pref
+  Final model:         /scratch/rs10728/chehab-unified/RL/fhe_rl/trained_models/unified_noise_abl_unconstrained_4pref.zip
+════════════════════════════════════════════

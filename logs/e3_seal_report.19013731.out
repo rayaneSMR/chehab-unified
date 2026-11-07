@@ -1,0 +1,19 @@
+Node: cn228  Job: 19013731
+Python: /home/rs10728/.conda/envs/fhe_rl/bin/python   g++: /share/apps/NYUAD5/gcc/9.2.0/bin/g++ (g++ (GCC) 9.2.0)
+cmake: cmake version 4.3.2   SEAL: /scratch/rs10728/opt/SEAL-4.1/lib64/cmake/SEAL-4.1
+wrote results/unified_morl_ckpt4360000/metrics.csv (180 agent x benchmark x budget groups) and bounds.csv (time column: circuit_execution_time_s)
+== Constrained metrics (real SEAL execution) per budget ==
+ budget  Points  OK (%)  Feasible at start (%)  Agent Compliance est. (%)  Estimated Compliance (%)  Measured Compliance (%)  Rollback Rate (%)  Agent Cost Red (%)  Safe Cost Red (%)  Agent Keys Red (%)  Safe Keys Red (%)  Min Remaining Noise (bits)
+    230   474.0  99.367                  100.0                     99.575                     100.0                    100.0              0.425              80.902             80.886             -63.270            -63.270                       164.0
+    236   464.0  99.784                  100.0                     99.568                     100.0                    100.0              0.432              82.029             82.034             -58.747            -59.611                       164.0
+    369   468.0 100.000                  100.0                    100.000                     100.0                    100.0              0.000              81.304             81.304             -60.684            -60.684                       133.0
+9000000   477.0 100.000                  100.0                    100.000                     100.0                    100.0              0.000              79.923             79.923             -64.990            -64.990                       165.0
+
+== MORL metrics (measured time x key size) per budget ==
+ budget  Benchmarks with front     IC     HV     SP     EU  measured_violation_rate  est_violation_rate  rollback_rate
+    230                     45 2.1111 0.3238 0.0684 0.4160                      0.0                 0.0         0.0044
+    236                     45 2.1333 0.3247 0.0706 0.3736                      0.0                 0.0         0.0044
+    369                     45 2.0889 0.3187 0.0742 0.3928                      0.0                 0.0         0.0000
+9000000                     45 2.0444 0.3231 0.0914 0.3557                      0.0                 0.0         0.0000
+
+[summary] written to /scratch/rs10728/chehab-unified/results/unified_morl_ckpt4360000/exp3_seal_summary.xlsx

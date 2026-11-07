@@ -1,0 +1,192 @@
+Project: /scratch/rs10728/chehab-unified   Node: cn068   Job: 18982303
+cmake: cmake version 4.3.2
+Compiler: /share/apps/NYUAD5/gcc/9.2.0/bin/g++ (g++ (GCC) 9.2.0)
+SEAL 4.1 not found: building SEAL v4.1.1 into /scratch/rs10728/opt/SEAL-4.1 (one time, ~5-10 min) ...
+-- Build type (CMAKE_BUILD_TYPE): Release
+-- The CXX compiler identification is GNU 9.2.0
+-- The C compiler identification is GNU 9.2.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /share/apps/NYUAD5/gcc/9.2.0/bin/g++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: /share/apps/NYUAD5/gcc/9.2.0/bin/cc - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Microsoft SEAL debug mode: OFF
+-- SEAL_USE_CXX17: ON
+-- SEAL_BUILD_DEPS: OFF
+-- SEAL_USE_MSGSL: OFF
+-- SEAL_USE_ZLIB: OFF
+-- SEAL_USE_ZSTD: OFF
+-- SEAL_USE_INTEL_HEXL: OFF
+-- BUILD_SHARED_LIBS: OFF
+-- SEAL_THROW_ON_TRANSPARENT_CIPHERTEXT: ON
+-- SEAL_USE_GAUSSIAN_NOISE: OFF
+-- SEAL_DEFAULT_PRNG: Blake2xb
+-- SEAL_AVOID_BRANCHING: OFF
+-- x86intrin.h - found
+-- SEAL_USE_INTRIN: ON
+-- Performing Test SEAL_MEMSET_S_FOUND
+-- Performing Test SEAL_MEMSET_S_FOUND - Failed
+-- Looking for explicit_bzero
+-- Looking for explicit_bzero - found
+-- Looking for explicit_memset
+-- Looking for explicit_memset - not found
+-- SEAL_USE_MEMSET_S: OFF
+-- SEAL_USE_EXPLICIT_BZERO: ON
+-- SEAL_USE_EXPLICIT_MEMSET: OFF
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Check if compiler accepts -pthread
+-- Check if compiler accepts -pthread - yes
+-- Found Threads: TRUE
+-- SEAL_BUILD_SEAL_C: OFF
+-- SEAL_BUILD_EXAMPLES: OFF
+-- SEAL_BUILD_TESTS: OFF
+-- SEAL_BUILD_BENCH: OFF
+-- Configuring done (8.7s)
+-- Generating done (0.1s)
+-- Build files have been written to: /scratch/rs10728/opt/src/SEAL/build
+[  5%] Building CXX object CMakeFiles/seal.dir/native/src/seal/batchencoder.cpp.o
+[  7%] Building CXX object CMakeFiles/seal.dir/native/src/seal/ckks.cpp.o
+[ 15%] Building CXX object CMakeFiles/seal.dir/native/src/seal/context.cpp.o
+[ 17%] Building CXX object CMakeFiles/seal.dir/native/src/seal/ciphertext.cpp.o
+[ 17%] Building CXX object CMakeFiles/seal.dir/native/src/seal/decryptor.cpp.o
+[ 20%] Building CXX object CMakeFiles/seal.dir/native/src/seal/encryptor.cpp.o
+[ 20%] Building CXX object CMakeFiles/seal.dir/native/src/seal/encryptionparams.cpp.o
+[ 20%] Building CXX object CMakeFiles/seal.dir/native/src/seal/evaluator.cpp.o
+[ 22%] Building CXX object CMakeFiles/seal.dir/native/src/seal/keygenerator.cpp.o
+[ 25%] Building CXX object CMakeFiles/seal.dir/native/src/seal/kswitchkeys.cpp.o
+[ 27%] Building CXX object CMakeFiles/seal.dir/native/src/seal/memorymanager.cpp.o
+[ 30%] Building CXX object CMakeFiles/seal.dir/native/src/seal/modulus.cpp.o
+[ 32%] Building CXX object CMakeFiles/seal.dir/native/src/seal/plaintext.cpp.o
+[ 35%] Building CXX object CMakeFiles/seal.dir/native/src/seal/randomgen.cpp.o
+[ 37%] Building CXX object CMakeFiles/seal.dir/native/src/seal/serialization.cpp.o
+[ 40%] Building CXX object CMakeFiles/seal.dir/native/src/seal/valcheck.cpp.o
+[ 42%] Building C object CMakeFiles/seal.dir/native/src/seal/util/blake2b.c.o
+[ 45%] Building C object CMakeFiles/seal.dir/native/src/seal/util/blake2xb.c.o
+[ 47%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/clipnormal.cpp.o
+[ 50%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/common.cpp.o
+[ 52%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/croots.cpp.o
+[ 55%] Building C object CMakeFiles/seal.dir/native/src/seal/util/fips202.c.o
+[ 57%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/globals.cpp.o
+[ 60%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/galois.cpp.o
+[ 62%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/hash.cpp.o
+[ 65%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/iterator.cpp.o
+[ 67%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/mempool.cpp.o
+[ 70%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/numth.cpp.o
+[ 72%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/polyarithsmallmod.cpp.o
+[ 75%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/rlwe.cpp.o
+[ 77%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/rns.cpp.o
+[ 80%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/scalingvariant.cpp.o
+[ 82%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/ntt.cpp.o
+[ 85%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/streambuf.cpp.o
+[ 87%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/uintarith.cpp.o
+[ 90%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/uintarithmod.cpp.o
+[ 92%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/uintarithsmallmod.cpp.o
+[ 95%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/uintcore.cpp.o
+[ 97%] Building CXX object CMakeFiles/seal.dir/native/src/seal/util/ztools.cpp.o
+[100%] Linking CXX static library lib/libseal-4.1.a
+[100%] Built target seal
+-- Install configuration: "Release"
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/config.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/lib64/libseal-4.1.a
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/lib64/cmake/SEAL-4.1/SEALTargets.cmake
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/lib64/cmake/SEAL-4.1/SEALTargets-release.cmake
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/lib64/cmake/SEAL-4.1/SEALConfig.cmake
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/lib64/cmake/SEAL-4.1/SEALConfigVersion.cmake
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/lib64/pkgconfig/seal.pc
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/batchencoder.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/ciphertext.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/ckks.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/modulus.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/context.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/decryptor.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/dynarray.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/encryptionparams.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/encryptor.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/evaluator.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/galoiskeys.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/keygenerator.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/kswitchkeys.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/memorymanager.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/plaintext.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/publickey.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/randomgen.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/randomtostd.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/relinkeys.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/seal.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/secretkey.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/serializable.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/serialization.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/valcheck.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/version.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/blake2.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/blake2-impl.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/clang.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/clipnormal.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/common.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/croots.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/defines.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/dwthandler.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/fips202.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/galois.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/gcc.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/globals.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/hash.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/hestdparms.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/iterator.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/locks.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/mempool.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/msvc.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/numth.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/pointer.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/polyarithsmallmod.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/polycore.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/rlwe.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/rns.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/scalingvariant.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/ntt.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/streambuf.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/uintarith.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/uintarithmod.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/uintarithsmallmod.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/uintcore.h
+-- Installing: /scratch/rs10728/opt/SEAL-4.1/include/SEAL-4.1/seal/util/ztools.h
+SEAL:     /scratch/rs10728/opt/SEAL-4.1/lib64/cmake/SEAL-4.1
+-- The CXX compiler identification is GNU 9.2.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /share/apps/NYUAD5/gcc/9.2.0/bin/g++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Check if compiler accepts -pthread
+-- Check if compiler accepts -pthread - yes
+-- Found Threads: TRUE
+-- Microsoft SEAL -> Version 4.1.1 detected
+-- Microsoft SEAL -> Targets available: SEAL::seal
+-- Configuring done (0.9s)
+-- Generating done (0.1s)
+-- Build files have been written to: /scratch/rs10728/chehab-unified/build_bfv_noise
+[ 66%] Building CXX object CMakeFiles/bfv_noise_bound_cli.dir/bfv_noise_bound_cli.cpp.o
+[ 66%] Building CXX object CMakeFiles/bfv_noise_bound_cli.dir/scratch/rs10728/chehab-unified/ufhe/src/ufhe/seal_backend/bfv_noise_estimator.cpp.o
+[100%] Linking CXX executable bfv_noise_bound_cli
+[100%] Built target bfv_noise_bound_cli
+
+Check: (VecAdd (VecMul (Vec a b) (Vec c d)) (<< (Vec e f) 1))
+{"remaining_noise_budget_bits":286,"decryptable":true}
+
+OK: /scratch/rs10728/chehab-unified/build_bfv_noise/bfv_noise_bound_cli
+Expected: JSON with remaining_noise_budget_bits (a bit below 369) and "decryptable":true
+
+[ OK ] BFV noise certificate CLI: /scratch/rs10728/chehab-unified/build_bfv_noise/bfv_noise_bound_cli
+Use it in eval jobs with:
+  export FHE_BFV_NOISE_BOUND_EXECUTABLE=/scratch/rs10728/chehab-unified/build_bfv_noise/bfv_noise_bound_cli
+  export FHE_BFV_POLY_MODULUS_DEGREE=16384
+  export FHE_BFV_PLAIN_MODULUS=786433
+  export FHE_BFV_COEFF_MODULUS_BITS=48,48,48,49,49,49,49,49,49

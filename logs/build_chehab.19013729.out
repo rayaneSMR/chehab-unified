@@ -1,0 +1,351 @@
+Node: cn226  Job: 19013729
+Python: /home/rs10728/.conda/envs/fhe_rl/bin/python   g++: /share/apps/NYUAD5/gcc/9.2.0/bin/g++ (g++ (GCC) 9.2.0)
+cmake: cmake version 4.3.2   SEAL: /scratch/rs10728/opt/SEAL-4.1/lib64/cmake/SEAL-4.1
+-- The CXX compiler identification is GNU 9.2.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /share/apps/NYUAD5/gcc/9.2.0/bin/g++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- FHECO_LOGGING: OFF
+-- Configuring done (13.7s)
+-- Generating done (9.6s)
+-- Build files have been written to: /scratch/rs10728/chehab-unified/build
+[  0%] Copying /scratch/rs10728/chehab-unified/benchmarks/box_blur/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/box_blur/fhe_io_example.txt
+[  2%] Building CXX object CMakeFiles/fheco.dir/src/fheco/ckks/ckks_params.cpp.o
+[  2%] Copying /scratch/rs10728/chehab-unified/benchmarks/box_blur/generate_box_blur.py to /scratch/rs10728/chehab-unified/build/benchmarks/box_blur/generate_box_blur.py
+[  2%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/sort/he/utils.cpp
+[  5%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/max/he/utils.cpp
+[  5%] Copying /scratch/rs10728/chehab-unified/benchmarks/box_blur/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/box_blur/heongpu/CMakeLists.txt
+[  5%] Copying /scratch/rs10728/chehab-unified/benchmarks/sort/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/sort/fhe_io_example.txt
+[  5%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/box_blur/he/utils.hpp
+[  5%] Copying /scratch/rs10728/chehab-unified/benchmarks/max/generate_max.py to /scratch/rs10728/chehab-unified/build/benchmarks/max/generate_max.py
+[  5%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/box_blur/he/utils.cpp
+[  5%] Copying /scratch/rs10728/chehab-unified/benchmarks/sort/generate_sort.py to /scratch/rs10728/chehab-unified/build/benchmarks/sort/generate_sort.py
+[  5%] Copying /scratch/rs10728/chehab-unified/benchmarks/box_blur/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/box_blur/he/CMakeLists.txt
+[  6%] Copying /scratch/rs10728/chehab-unified/benchmarks/sort/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/sort/heongpu/CMakeLists.txt
+[  6%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/max/he/utils.hpp
+[  6%] Copying /scratch/rs10728/chehab-unified/benchmarks/sort/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/sort/he/CMakeLists.txt
+[  6%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/sort/he/utils.hpp
+[  6%] Built target copy_my_file_2max
+[  6%] Built target copy_my_file_4box_blur
+[  6%] Built target copy_my_file_6max
+[  6%] Built target copy_my_file_2sort
+[  6%] Built target copy_heongpu_cmake_box_blur
+[  6%] Built target copy_my_file_2box_blur
+[  6%] Building CXX object CMakeFiles/fheco.dir/src/fheco/ckks/ckks_scale_manager.cpp.o
+[  6%] Built target copy_my_file_5sort
+[ 10%] Copying /scratch/rs10728/chehab-unified/benchmarks/max/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/max/he/CMakeLists.txt
+[ 10%] Copying /scratch/rs10728/chehab-unified/benchmarks/max/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/max/fhe_io_example.txt
+[ 10%] Building CXX object CMakeFiles/fheco.dir/src/fheco/ckks/level_dag.cpp.o
+[  7%] Built target copy_my_file_5box_blur
+[ 11%] Built target copy_heongpu_cmake_sort
+[ 11%] Building CXX object CMakeFiles/fheco.dir/src/fheco/code_gen/gen_func.cpp.o
+[ 11%] Copying /scratch/rs10728/chehab-unified/benchmarks/max/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/max/heongpu/CMakeLists.txt
+[ 11%] Built target copy_my_file_6sort
+[ 11%] Copying /scratch/rs10728/chehab-unified/benchmarks/dot_product/generate_dot_product.py to /scratch/rs10728/chehab-unified/build/benchmarks/dot_product/generate_dot_product.py
+[ 11%] Built target copy_my_file_3sort
+[ 11%] Built target copy_my_file_3max
+[ 12%] Built target copy_my_file_3box_blur
+[ 13%] Building CXX object CMakeFiles/fheco.dir/src/fheco/code_gen/gen_func_heongpu.cpp.o
+[ 13%] Building CXX object CMakeFiles/fheco.dir/src/fheco/code_gen/gen_func_lattigo.cpp.o
+[ 13%] Built target copy_my_file_4max
+[ 13%] Built target copy_my_file_6dot_product
+[ 13%] Built target copy_my_file_5max
+[ 13%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/dot_product/he/utils.cpp
+[ 13%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/dot_product/he/utils.hpp
+[ 13%] Built target copy_heongpu_cmake_max
+[ 13%] Building CXX object CMakeFiles/fheco.dir/src/fheco/dsl/common.cpp.o
+[ 14%] Building CXX object CMakeFiles/fheco.dir/src/fheco/dsl/ciphertext.cpp.o
+[ 14%] Building CXX object CMakeFiles/fheco.dir/src/fheco/dsl/compiler_helper_functions.cpp.o
+[ 14%] Copying /scratch/rs10728/chehab-unified/benchmarks/dot_product/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/dot_product/fhe_io_example.txt
+[ 14%] Built target copy_my_file_4sort
+[ 14%] Built target copy_my_file_3dot_product
+[ 14%] Built target copy_my_file_2dot_product
+[ 14%] Copying /scratch/rs10728/chehab-unified/benchmarks/dot_product/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/dot_product/he/CMakeLists.txt
+[ 14%] Copying /scratch/rs10728/chehab-unified/benchmarks/dot_product/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/dot_product/heongpu/CMakeLists.txt
+[ 14%] Built target copy_my_file_6box_blur
+[ 14%] Built target copy_my_file_5dot_product
+[ 15%] Building CXX object CMakeFiles/fheco.dir/src/fheco/dsl/compiler.cpp.o
+[ 15%] Copying /scratch/rs10728/chehab-unified/benchmarks/gx_kernel/generate_gx_kernel.py to /scratch/rs10728/chehab-unified/build/benchmarks/gx_kernel/generate_gx_kernel.py
+[ 16%] Built target copy_my_file_4dot_product
+[ 16%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/gx_kernel/he/utils.cpp
+[ 16%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/gx_kernel/he/utils.hpp
+[ 16%] Built target copy_my_file_6gx_kernel
+[ 17%] Copying /scratch/rs10728/chehab-unified/benchmarks/gx_kernel/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/gx_kernel/fhe_io_example.txt
+[ 18%] Copying /scratch/rs10728/chehab-unified/benchmarks/gx_kernel/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/gx_kernel/he/CMakeLists.txt
+[ 18%] Built target copy_my_file_3gx_kernel
+[ 18%] Built target copy_my_file_2gx_kernel
+[ 19%] Copying /scratch/rs10728/chehab-unified/benchmarks/gx_kernel/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/gx_kernel/heongpu/CMakeLists.txt
+[ 20%] Copying /scratch/rs10728/chehab-unified/benchmarks/gy_kernel/generate_gy_kernel.py to /scratch/rs10728/chehab-unified/build/benchmarks/gy_kernel/generate_gy_kernel.py
+[ 21%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/gy_kernel/he/utils.cpp
+[ 21%] Built target copy_heongpu_cmake_gx_kernel
+[ 21%] Built target copy_my_file_4gx_kernel
+[ 21%] Built target copy_my_file_5gx_kernel
+[ 21%] Built target copy_my_file_2gy_kernel
+[ 21%] Built target copy_my_file_6gy_kernel
+[ 21%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/gy_kernel/he/utils.hpp
+[ 21%] Building CXX object CMakeFiles/fheco.dir/src/fheco/dsl/ops_overloads.cpp.o
+[ 21%] Copying /scratch/rs10728/chehab-unified/benchmarks/gy_kernel/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/gy_kernel/he/CMakeLists.txt
+[ 21%] Built target copy_my_file_3gy_kernel
+[ 21%] Copying /scratch/rs10728/chehab-unified/benchmarks/gy_kernel/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/gy_kernel/fhe_io_example.txt
+[ 21%] Copying /scratch/rs10728/chehab-unified/benchmarks/gy_kernel/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/gy_kernel/heongpu/CMakeLists.txt
+[ 22%] Building CXX object CMakeFiles/fheco.dir/src/fheco/dsl/plaintext.cpp.o
+[ 22%] Built target copy_heongpu_cmake_gy_kernel
+[ 22%] Built target copy_my_file_4gy_kernel
+[ 22%] Building CXX object CMakeFiles/fheco.dir/src/fheco/dsl/compiler_simplification.cpp.o
+[ 23%] Building CXX object CMakeFiles/fheco.dir/src/fheco/dsl/plaintext_matrix.cpp.o
+[ 23%] Built target copy_heongpu_cmake_dot_product
+[ 23%] Building CXX object CMakeFiles/fheco.dir/src/fheco/dsl/matmul.cpp.o
+[ 23%] Built target copy_my_file_5gy_kernel
+[ 24%] Building CXX object CMakeFiles/fheco.dir/src/fheco/ir/common.cpp.o
+[ 25%] Copying /scratch/rs10728/chehab-unified/benchmarks/sobel/generate_sobel.py to /scratch/rs10728/chehab-unified/build/benchmarks/sobel/generate_sobel.py
+[ 25%] Building CXX object CMakeFiles/fheco.dir/src/fheco/ir/expr.cpp.o
+[ 26%] Building CXX object CMakeFiles/fheco.dir/src/fheco/ir/func.cpp.o
+[ 26%] Building CXX object CMakeFiles/fheco.dir/src/fheco/ir/op_code.cpp.o
+[ 27%] Building CXX object CMakeFiles/fheco.dir/src/fheco/ir/term.cpp.o
+[ 27%] Building CXX object CMakeFiles/fheco.dir/src/fheco/param_select/enc_params.cpp.o
+[ 28%] Building CXX object CMakeFiles/fheco.dir/src/fheco/param_select/param_selector.cpp.o
+[ 29%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/sobel/he/utils.cpp
+[ 29%] Building CXX object CMakeFiles/fheco.dir/src/fheco/passes/cse_commut.cpp.o
+[ 30%] Building CXX object CMakeFiles/fheco.dir/src/fheco/passes/get_rotation_keys_steps.cpp.o
+[ 30%] Building CXX object CMakeFiles/fheco.dir/src/fheco/passes/insert_relin.cpp.o
+[ 31%] Building CXX object CMakeFiles/fheco.dir/src/fheco/passes/insert_rescale.cpp.o
+[ 31%] Building CXX object CMakeFiles/fheco.dir/src/fheco/passes/prepare_code_gen.cpp.o
+[ 32%] Building CXX object CMakeFiles/fheco.dir/src/fheco/passes/reduce_rotation_keys.cpp.o
+[ 32%] Building CXX object CMakeFiles/fheco.dir/src/fheco/passes/scalar_mul_to_add.cpp.o
+[ 33%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/common.cpp.o
+[ 33%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/depth_after_simplify_ruleset.cpp.o
+[ 34%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/depth_ruleset.cpp.o
+[ 34%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/simplification_ruleset.cpp.o
+[ 35%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/fold_op_gen_matcher.cpp.o
+[ 35%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/halide_adapted_ruleset.cpp.o
+[ 36%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/sobel/he/utils.hpp
+[ 36%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/joined_ruleset.cpp.o
+[ 36%] Copying /scratch/rs10728/chehab-unified/benchmarks/sobel/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/sobel/fhe_io_example.txt
+[ 37%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/op_gen_matcher.cpp.o
+[ 37%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/op_gen_op_code.cpp.o
+[ 37%] Built target copy_my_file_6sobel
+[ 37%] Built target copy_my_file_2sobel
+[ 37%] Built target copy_my_file_5sobel
+[ 37%] Copying /scratch/rs10728/chehab-unified/benchmarks/sobel/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/sobel/he/CMakeLists.txt
+[ 37%] Copying /scratch/rs10728/chehab-unified/benchmarks/roberts_cross/generate_roberts_cross.py to /scratch/rs10728/chehab-unified/build/benchmarks/roberts_cross/generate_roberts_cross.py
+[ 37%] Copying /scratch/rs10728/chehab-unified/benchmarks/sobel/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/sobel/heongpu/CMakeLists.txt
+[ 37%] Built target copy_my_file_3sobel
+[ 37%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/roberts_cross/he/utils.cpp
+[ 37%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/ops_overloads.cpp.o
+[ 39%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/ops_cost_ruleset.cpp.o
+[ 39%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/rule.cpp.o
+[ 41%] Copying /scratch/rs10728/chehab-unified/benchmarks/roberts_cross/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/roberts_cross/fhe_io_example.txt
+[ 41%] Copying /scratch/rs10728/chehab-unified/benchmarks/roberts_cross/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/roberts_cross/he/CMakeLists.txt
+[ 41%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/roberts_cross/he/utils.hpp
+[ 41%] Built target copy_heongpu_cmake_sobel
+[ 41%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/ruleset.cpp.o
+[ 41%] Built target copy_my_file_6roberts_cross
+[ 42%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/substitution.cpp.o
+[ 42%] Built target copy_my_file_2roberts_cross
+[ 42%] Built target copy_my_file_4sobel
+[ 42%] Built target copy_my_file_3roberts_cross
+[ 42%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/term_matcher.cpp.o
+[ 43%] Copying /scratch/rs10728/chehab-unified/benchmarks/roberts_cross/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/roberts_cross/heongpu/CMakeLists.txt
+[ 43%] Built target copy_my_file_4roberts_cross
+[ 43%] Built target copy_my_file_5roberts_cross
+[ 44%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/hamming_dist/he/utils.cpp
+[ 44%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/term_op_code.cpp.o
+[ 44%] Copying /scratch/rs10728/chehab-unified/benchmarks/hamming_dist/generate_hamming_dist.py to /scratch/rs10728/chehab-unified/build/benchmarks/hamming_dist/generate_hamming_dist.py
+[ 44%] Built target copy_my_file_2hamming_dist
+[ 44%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/trs.cpp.o
+[ 45%] Copying /scratch/rs10728/chehab-unified/benchmarks/hamming_dist/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/hamming_dist/fhe_io_example.txt
+[ 46%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/hamming_dist/he/utils.hpp
+[ 46%] Built target copy_my_file_6hamming_dist
+[ 48%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/reduct_order/check_ruleset.cpp.o
+[ 48%] Copying /scratch/rs10728/chehab-unified/benchmarks/hamming_dist/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/hamming_dist/he/CMakeLists.txt
+[ 48%] Built target copy_heongpu_cmake_roberts_cross
+[ 48%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/reduct_order/common.cpp.o
+[ 48%] Built target copy_my_file_5hamming_dist
+[ 49%] Building CXX object CMakeFiles/fheco.dir/src/fheco/trs/reduct_order/compon_orders.cpp.o
+[ 49%] Built target copy_my_file_3hamming_dist
+[ 49%] Built target copy_my_file_4hamming_dist
+[ 50%] Copying /scratch/rs10728/chehab-unified/benchmarks/hamming_dist/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/hamming_dist/heongpu/CMakeLists.txt
+[ 51%] Copying /scratch/rs10728/chehab-unified/benchmarks/l2_distance/generate_l2_distance.py to /scratch/rs10728/chehab-unified/build/benchmarks/l2_distance/generate_l2_distance.py
+[ 51%] Built target copy_my_file_6l2_distance
+[ 51%] Building CXX object CMakeFiles/fheco.dir/src/fheco/util/clear_data_eval.cpp.o
+[ 51%] Built target copy_heongpu_cmake_hamming_dist
+[ 52%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/l2_distance/he/utils.cpp
+[ 52%] Built target copy_my_file_2l2_distance
+[ 53%] Building CXX object CMakeFiles/fheco.dir/src/fheco/util/common.cpp.o
+[ 53%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/l2_distance/he/utils.hpp
+[ 53%] Built target copy_my_file_3l2_distance
+[ 53%] Copying /scratch/rs10728/chehab-unified/benchmarks/l2_distance/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/l2_distance/fhe_io_example.txt
+[ 53%] Building CXX object CMakeFiles/fheco.dir/src/fheco/util/draw_ir.cpp.o
+[ 53%] Built target copy_my_file_5l2_distance
+[ 54%] Building CXX object CMakeFiles/fheco.dir/src/fheco/util/eval_on_clear.cpp.o
+[ 54%] Building CXX object CMakeFiles/fheco.dir/src/fheco/util/expr_printer.cpp.o
+[ 55%] Building CXX object CMakeFiles/fheco.dir/src/fheco/util/quantifier.cpp.o
+[ 55%] Copying /scratch/rs10728/chehab-unified/benchmarks/l2_distance/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/l2_distance/he/CMakeLists.txt
+[ 55%] Copying /scratch/rs10728/chehab-unified/benchmarks/l2_distance/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/l2_distance/heongpu/CMakeLists.txt
+[ 55%] Built target copy_my_file_4l2_distance
+[ 55%] Built target copy_heongpu_cmake_l2_distance
+[ 55%] Copying /scratch/rs10728/chehab-unified/benchmarks/lin_reg/generate_lin_reg.py to /scratch/rs10728/chehab-unified/build/benchmarks/lin_reg/generate_lin_reg.py
+[ 55%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/lin_reg/he/utils.cpp
+[ 55%] Built target copy_my_file_6lin_reg
+[ 55%] Built target copy_my_file_2lin_reg
+[ 57%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/lin_reg/he/utils.hpp
+[ 57%] Copying /scratch/rs10728/chehab-unified/benchmarks/lin_reg/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/lin_reg/fhe_io_example.txt
+[ 58%] Built target copy_my_file_3lin_reg
+[ 58%] Copying /scratch/rs10728/chehab-unified/benchmarks/lin_reg/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/lin_reg/he/CMakeLists.txt
+[ 59%] Copying /scratch/rs10728/chehab-unified/benchmarks/lin_reg/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/lin_reg/heongpu/CMakeLists.txt
+[ 59%] Built target copy_my_file_5lin_reg
+[ 60%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/matrix_mul/he/utils.cpp
+[ 61%] Built target copy_heongpu_cmake_lin_reg
+[ 61%] Built target copy_my_file_4lin_reg
+[ 61%] Copying /scratch/rs10728/chehab-unified/benchmarks/matrix_mul/generate_matrix_mul.py to /scratch/rs10728/chehab-unified/build/benchmarks/matrix_mul/generate_matrix_mul.py
+[ 61%] Built target copy_my_file_2matrix_mul
+[ 61%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/matrix_mul/he/utils.hpp
+[ 61%] Copying /scratch/rs10728/chehab-unified/benchmarks/matrix_mul/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/matrix_mul/he/CMakeLists.txt
+[ 61%] Copying /scratch/rs10728/chehab-unified/benchmarks/matrix_mul/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/matrix_mul/heongpu/CMakeLists.txt
+[ 61%] Copying /scratch/rs10728/chehab-unified/benchmarks/matrix_mul/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/matrix_mul/fhe_io_example.txt
+[ 61%] Built target copy_my_file_3matrix_mul
+[ 61%] Built target copy_heongpu_cmake_matrix_mul
+[ 61%] Built target copy_my_file_5matrix_mul
+[ 62%] Copying /scratch/rs10728/chehab-unified/benchmarks/poly_reg/generate_poly_reg.py to /scratch/rs10728/chehab-unified/build/benchmarks/poly_reg/generate_poly_reg.py
+[ 62%] Built target copy_my_file_4matrix_mul
+[ 62%] Built target copy_my_file_6matrix_mul
+[ 62%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/poly_reg/he/utils.cpp
+[ 62%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/poly_reg/he/utils.hpp
+[ 63%] Copying /scratch/rs10728/chehab-unified/benchmarks/poly_reg/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/poly_reg/he/CMakeLists.txt
+[ 63%] Built target copy_my_file_6poly_reg
+[ 63%] Built target copy_my_file_3poly_reg
+[ 64%] Built target copy_my_file_2poly_reg
+[ 64%] Copying /scratch/rs10728/chehab-unified/benchmarks/poly_reg/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/poly_reg/fhe_io_example.txt
+[ 65%] Copying /scratch/rs10728/chehab-unified/benchmarks/poly_reg/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/poly_reg/heongpu/CMakeLists.txt
+[ 65%] Built target copy_my_file_5poly_reg
+[ 67%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/polynomials_coyote/he/utils.hpp
+[ 67%] Built target copy_my_file_4poly_reg
+[ 67%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/polynomials_coyote/he/utils.cpp
+[ 67%] Built target copy_my_file_3polynomials_coyote
+[ 67%] Built target copy_my_file_2polynomials_coyote
+[ 67%] Copying /scratch/rs10728/chehab-unified/benchmarks/polynomials_coyote/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/polynomials_coyote/he/CMakeLists.txt
+[ 67%] Built target copy_heongpu_cmake_poly_reg
+[ 67%] Copying /scratch/rs10728/chehab-unified/benchmarks/polynomials_coyote/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/polynomials_coyote/fhe_io_example.txt
+[ 68%] Built target copy_my_file_5polynomials_coyote
+[ 68%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/poly_derivative/he/utils.cpp
+[ 68%] Copying /scratch/rs10728/chehab-unified/benchmarks/poly_derivative/generate_poly_derivative.py to /scratch/rs10728/chehab-unified/build/benchmarks/poly_derivative/generate_poly_derivative.py
+[ 69%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/poly_derivative/he/utils.hpp
+[ 69%] Built target copy_my_file_6poly_derivative
+[ 69%] Copying /scratch/rs10728/chehab-unified/benchmarks/poly_derivative/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/poly_derivative/fhe_io_example.txt
+[ 69%] Copying /scratch/rs10728/chehab-unified/benchmarks/polynomials_coyote/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/polynomials_coyote/heongpu/CMakeLists.txt
+[ 69%] Built target copy_my_file_2poly_derivative
+[ 69%] Built target copy_my_file_4polynomials_coyote
+[ 69%] Built target copy_my_file_5poly_derivative
+[ 69%] Built target copy_heongpu_cmake_polynomials_coyote
+[ 69%] Copying /scratch/rs10728/chehab-unified/benchmarks/poly_derivative/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/poly_derivative/he/CMakeLists.txt
+[ 69%] Copying /scratch/rs10728/chehab-unified/benchmarks/poly_derivative/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/poly_derivative/heongpu/CMakeLists.txt
+[ 69%] Built target copy_my_file_3poly_derivative
+[ 69%] Copying /scratch/rs10728/chehab-unified/benchmarks/discrete_cosin_transform/generate_discrete_cosin_transform.py to /scratch/rs10728/chehab-unified/build/benchmarks/discrete_cosin_transform/generate_discrete_cosin_transform.py
+[ 69%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/benchmarks/discrete_cosin_transform/he/utils.cpp
+[ 70%] Built target copy_my_file_4poly_derivative
+[ 71%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/benchmarks/discrete_cosin_transform/he/utils.hpp
+[ 71%] Copying /scratch/rs10728/chehab-unified/benchmarks/discrete_cosin_transform/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/benchmarks/discrete_cosin_transform/fhe_io_example.txt
+[ 71%] Built target copy_my_file_2discrete_cosin_transform
+[ 71%] Built target copy_my_file_6discrete_cosin_transform
+[ 72%] Copying /scratch/rs10728/chehab-unified/benchmarks/discrete_cosin_transform/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/discrete_cosin_transform/he/CMakeLists.txt
+[ 72%] Copying /scratch/rs10728/chehab-unified/benchmarks/discrete_cosin_transform/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/discrete_cosin_transform/heongpu/CMakeLists.txt
+[ 72%] Built target copy_my_file_3discrete_cosin_transform
+[ 73%] Copying /scratch/rs10728/chehab-unified/benchmarks/deep_network/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/deep_network/heongpu/CMakeLists.txt
+[ 73%] Built target copy_heongpu_cmake_poly_derivative
+[ 73%] Copying /scratch/rs10728/chehab-unified/benchmarks/conv2d/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/conv2d/heongpu/CMakeLists.txt
+[ 73%] Built target copy_heongpu_cmake_discrete_cosin_transform
+[ 73%] Built target copy_my_file_5discrete_cosin_transform
+[ 73%] Built target copy_heongpu_cmake_conv2d
+[ 74%] Copying /scratch/rs10728/chehab-unified/benchmarks/dnn_tensor/heongpu/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/benchmarks/dnn_tensor/heongpu/CMakeLists.txt
+[ 75%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.cpp to /scratch/rs10728/chehab-unified/build/RL/veclang_runner/he/utils.cpp
+[ 75%] Built target copy_heongpu_cmake_deep_network
+[ 75%] Built target copy_my_file_4discrete_cosin_transform
+[ 76%] Copying /scratch/rs10728/chehab-unified/RL/veclang_runner/he/CMakeLists.txt to /scratch/rs10728/chehab-unified/build/RL/veclang_runner/he/CMakeLists.txt
+[ 76%] Copying /scratch/rs10728/chehab-unified/benchmarks/utils.hpp to /scratch/rs10728/chehab-unified/build/RL/veclang_runner/he/utils.hpp
+[ 76%] Copying /scratch/rs10728/chehab-unified/RL/veclang_runner/temp/fhe_io_example.txt to /scratch/rs10728/chehab-unified/build/RL/veclang_runner/fhe_io_example.txt
+[ 76%] Built target copy_heongpu_cmake_dnn_tensor
+[ 76%] Copying /scratch/rs10728/chehab-unified/RL/veclang_runner/temp/vectorized_code.txt to /scratch/rs10728/chehab-unified/build/RL/vectorized_code.txt
+[ 76%] Built target copy_my_file_2veclang_runner
+[ 77%] Built target copy_my_file_7veclang_runner
+[ 77%] Built target copy_my_file_4veclang_runner
+[ 77%] Built target copy_my_file_3veclang_runner
+[ 77%] Copying /scratch/rs10728/chehab-unified/RL/veclang_runner/temp/inputs.txt to /scratch/rs10728/chehab-unified/build/RL/inputs.txt
+[ 77%] Built target copy_my_file_6veclang_runner
+[ 77%] Built target copy_my_file_5veclang_runner
+[ 77%] Linking CXX static library libfheco.a
+[ 77%] Built target fheco
+[ 78%] Building CXX object benchmarks/dot_product/CMakeFiles/dot_product.dir/dot_product.cpp.o
+[ 80%] Building CXX object benchmarks/gx_kernel/CMakeFiles/gx_kernel.dir/gx_kernel.cpp.o
+[ 80%] Building CXX object benchmarks/gy_kernel/CMakeFiles/gy_kernel.dir/gy_kernel.cpp.o
+[ 80%] Building CXX object benchmarks/roberts_cross/CMakeFiles/roberts_cross.dir/roberts_cross.cpp.o
+[ 80%] Building CXX object benchmarks/sort/CMakeFiles/sort.dir/sort.cpp.o
+[ 80%] Building CXX object benchmarks/polynomials_coyote/CMakeFiles/polynomials_coyote.dir/polynomials_coyote.cpp.o
+[ 80%] Building CXX object benchmarks/l2_distance/CMakeFiles/l2_distance.dir/l2_distance.cpp.o
+[ 81%] Building CXX object benchmarks/max/CMakeFiles/max.dir/max.cpp.o
+[ 81%] Building CXX object benchmarks/poly_reg/CMakeFiles/poly_reg.dir/poly_reg.cpp.o
+[ 81%] Building CXX object benchmarks/box_blur/CMakeFiles/box_blur.dir/box_blur.cpp.o
+[ 81%] Building CXX object benchmarks/lin_reg/CMakeFiles/lin_reg.dir/lin_reg.cpp.o
+[ 81%] Building CXX object benchmarks/hamming_dist/CMakeFiles/hamming_dist.dir/hamming_dist.cpp.o
+[ 81%] Building CXX object benchmarks/matrix_mul/CMakeFiles/matrix_mul.dir/matrix_mul.cpp.o
+[ 82%] Building CXX object benchmarks/discrete_cosin_transform/CMakeFiles/discrete_cosin_transform.dir/discrete_cosin_transform.cpp.o
+[ 82%] Building CXX object benchmarks/sobel/CMakeFiles/sobel.dir/sobel.cpp.o
+[ 82%] Building CXX object benchmarks/poly_derivative/CMakeFiles/poly_derivative.dir/poly_derivative.cpp.o
+[ 83%] Linking CXX executable poly_derivative
+[ 84%] Linking CXX executable hamming_dist
+[ 85%] Linking CXX executable l2_distance
+[ 86%] Linking CXX executable discrete_cosin_transform
+[ 86%] Linking CXX executable lin_reg
+[ 86%] Built target poly_derivative
+[ 87%] Building CXX object benchmarks/conv2d/CMakeFiles/conv2d.dir/conv2d.cpp.o
+[ 87%] Built target lin_reg
+[ 87%] Built target l2_distance
+[ 87%] Built target hamming_dist
+[ 88%] Building CXX object benchmarks/deep_network/CMakeFiles/deep_network.dir/deep_network.cpp.o
+[ 88%] Built target discrete_cosin_transform
+[ 88%] Building CXX object benchmarks/deep_network/CMakeFiles/test_orion_comparison.dir/test_orion_comparison.cpp.o
+[ 89%] Building CXX object benchmarks/conv2d/CMakeFiles/conv2d_optimized_benchmark.dir/conv2d_optimized_benchmark.cpp.o
+[ 89%] Linking CXX executable dot_product
+[ 89%] Building CXX object benchmarks/deep_network/CMakeFiles/benchmark_detailed.dir/benchmark_detailed.cpp.o
+[ 89%] Linking CXX executable box_blur
+[ 89%] Built target dot_product
+[ 91%] Linking CXX executable matrix_mul
+[ 91%] Linking CXX executable sort
+[ 92%] Linking CXX executable roberts_cross
+[ 92%] Linking CXX executable gy_kernel
+[ 92%] Linking CXX executable gx_kernel
+[ 93%] Building CXX object benchmarks/dnn_tensor/CMakeFiles/dnn_tensor_benchmarks_runner_bin.dir/dnn_tensor_benchmarks.cpp.o
+[ 94%] Linking CXX executable max
+[ 94%] Built target box_blur
+[ 95%] Linking CXX executable polynomials_coyote
+[ 95%] Built target matrix_mul
+[ 96%] Building CXX object benchmarks/dnn_tensor/CMakeFiles/dnn_tensor_benchmarks_runner.dir/dnn_tensor_benchmarks.cpp.o
+[ 96%] Built target sort
+[ 96%] Built target roberts_cross
+[ 96%] Built target gx_kernel
+[ 96%] Building CXX object RL/veclang_runner/CMakeFiles/veclang_runner.dir/veclang_runner.cpp.o
+[ 96%] Built target gy_kernel
+[ 96%] Built target max
+[ 96%] Built target polynomials_coyote
+[ 97%] Linking CXX executable poly_reg
+[ 97%] Built target poly_reg
+[ 98%] Linking CXX executable sobel
+[ 98%] Built target sobel
+[ 99%] Linking CXX executable test_orion_comparison
+[ 99%] Built target test_orion_comparison
+[100%] Linking CXX executable veclang_runner
+[100%] Built target veclang_runner
+[100%] Linking CXX executable benchmark_detailed
+[100%] Linking CXX executable deep_network
+[100%] Built target benchmark_detailed
+[100%] Built target deep_network
+[100%] Linking CXX executable conv2d
+[100%] Linking CXX executable conv2d_optimized_benchmark
+[100%] Built target conv2d
+[100%] Built target conv2d_optimized_benchmark
+[100%] Linking CXX executable dnn_tensor_benchmarks_runner_bin
+[100%] Linking CXX executable dnn_tensor_benchmarks_runner
+[100%] Built target dnn_tensor_benchmarks_runner_bin
+[100%] Built target dnn_tensor_benchmarks_runner
+[ OK ] all evaluation benchmarks built in /scratch/rs10728/chehab-unified/build/benchmarks

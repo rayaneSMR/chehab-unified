@@ -1,0 +1,28 @@
+{
+  "w_ops": 0.6,
+  "w_keys": 0.4,
+  "budget": 369,
+  "train_budgets": [
+    230,
+    236,
+    369,
+    9000000
+  ],
+  "method": "nato_sc",
+  "constraint_metric": "noise",
+  "model": "/scratch/rs10728/chehab-unified/RL/fhe_rl/trained_models/unified_uniform_ckpt4360000.zip",
+  "steps": 25,
+  "inference_time_s": 8.7592,
+  "initial_exec_cost": 19761.0,
+  "initial_keys_cost": 0,
+  "initial_constraint": 77.54782467420108,
+  "agent_exec_cost": 1232.0,
+  "agent_keys_cost": 1,
+  "agent_constraint": 83.53776791030968,
+  "agent_violated": false,
+  "final_exec_cost": 1232.0,
+  "final_keys_cost": 1,
+  "final_constraint": 83.53776791030968,
+  "final_violated": false,
+  "rollback_used": false
+}

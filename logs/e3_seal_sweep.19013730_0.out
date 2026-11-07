@@ -1,0 +1,487 @@
+Node: cn223  Job: 19013740 (task 0)
+Python: /home/rs10728/.conda/envs/fhe_rl/bin/python   g++: /share/apps/NYUAD5/gcc/9.2.0/bin/g++ (g++ (GCC) 9.2.0)
+cmake: cmake version 4.3.2   SEAL: /scratch/rs10728/opt/SEAL-4.1/lib64/cmake/SEAL-4.1
+Model: /scratch/rs10728/chehab-unified/RL/fhe_rl/trained_models/unified_uniform_ckpt4360000.zip   Results: /scratch/rs10728/chehab-unified/results/unified_morl_ckpt4360000
+[02:41:52] uniform | dot_product_4 | B=230 | w_ops=1.0
+[02:43:57]     -> ok time=0.2502s keys=36.1268MB noise_rem=327.0
+[02:43:57] uniform | dot_product_4 | B=230 | w_ops=0.9
+[02:44:38]     -> ok time=0.2503s keys=36.1268MB noise_rem=328.0
+[02:44:38] uniform | dot_product_4 | B=230 | w_ops=0.8
+[02:44:52]     -> ok time=0.2873s keys=18.1259MB noise_rem=327.0
+[02:44:52] uniform | dot_product_4 | B=230 | w_ops=0.7
+[02:45:06]     -> ok time=0.2873s keys=18.1259MB noise_rem=327.0
+[02:45:06] uniform | dot_product_4 | B=230 | w_ops=0.6
+[02:45:28]     -> ok time=0.2866s keys=18.1259MB noise_rem=328.0
+[02:45:28] uniform | dot_product_4 | B=230 | w_ops=0.5
+[02:46:06]     -> ok time=0.2684s keys=18.1259MB noise_rem=328.0
+[02:46:06] uniform | dot_product_4 | B=230 | w_ops=0.4
+[02:46:20]     -> ok time=0.2875s keys=18.1259MB noise_rem=327.0
+[02:46:20] uniform | dot_product_4 | B=230 | w_ops=0.3
+[02:46:35]     -> ok time=0.3582s keys=18.1259MB noise_rem=328.0
+[02:46:35] uniform | dot_product_4 | B=230 | w_ops=0.2
+[02:47:00]     -> ok time=0.3811s keys=18.1259MB noise_rem=328.0
+[02:47:00] uniform | dot_product_4 | B=230 | w_ops=0.1
+[02:47:16]     -> ok time=0.6926s keys=0.1251MB noise_rem=327.0
+[02:47:16] uniform | dot_product_4 | B=236 | w_ops=1.0
+[02:47:31]     -> ok time=0.25s keys=36.1268MB noise_rem=327.0
+[02:47:31] uniform | dot_product_4 | B=236 | w_ops=0.9
+[02:47:45]     -> ok time=0.2505s keys=36.1268MB noise_rem=327.0
+[02:47:45] uniform | dot_product_4 | B=236 | w_ops=0.8
+[02:47:59]     -> ok time=0.2871s keys=18.1259MB noise_rem=328.0
+[02:47:59] uniform | dot_product_4 | B=236 | w_ops=0.7
+[02:48:15]     -> ok time=0.287s keys=18.1259MB noise_rem=328.0
+[02:48:15] uniform | dot_product_4 | B=236 | w_ops=0.6
+[02:48:35]     -> ok time=0.2851s keys=18.1259MB noise_rem=327.0
+[02:48:35] uniform | dot_product_4 | B=236 | w_ops=0.5
+[02:48:49]     -> ok time=0.2878s keys=18.1259MB noise_rem=327.0
+[02:48:49] uniform | dot_product_4 | B=236 | w_ops=0.4
+[02:49:03]     -> ok time=0.3812s keys=18.1259MB noise_rem=328.0
+[02:49:03] uniform | dot_product_4 | B=236 | w_ops=0.3
+[02:49:17]     -> ok time=0.3815s keys=18.1259MB noise_rem=328.0
+[02:49:17] uniform | dot_product_4 | B=236 | w_ops=0.2
+[02:49:55]     -> ok time=0.3819s keys=18.1259MB noise_rem=327.0
+[02:49:55] uniform | dot_product_4 | B=236 | w_ops=0.1
+[02:50:25]     -> ok time=0.6839s keys=0.1251MB noise_rem=327.0
+[02:50:25] uniform | dot_product_4 | B=369 | w_ops=1.0
+[02:51:02]     -> ok time=0.2487s keys=36.1268MB noise_rem=327.0
+[02:51:02] uniform | dot_product_4 | B=369 | w_ops=0.9
+[02:51:15]     -> ok time=0.25s keys=36.1268MB noise_rem=327.0
+[02:51:15] uniform | dot_product_4 | B=369 | w_ops=0.8
+[02:51:32]     -> ok time=0.268s keys=18.1259MB noise_rem=328.0
+[02:51:32] uniform | dot_product_4 | B=369 | w_ops=0.7
+[02:51:47]     -> ok time=0.2676s keys=18.1259MB noise_rem=327.0
+[02:51:47] uniform | dot_product_4 | B=369 | w_ops=0.6
+[02:52:04]     -> ok time=0.2675s keys=18.1259MB noise_rem=327.0
+[02:52:04] uniform | dot_product_4 | B=369 | w_ops=0.5
+[02:52:20]     -> ok time=0.268s keys=18.1259MB noise_rem=327.0
+[02:52:20] uniform | dot_product_4 | B=369 | w_ops=0.4
+[02:52:46]     -> ok time=0.2851s keys=18.1259MB noise_rem=328.0
+[02:52:46] uniform | dot_product_4 | B=369 | w_ops=0.3
+[02:53:06]     -> ok time=0.3811s keys=18.1259MB noise_rem=328.0
+[02:53:06] uniform | dot_product_4 | B=369 | w_ops=0.2
+[02:53:21]     -> ok time=0.3573s keys=18.1259MB noise_rem=327.0
+[02:53:21] uniform | dot_product_4 | B=369 | w_ops=0.1
+[02:53:42]     -> ok time=0.6429s keys=0.1251MB noise_rem=327.0
+[02:53:42] uniform | dot_product_4 | B=9000000 | w_ops=1.0
+[02:53:59]     -> ok time=0.2326s keys=36.1268MB noise_rem=327.0
+[02:53:59] uniform | dot_product_4 | B=9000000 | w_ops=0.9
+[02:54:19]     -> ok time=0.2492s keys=36.1268MB noise_rem=327.0
+[02:54:19] uniform | dot_product_4 | B=9000000 | w_ops=0.8
+[02:54:36]     -> ok time=0.267s keys=18.1259MB noise_rem=327.0
+[02:54:36] uniform | dot_product_4 | B=9000000 | w_ops=0.7
+[02:55:04]     -> ok time=0.2864s keys=18.1259MB noise_rem=328.0
+[02:55:04] uniform | dot_product_4 | B=9000000 | w_ops=0.6
+[02:55:20]     -> ok time=0.2855s keys=18.1259MB noise_rem=328.0
+[02:55:20] uniform | dot_product_4 | B=9000000 | w_ops=0.5
+[02:55:36]     -> ok time=0.2852s keys=18.1259MB noise_rem=327.0
+[02:55:36] uniform | dot_product_4 | B=9000000 | w_ops=0.4
+[02:55:56]     -> ok time=0.2854s keys=18.1259MB noise_rem=327.0
+[02:55:56] uniform | dot_product_4 | B=9000000 | w_ops=0.3
+[02:56:12]     -> ok time=0.3575s keys=18.1259MB noise_rem=327.0
+[02:56:12] uniform | dot_product_4 | B=9000000 | w_ops=0.2
+[02:56:31]     -> ok time=0.3797s keys=18.1259MB noise_rem=328.0
+[02:56:31] uniform | dot_product_4 | B=9000000 | w_ops=0.1
+[02:56:48]     -> ok time=0.6927s keys=0.1251MB noise_rem=327.0
+[02:56:48] uniform | hamming_dist_4 | B=230 | w_ops=1.0
+[02:57:08]     -> ok time=0.5896s keys=36.1268MB noise_rem=295.0
+[02:57:08] uniform | hamming_dist_4 | B=230 | w_ops=0.9
+[02:57:22]     -> ok time=0.6264s keys=18.1259MB noise_rem=295.0
+[02:57:22] uniform | hamming_dist_4 | B=230 | w_ops=0.8
+[02:57:41]     -> ok time=0.6259s keys=18.1259MB noise_rem=295.0
+[02:57:41] uniform | hamming_dist_4 | B=230 | w_ops=0.7
+[02:57:55]     -> ok time=0.6261s keys=18.1259MB noise_rem=295.0
+[02:57:55] uniform | hamming_dist_4 | B=230 | w_ops=0.6
+[02:58:09]     -> ok time=0.5878s keys=18.1259MB noise_rem=294.0
+[02:58:09] uniform | hamming_dist_4 | B=230 | w_ops=0.5
+[02:58:26]     -> ok time=0.625s keys=18.1259MB noise_rem=295.0
+[02:58:26] uniform | hamming_dist_4 | B=230 | w_ops=0.4
+[02:58:41]     -> ok time=0.5883s keys=18.1259MB noise_rem=295.0
+[02:58:41] uniform | hamming_dist_4 | B=230 | w_ops=0.3
+[02:58:56]     -> ok time=0.6254s keys=18.1259MB noise_rem=295.0
+[02:58:56] uniform | hamming_dist_4 | B=230 | w_ops=0.2
+[02:59:10]     -> ok time=0.6818s keys=18.1259MB noise_rem=295.0
+[02:59:10] uniform | hamming_dist_4 | B=230 | w_ops=0.1
+[02:59:24]     -> ok time=0.6499s keys=0.1251MB noise_rem=326.0
+[02:59:24] uniform | hamming_dist_4 | B=236 | w_ops=1.0
+[02:59:38]     -> ok time=0.5534s keys=36.1268MB noise_rem=295.0
+[02:59:38] uniform | hamming_dist_4 | B=236 | w_ops=0.9
+[02:59:52]     -> ok time=0.5873s keys=18.1259MB noise_rem=295.0
+[02:59:52] uniform | hamming_dist_4 | B=236 | w_ops=0.8
+[03:00:07]     -> ok time=0.5944s keys=18.1259MB noise_rem=295.0
+[03:00:07] uniform | hamming_dist_4 | B=236 | w_ops=0.7
+[03:00:22]     -> ok time=0.6258s keys=18.1259MB noise_rem=295.0
+[03:00:22] uniform | hamming_dist_4 | B=236 | w_ops=0.6
+[03:00:36]     -> ok time=0.6258s keys=18.1259MB noise_rem=295.0
+[03:00:36] uniform | hamming_dist_4 | B=236 | w_ops=0.5
+[03:00:51]     -> ok time=0.6261s keys=18.1259MB noise_rem=295.0
+[03:00:51] uniform | hamming_dist_4 | B=236 | w_ops=0.4
+[03:01:07]     -> ok time=0.588s keys=18.1259MB noise_rem=295.0
+[03:01:07] uniform | hamming_dist_4 | B=236 | w_ops=0.3
+[03:01:22]     -> ok time=0.5891s keys=18.1259MB noise_rem=295.0
+[03:01:22] uniform | hamming_dist_4 | B=236 | w_ops=0.2
+[03:01:37]     -> ok time=0.7281s keys=18.1259MB noise_rem=295.0
+[03:01:37] uniform | hamming_dist_4 | B=236 | w_ops=0.1
+[03:01:51]     -> ok time=0.6914s keys=0.1251MB noise_rem=327.0
+[03:01:51] uniform | hamming_dist_4 | B=369 | w_ops=1.0
+[03:02:05]     -> ok time=0.5541s keys=36.1268MB noise_rem=295.0
+[03:02:05] uniform | hamming_dist_4 | B=369 | w_ops=0.9
+[03:02:20]     -> ok time=0.6258s keys=18.1259MB noise_rem=295.0
+[03:02:20] uniform | hamming_dist_4 | B=369 | w_ops=0.8
+[03:02:35]     -> ok time=0.6254s keys=18.1259MB noise_rem=295.0
+[03:02:35] uniform | hamming_dist_4 | B=369 | w_ops=0.7
+[03:02:49]     -> ok time=0.5881s keys=18.1259MB noise_rem=295.0
+[03:02:49] uniform | hamming_dist_4 | B=369 | w_ops=0.6
+[03:03:04]     -> ok time=0.5892s keys=18.1259MB noise_rem=295.0
+[03:03:04] uniform | hamming_dist_4 | B=369 | w_ops=0.5
+[03:03:20]     -> ok time=0.6286s keys=18.1259MB noise_rem=295.0
+[03:03:20] uniform | hamming_dist_4 | B=369 | w_ops=0.4
+[03:03:38]     -> ok time=0.5879s keys=18.1259MB noise_rem=295.0
+[03:03:38] uniform | hamming_dist_4 | B=369 | w_ops=0.3
+[03:04:35]     -> ok time=0.7273s keys=18.1259MB noise_rem=295.0
+[03:04:35] uniform | hamming_dist_4 | B=369 | w_ops=0.2
+[03:04:53]     -> ok time=0.7285s keys=18.1259MB noise_rem=295.0
+[03:04:53] uniform | hamming_dist_4 | B=369 | w_ops=0.1
+[03:05:09]     -> ok time=0.6913s keys=0.1251MB noise_rem=327.0
+[03:05:09] uniform | hamming_dist_4 | B=9000000 | w_ops=1.0
+[03:05:25]     -> ok time=0.5557s keys=36.1268MB noise_rem=295.0
+[03:05:25] uniform | hamming_dist_4 | B=9000000 | w_ops=0.9
+[03:05:40]     -> ok time=0.6264s keys=18.1259MB noise_rem=295.0
+[03:05:40] uniform | hamming_dist_4 | B=9000000 | w_ops=0.8
+[03:05:54]     -> ok time=0.5887s keys=18.1259MB noise_rem=295.0
+[03:05:54] uniform | hamming_dist_4 | B=9000000 | w_ops=0.7
+[03:06:09]     -> ok time=0.6271s keys=18.1259MB noise_rem=295.0
+[03:06:09] uniform | hamming_dist_4 | B=9000000 | w_ops=0.6
+[03:06:24]     -> ok time=0.6268s keys=18.1259MB noise_rem=295.0
+[03:06:24] uniform | hamming_dist_4 | B=9000000 | w_ops=0.5
+[03:06:45]     -> ok time=0.6436s keys=18.1259MB noise_rem=295.0
+[03:06:45] uniform | hamming_dist_4 | B=9000000 | w_ops=0.4
+[03:07:02]     -> ok time=0.5874s keys=18.1259MB noise_rem=295.0
+[03:07:02] uniform | hamming_dist_4 | B=9000000 | w_ops=0.3
+[03:07:18]     -> ok time=0.5873s keys=18.1259MB noise_rem=295.0
+[03:07:18] uniform | hamming_dist_4 | B=9000000 | w_ops=0.2
+[03:07:59]     -> ok time=0.7272s keys=18.1259MB noise_rem=295.0
+[03:07:59] uniform | hamming_dist_4 | B=9000000 | w_ops=0.1
+[03:08:42]     -> ok time=0.6896s keys=0.1251MB noise_rem=326.0
+[03:08:42] uniform | poly_reg_4 | B=230 | w_ops=1.0
+[03:09:01]     -> ok time=0.3645s keys=0.1251MB noise_rem=296.0
+[03:09:01] uniform | poly_reg_4 | B=230 | w_ops=0.9
+[03:09:16]     -> ok time=0.3641s keys=0.1251MB noise_rem=296.0
+[03:09:16] uniform | poly_reg_4 | B=230 | w_ops=0.8
+[03:09:30]     -> ok time=0.3642s keys=0.1251MB noise_rem=296.0
+[03:09:30] uniform | poly_reg_4 | B=230 | w_ops=0.7
+[03:09:43]     -> ok time=0.365s keys=0.1251MB noise_rem=296.0
+[03:09:43] uniform | poly_reg_4 | B=230 | w_ops=0.6
+[03:09:57]     -> ok time=0.3643s keys=0.1251MB noise_rem=296.0
+[03:09:57] uniform | poly_reg_4 | B=230 | w_ops=0.5
+[03:10:11]     -> ok time=0.3646s keys=0.1251MB noise_rem=296.0
+[03:10:11] uniform | poly_reg_4 | B=230 | w_ops=0.4
+[03:10:25]     -> ok time=0.3646s keys=0.1251MB noise_rem=296.0
+[03:10:25] uniform | poly_reg_4 | B=230 | w_ops=0.3
+[03:10:39]     -> ok time=0.3654s keys=0.1251MB noise_rem=296.0
+[03:10:39] uniform | poly_reg_4 | B=230 | w_ops=0.2
+[03:10:53]     -> ok time=0.3647s keys=0.1251MB noise_rem=296.0
+[03:10:53] uniform | poly_reg_4 | B=230 | w_ops=0.1
+[03:11:07]     -> ok time=0.3645s keys=0.1251MB noise_rem=296.0
+[03:11:07] uniform | poly_reg_4 | B=236 | w_ops=1.0
+[03:11:20]     -> ok time=0.3648s keys=0.1251MB noise_rem=296.0
+[03:11:20] uniform | poly_reg_4 | B=236 | w_ops=0.9
+[03:11:34]     -> ok time=0.3649s keys=0.1251MB noise_rem=296.0
+[03:11:34] uniform | poly_reg_4 | B=236 | w_ops=0.8
+[03:11:47]     -> ok time=0.3418s keys=0.1251MB noise_rem=296.0
+[03:11:47] uniform | poly_reg_4 | B=236 | w_ops=0.7
+[03:12:01]     -> ok time=0.3647s keys=0.1251MB noise_rem=296.0
+[03:12:01] uniform | poly_reg_4 | B=236 | w_ops=0.6
+[03:12:16]     -> ok time=0.3647s keys=0.1251MB noise_rem=296.0
+[03:12:16] uniform | poly_reg_4 | B=236 | w_ops=0.5
+[03:12:31]     -> ok time=0.3645s keys=0.1251MB noise_rem=296.0
+[03:12:31] uniform | poly_reg_4 | B=236 | w_ops=0.4
+[03:12:47]     -> ok time=0.3646s keys=0.1251MB noise_rem=296.0
+[03:12:47] uniform | poly_reg_4 | B=236 | w_ops=0.3
+[03:13:02]     -> ok time=0.3641s keys=0.1251MB noise_rem=296.0
+[03:13:02] uniform | poly_reg_4 | B=236 | w_ops=0.2
+[03:13:17]     -> ok time=0.3422s keys=0.1251MB noise_rem=296.0
+[03:13:17] uniform | poly_reg_4 | B=236 | w_ops=0.1
+[03:13:41]     -> ok time=0.3648s keys=0.1251MB noise_rem=296.0
+[03:13:41] uniform | poly_reg_4 | B=369 | w_ops=1.0
+[03:14:13]     -> ok time=0.3648s keys=0.1251MB noise_rem=296.0
+[03:14:13] uniform | poly_reg_4 | B=369 | w_ops=0.9
+[03:14:27]     -> ok time=0.3638s keys=0.1251MB noise_rem=296.0
+[03:14:27] uniform | poly_reg_4 | B=369 | w_ops=0.8
+[03:14:41]     -> ok time=0.364s keys=0.1251MB noise_rem=296.0
+[03:14:41] uniform | poly_reg_4 | B=369 | w_ops=0.7
+[03:14:55]     -> ok time=0.3645s keys=0.1251MB noise_rem=296.0
+[03:14:55] uniform | poly_reg_4 | B=369 | w_ops=0.6
+[03:15:09]     -> ok time=0.3641s keys=0.1251MB noise_rem=296.0
+[03:15:09] uniform | poly_reg_4 | B=369 | w_ops=0.5
+[03:15:22]     -> ok time=0.3412s keys=0.1251MB noise_rem=296.0
+[03:15:22] uniform | poly_reg_4 | B=369 | w_ops=0.4
+[03:15:37]     -> ok time=0.3642s keys=0.1251MB noise_rem=296.0
+[03:15:37] uniform | poly_reg_4 | B=369 | w_ops=0.3
+[03:15:51]     -> ok time=0.3645s keys=0.1251MB noise_rem=296.0
+[03:15:51] uniform | poly_reg_4 | B=369 | w_ops=0.2
+[03:16:05]     -> ok time=0.364s keys=0.1251MB noise_rem=296.0
+[03:16:05] uniform | poly_reg_4 | B=369 | w_ops=0.1
+[03:16:21]     -> ok time=0.3639s keys=0.1251MB noise_rem=296.0
+[03:16:21] uniform | poly_reg_4 | B=9000000 | w_ops=1.0
+[03:16:35]     -> ok time=0.3658s keys=0.1251MB noise_rem=296.0
+[03:16:35] uniform | poly_reg_4 | B=9000000 | w_ops=0.9
+[03:16:49]     -> ok time=0.3647s keys=0.1251MB noise_rem=296.0
+[03:16:49] uniform | poly_reg_4 | B=9000000 | w_ops=0.8
+[03:17:03]     -> ok time=0.3644s keys=0.1251MB noise_rem=296.0
+[03:17:03] uniform | poly_reg_4 | B=9000000 | w_ops=0.7
+[03:17:22]     -> ok time=0.3419s keys=0.1251MB noise_rem=296.0
+[03:17:22] uniform | poly_reg_4 | B=9000000 | w_ops=0.6
+[03:17:36]     -> ok time=0.3423s keys=0.1251MB noise_rem=296.0
+[03:17:36] uniform | poly_reg_4 | B=9000000 | w_ops=0.5
+[03:17:51]     -> ok time=0.3646s keys=0.1251MB noise_rem=296.0
+[03:17:51] uniform | poly_reg_4 | B=9000000 | w_ops=0.4
+[03:18:06]     -> ok time=0.3422s keys=0.1251MB noise_rem=296.0
+[03:18:06] uniform | poly_reg_4 | B=9000000 | w_ops=0.3
+[03:18:24]     -> ok time=0.3417s keys=0.1251MB noise_rem=296.0
+[03:18:24] uniform | poly_reg_4 | B=9000000 | w_ops=0.2
+[03:18:39]     -> ok time=0.3421s keys=0.1251MB noise_rem=296.0
+[03:18:39] uniform | poly_reg_4 | B=9000000 | w_ops=0.1
+[03:18:54]     -> ok time=0.3675s keys=0.1251MB noise_rem=296.0
+[03:18:54] uniform | box_blur_4 | B=230 | w_ops=1.0
+[03:19:22]     -> ok time=0.1717s keys=0.1251MB noise_rem=359.0
+[03:19:22] uniform | box_blur_4 | B=230 | w_ops=0.9
+[03:19:37]     -> ok time=0.1715s keys=0.1251MB noise_rem=359.0
+[03:19:37] uniform | box_blur_4 | B=230 | w_ops=0.8
+[03:19:52]     -> ok time=0.172s keys=0.1251MB noise_rem=359.0
+[03:19:52] uniform | box_blur_4 | B=230 | w_ops=0.7
+[03:20:08]     -> ok time=0.1715s keys=0.1251MB noise_rem=359.0
+[03:20:08] uniform | box_blur_4 | B=230 | w_ops=0.6
+[03:20:28]     -> ok time=0.1716s keys=0.1251MB noise_rem=360.0
+[03:20:28] uniform | box_blur_4 | B=230 | w_ops=0.5
+[03:20:43]     -> ok time=0.172s keys=0.1251MB noise_rem=359.0
+[03:20:43] uniform | box_blur_4 | B=230 | w_ops=0.4
+[03:20:58]     -> ok time=0.1714s keys=0.1251MB noise_rem=359.0
+[03:20:58] uniform | box_blur_4 | B=230 | w_ops=0.3
+[03:21:14]     -> ok time=0.1711s keys=0.1251MB noise_rem=359.0
+[03:21:14] uniform | box_blur_4 | B=230 | w_ops=0.2
+[03:21:29]     -> ok time=0.1714s keys=0.1251MB noise_rem=359.0
+[03:21:29] uniform | box_blur_4 | B=230 | w_ops=0.1
+[03:21:43]     -> ok time=0.1724s keys=0.1251MB noise_rem=359.0
+[03:21:43] uniform | box_blur_4 | B=236 | w_ops=1.0
+[03:21:59]     -> ok time=0.1715s keys=0.1251MB noise_rem=359.0
+[03:21:59] uniform | box_blur_4 | B=236 | w_ops=0.9
+[03:22:15]     -> ok time=0.1715s keys=0.1251MB noise_rem=359.0
+[03:22:15] uniform | box_blur_4 | B=236 | w_ops=0.8
+[03:22:31]     -> ok time=0.171s keys=0.1251MB noise_rem=360.0
+[03:22:31] uniform | box_blur_4 | B=236 | w_ops=0.7
+[03:22:46]     -> ok time=0.171s keys=0.1251MB noise_rem=359.0
+[03:22:46] uniform | box_blur_4 | B=236 | w_ops=0.6
+[03:23:02]     -> ok time=0.1718s keys=0.1251MB noise_rem=359.0
+[03:23:02] uniform | box_blur_4 | B=236 | w_ops=0.5
+[03:23:17]     -> ok time=0.1829s keys=0.1251MB noise_rem=359.0
+[03:23:17] uniform | box_blur_4 | B=236 | w_ops=0.4
+[03:23:33]     -> ok time=0.1714s keys=0.1251MB noise_rem=360.0
+[03:23:33] uniform | box_blur_4 | B=236 | w_ops=0.3
+[03:23:48]     -> ok time=0.1828s keys=0.1251MB noise_rem=359.0
+[03:23:48] uniform | box_blur_4 | B=236 | w_ops=0.2
+[03:24:04]     -> ok time=0.1716s keys=0.1251MB noise_rem=359.0
+[03:24:04] uniform | box_blur_4 | B=236 | w_ops=0.1
+[03:24:22]     -> ok time=0.1713s keys=0.1251MB noise_rem=359.0
+[03:24:22] uniform | box_blur_4 | B=369 | w_ops=1.0
+[03:24:37]     -> ok time=0.1713s keys=0.1251MB noise_rem=359.0
+[03:24:37] uniform | box_blur_4 | B=369 | w_ops=0.9
+[03:24:52]     -> ok time=0.1716s keys=0.1251MB noise_rem=359.0
+[03:24:52] uniform | box_blur_4 | B=369 | w_ops=0.8
+[03:25:08]     -> ok time=0.1733s keys=0.1251MB noise_rem=359.0
+[03:25:08] uniform | box_blur_4 | B=369 | w_ops=0.7
+[03:25:23]     -> ok time=0.1716s keys=0.1251MB noise_rem=359.0
+[03:25:23] uniform | box_blur_4 | B=369 | w_ops=0.6
+[03:25:45]     -> ok time=0.1715s keys=0.1251MB noise_rem=359.0
+[03:25:45] uniform | box_blur_4 | B=369 | w_ops=0.5
+[03:26:21]     -> ok time=0.1733s keys=0.1251MB noise_rem=359.0
+[03:26:21] uniform | box_blur_4 | B=369 | w_ops=0.4
+[03:26:44]     -> ok time=0.1833s keys=0.1251MB noise_rem=359.0
+[03:26:44] uniform | box_blur_4 | B=369 | w_ops=0.3
+[03:27:04]     -> ok time=0.1833s keys=0.1251MB noise_rem=359.0
+[03:27:04] uniform | box_blur_4 | B=369 | w_ops=0.2
+[03:27:20]     -> ok time=0.1716s keys=0.1251MB noise_rem=359.0
+[03:27:20] uniform | box_blur_4 | B=369 | w_ops=0.1
+[03:27:37]     -> ok time=0.1715s keys=0.1251MB noise_rem=359.0
+[03:27:37] uniform | box_blur_4 | B=9000000 | w_ops=1.0
+[03:27:53]     -> ok time=0.1714s keys=0.1251MB noise_rem=359.0
+[03:27:53] uniform | box_blur_4 | B=9000000 | w_ops=0.9
+[03:28:08]     -> ok time=0.1823s keys=0.1251MB noise_rem=359.0
+[03:28:08] uniform | box_blur_4 | B=9000000 | w_ops=0.8
+[03:28:24]     -> ok time=0.1713s keys=0.1251MB noise_rem=359.0
+[03:28:24] uniform | box_blur_4 | B=9000000 | w_ops=0.7
+[03:28:39]     -> ok time=0.1836s keys=0.1251MB noise_rem=359.0
+[03:28:39] uniform | box_blur_4 | B=9000000 | w_ops=0.6
+[03:28:54]     -> ok time=0.1836s keys=0.1251MB noise_rem=359.0
+[03:28:54] uniform | box_blur_4 | B=9000000 | w_ops=0.5
+[03:29:14]     -> ok time=0.1719s keys=0.1251MB noise_rem=360.0
+[03:29:14] uniform | box_blur_4 | B=9000000 | w_ops=0.4
+[03:29:29]     -> ok time=0.1719s keys=0.1251MB noise_rem=359.0
+[03:29:29] uniform | box_blur_4 | B=9000000 | w_ops=0.3
+[03:29:45]     -> ok time=0.1713s keys=0.1251MB noise_rem=359.0
+[03:29:45] uniform | box_blur_4 | B=9000000 | w_ops=0.2
+[03:30:44]     -> ok time=0.1717s keys=0.1251MB noise_rem=359.0
+[03:30:44] uniform | box_blur_4 | B=9000000 | w_ops=0.1
+[03:31:42]     -> ok time=0.1725s keys=0.1251MB noise_rem=360.0
+[03:31:42] uniform | gy_kernel_4 | B=230 | w_ops=1.0
+[03:32:05]     -> ok time=1.3441s keys=0.1251MB noise_rem=263.0
+[03:32:05] uniform | gy_kernel_4 | B=230 | w_ops=0.9
+[03:32:24]     -> ok time=1.2804s keys=0.1251MB noise_rem=263.0
+[03:32:24] uniform | gy_kernel_4 | B=230 | w_ops=0.8
+[03:32:41]     -> ok time=1.2816s keys=0.1251MB noise_rem=263.0
+[03:32:41] uniform | gy_kernel_4 | B=230 | w_ops=0.7
+[03:33:00]     -> ok time=1.3657s keys=0.1251MB noise_rem=263.0
+[03:33:00] uniform | gy_kernel_4 | B=230 | w_ops=0.6
+[03:33:20]     -> ok time=1.2807s keys=0.1251MB noise_rem=263.0
+[03:33:20] uniform | gy_kernel_4 | B=230 | w_ops=0.5
+[03:33:39]     -> ok time=1.3638s keys=0.1251MB noise_rem=263.0
+[03:33:39] uniform | gy_kernel_4 | B=230 | w_ops=0.4
+[03:33:57]     -> ok time=1.3631s keys=0.1251MB noise_rem=263.0
+[03:33:57] uniform | gy_kernel_4 | B=230 | w_ops=0.3
+[03:34:16]     -> ok time=1.2804s keys=0.1251MB noise_rem=263.0
+[03:34:16] uniform | gy_kernel_4 | B=230 | w_ops=0.2
+[03:34:52]     -> ok time=1.2814s keys=0.1251MB noise_rem=263.0
+[03:34:52] uniform | gy_kernel_4 | B=230 | w_ops=0.1
+[03:35:10]     -> ok time=1.2824s keys=0.1251MB noise_rem=263.0
+[03:35:10] uniform | gy_kernel_4 | B=236 | w_ops=1.0
+[03:35:28]     -> ok time=1.2796s keys=0.1251MB noise_rem=263.0
+[03:35:28] uniform | gy_kernel_4 | B=236 | w_ops=0.9
+[03:35:48]     -> ok time=1.2826s keys=0.1251MB noise_rem=263.0
+[03:35:48] uniform | gy_kernel_4 | B=236 | w_ops=0.8
+[03:36:04]     -> ok time=1.282s keys=0.1251MB noise_rem=263.0
+[03:36:04] uniform | gy_kernel_4 | B=236 | w_ops=0.7
+[03:36:22]     -> ok time=1.2805s keys=0.1251MB noise_rem=263.0
+[03:36:22] uniform | gy_kernel_4 | B=236 | w_ops=0.6
+[03:36:39]     -> ok time=1.2808s keys=0.1251MB noise_rem=263.0
+[03:36:39] uniform | gy_kernel_4 | B=236 | w_ops=0.5
+[03:37:04]     -> ok time=1.2797s keys=0.1251MB noise_rem=263.0
+[03:37:04] uniform | gy_kernel_4 | B=236 | w_ops=0.4
+[03:37:20]     -> ok time=1.2809s keys=0.1251MB noise_rem=263.0
+[03:37:20] uniform | gy_kernel_4 | B=236 | w_ops=0.3
+[03:37:37]     -> ok time=1.2814s keys=0.1251MB noise_rem=263.0
+[03:37:37] uniform | gy_kernel_4 | B=236 | w_ops=0.2
+[03:37:55]     -> ok time=1.2808s keys=0.1251MB noise_rem=263.0
+[03:37:55] uniform | gy_kernel_4 | B=236 | w_ops=0.1
+[03:38:12]     -> ok time=1.2819s keys=0.1251MB noise_rem=263.0
+[03:38:12] uniform | gy_kernel_4 | B=369 | w_ops=1.0
+[03:38:29]     -> ok time=1.2812s keys=0.1251MB noise_rem=263.0
+[03:38:29] uniform | gy_kernel_4 | B=369 | w_ops=0.9
+[03:38:51]     -> ok time=1.2833s keys=0.1251MB noise_rem=263.0
+[03:38:51] uniform | gy_kernel_4 | B=369 | w_ops=0.8
+[03:39:08]     -> ok time=1.3739s keys=0.1251MB noise_rem=263.0
+[03:39:08] uniform | gy_kernel_4 | B=369 | w_ops=0.7
+[03:39:28]     -> ok time=1.3586s keys=0.1251MB noise_rem=263.0
+[03:39:28] uniform | gy_kernel_4 | B=369 | w_ops=0.6
+[03:39:47]     -> ok time=1.3629s keys=0.1251MB noise_rem=263.0
+[03:39:47] uniform | gy_kernel_4 | B=369 | w_ops=0.5
+[03:40:23]     -> ok time=1.2817s keys=0.1251MB noise_rem=263.0
+[03:40:23] uniform | gy_kernel_4 | B=369 | w_ops=0.4
+[03:40:42]     -> ok time=1.3676s keys=0.1251MB noise_rem=263.0
+[03:40:42] uniform | gy_kernel_4 | B=369 | w_ops=0.3
+[03:41:16]     -> ok time=1.3653s keys=0.1251MB noise_rem=263.0
+[03:41:16] uniform | gy_kernel_4 | B=369 | w_ops=0.2
+[03:41:34]     -> ok time=1.3636s keys=0.1251MB noise_rem=263.0
+[03:41:34] uniform | gy_kernel_4 | B=369 | w_ops=0.1
+[03:41:54]     -> ok time=1.364s keys=0.1251MB noise_rem=263.0
+[03:41:54] uniform | gy_kernel_4 | B=9000000 | w_ops=1.0
+[03:42:12]     -> ok time=1.2832s keys=0.1251MB noise_rem=263.0
+[03:42:12] uniform | gy_kernel_4 | B=9000000 | w_ops=0.9
+[03:42:31]     -> ok time=1.362s keys=0.1251MB noise_rem=263.0
+[03:42:31] uniform | gy_kernel_4 | B=9000000 | w_ops=0.8
+[03:42:49]     -> ok time=1.2797s keys=0.1251MB noise_rem=263.0
+[03:42:49] uniform | gy_kernel_4 | B=9000000 | w_ops=0.7
+[03:43:10]     -> ok time=1.2817s keys=0.1251MB noise_rem=263.0
+[03:43:10] uniform | gy_kernel_4 | B=9000000 | w_ops=0.6
+[03:43:28]     -> ok time=1.2798s keys=0.1251MB noise_rem=263.0
+[03:43:28] uniform | gy_kernel_4 | B=9000000 | w_ops=0.5
+[03:43:46]     -> ok time=1.2822s keys=0.1251MB noise_rem=263.0
+[03:43:46] uniform | gy_kernel_4 | B=9000000 | w_ops=0.4
+[03:44:10]     -> ok time=1.3662s keys=0.1251MB noise_rem=263.0
+[03:44:10] uniform | gy_kernel_4 | B=9000000 | w_ops=0.3
+[03:44:28]     -> ok time=1.281s keys=0.1251MB noise_rem=263.0
+[03:44:28] uniform | gy_kernel_4 | B=9000000 | w_ops=0.2
+[03:44:47]     -> ok time=1.3651s keys=0.1251MB noise_rem=263.0
+[03:44:47] uniform | gy_kernel_4 | B=9000000 | w_ops=0.1
+[03:45:32]     -> ok time=1.2813s keys=0.1251MB noise_rem=263.0
+[03:45:32] uniform | max_3 | B=230 | w_ops=1.0
+[03:45:55]     -> ok time=0.4076s keys=54.1276MB noise_rem=295.0
+[03:45:55] uniform | max_3 | B=230 | w_ops=0.9
+[03:46:13]     -> ok time=0.4704s keys=36.1268MB noise_rem=295.0
+[03:46:13] uniform | max_3 | B=230 | w_ops=0.8
+[03:46:29]     -> ok time=0.4417s keys=36.1268MB noise_rem=295.0
+[03:46:29] uniform | max_3 | B=230 | w_ops=0.7
+[03:46:45]     -> ok time=0.5439s keys=18.1259MB noise_rem=295.0
+[03:46:45] uniform | max_3 | B=230 | w_ops=0.6
+[03:47:01]     -> ok time=0.7991s keys=18.1259MB noise_rem=294.0
+[03:47:01] uniform | max_3 | B=230 | w_ops=0.5
+[03:47:17]     -> ok time=0.7824s keys=36.1268MB noise_rem=295.0
+[03:47:17] uniform | max_3 | B=230 | w_ops=0.4
+[03:47:32]     -> ok time=0.7331s keys=36.1268MB noise_rem=294.0
+[03:47:32] uniform | max_3 | B=230 | w_ops=0.3
+[03:47:49]     -> ok time=0.7811s keys=36.1268MB noise_rem=295.0
+[03:47:49] uniform | max_3 | B=230 | w_ops=0.2
+[03:48:05]     -> ok time=0.7331s keys=36.1268MB noise_rem=295.0
+[03:48:05] uniform | max_3 | B=230 | w_ops=0.1
+[03:48:20]     -> ok time=0.8516s keys=0.1251MB noise_rem=295.0
+[03:48:20] uniform | max_3 | B=236 | w_ops=1.0
+[03:48:36]     -> ok time=0.4086s keys=54.1276MB noise_rem=295.0
+[03:48:36] uniform | max_3 | B=236 | w_ops=0.9
+[03:48:52]     -> ok time=0.4421s keys=36.1268MB noise_rem=295.0
+[03:48:52] uniform | max_3 | B=236 | w_ops=0.8
+[03:49:08]     -> ok time=0.4411s keys=36.1268MB noise_rem=295.0
+[03:49:08] uniform | max_3 | B=236 | w_ops=0.7
+[03:49:24]     -> ok time=0.5694s keys=18.1259MB noise_rem=295.0
+[03:49:24] uniform | max_3 | B=236 | w_ops=0.6
+[03:49:40]     -> ok time=0.7339s keys=36.1268MB noise_rem=294.0
+[03:49:40] uniform | max_3 | B=236 | w_ops=0.5
+[03:49:56]     -> ok time=0.7339s keys=36.1268MB noise_rem=294.0
+[03:49:56] uniform | max_3 | B=236 | w_ops=0.4
+[03:50:13]     -> ok time=0.7351s keys=36.1268MB noise_rem=294.0
+[03:50:13] uniform | max_3 | B=236 | w_ops=0.3
+[03:50:29]     -> ok time=0.7336s keys=36.1268MB noise_rem=294.0
+[03:50:29] uniform | max_3 | B=236 | w_ops=0.2
+[03:50:47]     -> ok time=0.7344s keys=36.1268MB noise_rem=294.0
+[03:50:47] uniform | max_3 | B=236 | w_ops=0.1
+[03:51:02]     -> ok time=0.8508s keys=0.1251MB noise_rem=295.0
+[03:51:02] uniform | max_3 | B=369 | w_ops=1.0
+[03:51:18]     -> ok time=0.4344s keys=54.1276MB noise_rem=295.0
+[03:51:18] uniform | max_3 | B=369 | w_ops=0.9
+[03:51:33]     -> ok time=0.4427s keys=36.1268MB noise_rem=295.0
+[03:51:33] uniform | max_3 | B=369 | w_ops=0.8
+[03:51:55]     -> ok time=0.4728s keys=36.1268MB noise_rem=295.0
+[03:51:55] uniform | max_3 | B=369 | w_ops=0.7
+[03:52:11]     -> ok time=0.8005s keys=18.1259MB noise_rem=294.0
+[03:52:11] uniform | max_3 | B=369 | w_ops=0.6
+[03:52:27]     -> ok time=0.7333s keys=36.1268MB noise_rem=295.0
+[03:52:27] uniform | max_3 | B=369 | w_ops=0.5
+[03:52:43]     -> ok time=0.7344s keys=36.1268MB noise_rem=295.0
+[03:52:43] uniform | max_3 | B=369 | w_ops=0.4
+[03:52:59]     -> ok time=0.7345s keys=36.1268MB noise_rem=294.0
+[03:52:59] uniform | max_3 | B=369 | w_ops=0.3
+[03:53:16]     -> ok time=0.7811s keys=36.1268MB noise_rem=294.0
+[03:53:16] uniform | max_3 | B=369 | w_ops=0.2
+[03:53:31]     -> ok time=1.0065s keys=18.1259MB noise_rem=294.0
+[03:53:31] uniform | max_3 | B=369 | w_ops=0.1
+[03:53:46]     -> ok time=0.9074s keys=0.1251MB noise_rem=295.0
+[03:53:46] uniform | max_3 | B=9000000 | w_ops=1.0
+[03:54:02]     -> ok time=0.4095s keys=54.1276MB noise_rem=295.0
+[03:54:02] uniform | max_3 | B=9000000 | w_ops=0.9
+[03:54:18]     -> ok time=0.4424s keys=36.1268MB noise_rem=295.0
+[03:54:18] uniform | max_3 | B=9000000 | w_ops=0.8
+[03:54:42]     -> ok time=0.4715s keys=36.1268MB noise_rem=295.0
+[03:54:42] uniform | max_3 | B=9000000 | w_ops=0.7
+[03:55:02]     -> ok time=0.735s keys=36.1268MB noise_rem=294.0
+[03:55:02] uniform | max_3 | B=9000000 | w_ops=0.6
+[03:55:19]     -> ok time=0.7335s keys=36.1268MB noise_rem=295.0
+[03:55:19] uniform | max_3 | B=9000000 | w_ops=0.5
+[03:55:35]     -> ok time=0.7355s keys=36.1268MB noise_rem=295.0
+[03:55:35] uniform | max_3 | B=9000000 | w_ops=0.4
+[03:55:51]     -> ok time=0.7822s keys=36.1268MB noise_rem=295.0
+[03:55:51] uniform | max_3 | B=9000000 | w_ops=0.3
+[03:56:07]     -> ok time=0.7818s keys=36.1268MB noise_rem=294.0
+[03:56:07] uniform | max_3 | B=9000000 | w_ops=0.2
+[03:56:23]     -> ok time=0.7818s keys=36.1268MB noise_rem=295.0
+[03:56:23] uniform | max_3 | B=9000000 | w_ops=0.1
+[03:56:38]     -> ok time=0.9076s keys=0.1251MB noise_rem=295.0
+[03:57:00]     bisect w_ops=0.150000 -> keys=2 [ok]
+[03:57:15]     bisect w_ops=0.125000 -> keys=0 [ok]
+[03:57:33]     bisect w_ops=0.137500 -> keys=2 [ok]

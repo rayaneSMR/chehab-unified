@@ -1,0 +1,31 @@
+Python: /home/rs10728/.conda/envs/fhe_rl/bin/python
+════════════════════════════════════════════
+  EXPERIMENT:      uniform preference distribution
+  Preferences:     10 vectors, each p=1/10 (n_cycle=0)
+  Constraint:      noise  budgets=230,236,369,9000000
+  Method / Algo:   nato_sc / lagrangian_pid
+  Policy:          film / film_a / gnn
+  Timesteps:       5000000  (eval every 200000)
+  Rollout:         512 steps/env x 32 envs = 16384
+  Job ID:          19059280
+  Run name:        model_19059280_nato_sc_film_a_gnn_uniform_pref
+  Train log:       /scratch/rs10728/chehab-unified/logs/train_unified_uniform_pref_19059280.log
+  Final model:     /scratch/rs10728/chehab-unified/RL/fhe_rl/trained_models/unified_noise_uniform_pref.zip
+════════════════════════════════════════════
+Using DDP with world size: 1
+Assigned device: cpu
+[ OK ] keys cost works (C_keys=2)
+       w_ops=0.1  p=0.100
+       w_ops=0.2  p=0.101
+       w_ops=0.3  p=0.097
+       w_ops=0.4  p=0.099
+       w_ops=0.5  p=0.103
+       w_ops=0.6  p=0.099
+       w_ops=0.7  p=0.099
+       w_ops=0.8  p=0.098
+       w_ops=0.9  p=0.101
+       w_ops=1.0  p=0.103
+[ OK ] uniform sampling over 10 preference vectors (expected p=0.100)
+[done] final model     -> /scratch/rs10728/chehab-unified/RL/fhe_rl/trained_models/unified_noise_uniform_pref.zip
+[done] best eval model -> /scratch/rs10728/chehab-unified/RL/fhe_rl/trained_models/unified_noise_uniform_pref_best.zip
+TensorBoard: /scratch/rs10728/chehab-unified/RL/tensorboard/model_19059280_nato_sc_film_a_gnn_uniform_pref

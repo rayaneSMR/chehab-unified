@@ -1,0 +1,14 @@
+Python: /home/rs10728/.conda/envs/fhe_rl/bin/python
+════════════════════════════════════════════
+  ABLATION (unified):  V5 FOCOPS + NATO-SC
+  Method / Algo:       nato_sc / focops
+  Budget encoding:     film   (policy variant film_a, gnn)
+  Constraint:          noise  budgets=230,236,369,9000000
+  Preferences:         10 vectors, n_cycle=1 (default, same as reference)
+  Timesteps:           5000000  (eval every 200000)
+  Rollout:             512 steps/env x 32 envs = 16384
+  Job ID:              19070392
+  Run name:            model_19070392_nato_sc_film_a_gnn_abl_v5_focops
+  Agent folder:        /scratch/rs10728/chehab-unified/results/ablation_unified/v5_focops
+  Final model:         /scratch/rs10728/chehab-unified/RL/fhe_rl/trained_models/unified_noise_abl_v5_focops.zip
+════════════════════════════════════════════

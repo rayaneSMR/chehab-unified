@@ -1,0 +1,1 @@
+[FAIL] cannot source /share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate

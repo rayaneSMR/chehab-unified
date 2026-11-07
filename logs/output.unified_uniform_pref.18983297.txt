@@ -1,0 +1,19 @@
+Python: /home/rs10728/.conda/envs/fhe_rl/bin/python
+════════════════════════════════════════════
+  EXPERIMENT:      uniform preferences (n_cycle=0, 10 vectors, p=1/10)
+  Framework:       unified
+  Constraint:      noise
+  Budgets:         230,236,369,9000000 (bits)
+  Method:          nato_sc
+  Algo:            lagrangian_pid
+  Budget Encoding: film
+  Policy Variant:  film_a
+  Embedder:        gnn
+  Timesteps:       5000000
+  Eval Freq:       Every 200000 timesteps
+  Workers:         32 parallel envs (33 CPU cores)
+  Rollout:         512 steps/env x 32 envs = 16384 samples per update
+  Job ID:          18983297
+  Alerts to:       rs10728@nyu.edu
+════════════════════════════════════════════
+[done] /scratch/rs10728/chehab-unified/RL/model_18983297_nato_sc_film_a_gnn.zip -> RL/fhe_rl/trained_models/unified_noise_uniform.zip

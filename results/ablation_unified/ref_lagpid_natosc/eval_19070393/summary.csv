@@ -1,0 +1,17 @@
+agent,set,budget,subset,rows (expr x pref),no_rollback CR%,no_rollback violations,no_rollback viol rate%,rollback CR%,rollback violations,rollback viol rate%
+ref_lagpid_natosc,original,230,all,690,41.47,260,37.7,33.82,260,37.7
+ref_lagpid_natosc,original,230,within_budget,430,61.45,0,0.0,54.28,0,0.0
+ref_lagpid_natosc,original,236,all,690,42.36,260,37.7,34.12,260,37.7
+ref_lagpid_natosc,original,236,within_budget,430,62.57,0,0.0,54.75,0,0.0
+ref_lagpid_natosc,original,369,all,690,43.59,126,18.3,34.21,100,14.5
+ref_lagpid_natosc,original,369,within_budget,590,50.79,26,4.4,40.01,0,0.0
+ref_lagpid_natosc,original,9000000,all,690,38.44,0,0.0,34.1,0,0.0
+ref_lagpid_natosc,original,9000000,within_budget,690,38.44,0,0.0,34.1,0,0.0
+ref_lagpid_natosc,threshold,230,all,600,10.58,388,64.7,0.94,200,33.3
+ref_lagpid_natosc,threshold,230,within_budget,400,10.93,188,47.0,1.41,0,0.0
+ref_lagpid_natosc,threshold,236,all,600,10.81,390,65.0,1.37,200,33.3
+ref_lagpid_natosc,threshold,236,within_budget,400,11.78,190,47.5,2.05,0,0.0
+ref_lagpid_natosc,threshold,369,all,600,6.82,161,26.8,2.07,0,0.0
+ref_lagpid_natosc,threshold,369,within_budget,600,6.82,161,26.8,2.07,0,0.0
+ref_lagpid_natosc,threshold,9000000,all,600,-4.23,0,0.0,0.9,0,0.0
+ref_lagpid_natosc,threshold,9000000,within_budget,600,-4.23,0,0.0,0.9,0,0.0
