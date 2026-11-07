@@ -41,6 +41,8 @@ namespace seal_backend
 
     static Ptr fresh();
 
+    static Ptr fresh(BFVPlaintextBound message);
+
     static Ptr negate(Ptr operand);
 
     static Ptr add(Ptr lhs, Ptr rhs);
@@ -62,15 +64,16 @@ namespace seal_backend
     static Ptr mod_switch(Ptr operand);
 
   private:
-    BFVNoiseExpression(BFVNoiseOperation operation, Ptr lhs, Ptr rhs, BFVPlaintextBound plain);
+    BFVNoiseExpression(
+      BFVNoiseOperation operation, Ptr lhs, Ptr rhs, BFVPlaintextBound plain, bool has_plain_bound);
 
     BFVNoiseOperation operation_;
     Ptr lhs_;
     Ptr rhs_;
     BFVPlaintextBound plain_;
+    bool has_plain_bound_;
 
     friend class BFVNoiseBound;
-    friend class BFVNoiseEstimator;
   };
 
   struct BFVNoiseEstimate

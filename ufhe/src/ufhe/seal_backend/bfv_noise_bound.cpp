@@ -50,6 +50,13 @@ namespace
     long double denominator = std::log2(1.0L - std::exp2(-log_base));
     return round_up(numerator + correction - denominator);
   }
+
+  long double log_geometric_sum_including_one(std::size_t base, std::size_t highest_power)
+  {
+    if (base == 1)
+      return log2_up(static_cast<long double>(highest_power + 1));
+    return log_add(0.0L, log_geometric_sum(base, highest_power));
+  }
 }
 
 namespace ufhe
@@ -79,74 +86,82 @@ namespace seal_backend
     return result;
   }
 
-  BFVNoiseExpression::BFVNoiseExpression(BFVNoiseOperation operation, Ptr lhs, Ptr rhs, BFVPlaintextBound plain)
-    : operation_(operation), lhs_(std::move(lhs)), rhs_(std::move(rhs)), plain_(plain)
+  BFVNoiseExpression::BFVNoiseExpression(
+    BFVNoiseOperation operation, Ptr lhs, Ptr rhs, BFVPlaintextBound plain, bool has_plain_bound)
+    : operation_(operation), lhs_(std::move(lhs)), rhs_(std::move(rhs)), plain_(plain),
+      has_plain_bound_(has_plain_bound)
   {}
 
   BFVNoiseExpression::Ptr BFVNoiseExpression::fresh()
   {
     return std::shared_ptr<const BFVNoiseExpression>(
-      new BFVNoiseExpression(BFVNoiseOperation::fresh, nullptr, nullptr, {}));
+      new BFVNoiseExpression(BFVNoiseOperation::fresh, nullptr, nullptr, {}, false));
+  }
+
+  BFVNoiseExpression::Ptr BFVNoiseExpression::fresh(BFVPlaintextBound message)
+  {
+    return std::shared_ptr<const BFVNoiseExpression>(
+      new BFVNoiseExpression(BFVNoiseOperation::fresh, nullptr, nullptr, message, true));
   }
 
   BFVNoiseExpression::Ptr BFVNoiseExpression::negate(Ptr operand)
   {
     return std::shared_ptr<const BFVNoiseExpression>(
-      new BFVNoiseExpression(BFVNoiseOperation::negate, std::move(operand), nullptr, {}));
+      new BFVNoiseExpression(BFVNoiseOperation::negate, std::move(operand), nullptr, {}, false));
   }
 
   BFVNoiseExpression::Ptr BFVNoiseExpression::add(Ptr lhs, Ptr rhs)
   {
     return std::shared_ptr<const BFVNoiseExpression>(
-      new BFVNoiseExpression(BFVNoiseOperation::add, std::move(lhs), std::move(rhs), {}));
+      new BFVNoiseExpression(BFVNoiseOperation::add, std::move(lhs), std::move(rhs), {}, false));
   }
 
   BFVNoiseExpression::Ptr BFVNoiseExpression::sub(Ptr lhs, Ptr rhs)
   {
     return std::shared_ptr<const BFVNoiseExpression>(
-      new BFVNoiseExpression(BFVNoiseOperation::sub, std::move(lhs), std::move(rhs), {}));
+      new BFVNoiseExpression(BFVNoiseOperation::sub, std::move(lhs), std::move(rhs), {}, false));
   }
 
   BFVNoiseExpression::Ptr BFVNoiseExpression::add_plain(Ptr operand, BFVPlaintextBound plain)
   {
     return std::shared_ptr<const BFVNoiseExpression>(
-      new BFVNoiseExpression(BFVNoiseOperation::add_plain, std::move(operand), nullptr, plain));
+      new BFVNoiseExpression(BFVNoiseOperation::add_plain, std::move(operand), nullptr, plain, true));
   }
 
   BFVNoiseExpression::Ptr BFVNoiseExpression::sub_plain(Ptr operand, BFVPlaintextBound plain)
   {
     return std::shared_ptr<const BFVNoiseExpression>(
-      new BFVNoiseExpression(BFVNoiseOperation::sub_plain, std::move(operand), nullptr, plain));
+      new BFVNoiseExpression(BFVNoiseOperation::sub_plain, std::move(operand), nullptr, plain, true));
   }
 
   BFVNoiseExpression::Ptr BFVNoiseExpression::multiply_plain(Ptr operand, BFVPlaintextBound plain)
   {
     return std::shared_ptr<const BFVNoiseExpression>(
-      new BFVNoiseExpression(BFVNoiseOperation::multiply_plain, std::move(operand), nullptr, plain));
+      new BFVNoiseExpression(BFVNoiseOperation::multiply_plain, std::move(operand), nullptr, plain, true));
   }
 
   BFVNoiseExpression::Ptr BFVNoiseExpression::multiply(Ptr lhs, Ptr rhs)
   {
     return std::shared_ptr<const BFVNoiseExpression>(
-      new BFVNoiseExpression(BFVNoiseOperation::multiply, std::move(lhs), std::move(rhs), {}));
+      new BFVNoiseExpression(BFVNoiseOperation::multiply, std::move(lhs), std::move(rhs), {}, false));
   }
 
   BFVNoiseExpression::Ptr BFVNoiseExpression::relinearize(Ptr operand)
   {
     return std::shared_ptr<const BFVNoiseExpression>(
-      new BFVNoiseExpression(BFVNoiseOperation::relinearize, std::move(operand), nullptr, {}));
+      new BFVNoiseExpression(BFVNoiseOperation::relinearize, std::move(operand), nullptr, {}, false));
   }
 
   BFVNoiseExpression::Ptr BFVNoiseExpression::rotate(Ptr operand)
   {
     return std::shared_ptr<const BFVNoiseExpression>(
-      new BFVNoiseExpression(BFVNoiseOperation::rotate, std::move(operand), nullptr, {}));
+      new BFVNoiseExpression(BFVNoiseOperation::rotate, std::move(operand), nullptr, {}, false));
   }
 
   BFVNoiseExpression::Ptr BFVNoiseExpression::mod_switch(Ptr operand)
   {
     return std::shared_ptr<const BFVNoiseExpression>(
-      new BFVNoiseExpression(BFVNoiseOperation::mod_switch, std::move(operand), nullptr, {}));
+      new BFVNoiseExpression(BFVNoiseOperation::mod_switch, std::move(operand), nullptr, {}, false));
   }
 
   struct BFVNoiseBound::State
@@ -214,7 +229,12 @@ namespace seal_backend
     case BFVNoiseOperation::fresh:
     {
       long double q = log_q(0);
-      long double message_term = log2_up(static_cast<long double>(t)) + log2_up(static_cast<long double>(message_bound)) - q;
+      BFVPlaintextBound message = expression->has_plain_bound_
+        ? expression->plain_
+        : BFVPlaintextBound{message_bound, message_nonzero_count, 0.0L};
+      validate_plain(message);
+      long double message_term = log2_up(static_cast<long double>(t)) +
+                                 log2_up(static_cast<long double>(message.coefficient_bound)) - q;
       long double encryption_term = log2_up(static_cast<long double>(t)) +
                                     log2_up(static_cast<long double>(error_coefficient_bound_)) +
                                     log2_up(static_cast<long double>(2 * n + 1)) - q;
@@ -260,9 +280,9 @@ namespace seal_backend
       long double common_message_term = log2_up(static_cast<long double>(message_nonzero_count + n)) +
                                         log2_up(static_cast<long double>(message_bound));
       long double lhs_rounding_term = log2_up(static_cast<long double>(n)) + log2_up(static_cast<long double>(t)) - 1.0L +
-                                       log_geometric_sum(n, lhs_j + 1);
+                                       log_geometric_sum_including_one(n, lhs_j);
       long double rhs_rounding_term = log2_up(static_cast<long double>(n)) + log2_up(static_cast<long double>(t)) - 1.0L +
-                                       log_geometric_sum(n, rhs_j + 1);
+                                       log_geometric_sum_including_one(n, rhs_j);
       long double lhs_coefficient = log_add(common_message_term, lhs_rounding_term);
       long double rhs_coefficient = log_add(common_message_term, rhs_rounding_term);
       long double first_term = round_up(lhs_coefficient + operands.second.log_noise);
@@ -271,7 +291,7 @@ namespace seal_backend
                                           operands.first.log_noise + operands.second.log_noise);
       long double final_rounding_term = log2_up(static_cast<long double>(t)) - 1.0L -
                                        log_q(operands.first.modulus_level) +
-                                       log_geometric_sum(n, lhs_j + rhs_j + 1);
+                                       log_geometric_sum_including_one(n, lhs_j + rhs_j);
       return {log_add(log_add(first_term, second_term), product_term, final_rounding_term),
               operands.first.ciphertext_size + operands.second.ciphertext_size - 1,
               operands.first.modulus_level};
@@ -305,7 +325,7 @@ namespace seal_backend
       State operand = evaluate(expression->lhs_);
       std::size_t next_level = operand.modulus_level + 1;
       long double rounding_term = log2_up(static_cast<long double>(t)) - 1.0L - log_q(next_level) +
-                                  log_geometric_sum(n, operand.ciphertext_size);
+                                  log_geometric_sum_including_one(n, operand.ciphertext_size - 1);
       return {log_add(operand.log_noise, rounding_term), operand.ciphertext_size, next_level};
     }
     }

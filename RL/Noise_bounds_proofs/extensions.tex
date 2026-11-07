@@ -446,8 +446,18 @@ Therefore,
 
 \begin{remark}[Relation to Geometric Sum in Implementation]
 The geometric sum in Lemma~\ref{lem:modsw} is identical to inequality~(1) in Lemma~11 of the SEAL manual.
-In \texttt{bfv\_noise\_bound.cpp}, the helper \texttt{log\_geometric\_sum(n, j+1)} returns $\sum_{i=1}^{j+1} n^i = n \Sgeo{j}$.
-The implemented bound is therefore larger by a factor of $n$, representing a valid but conservative upper bound on the provable bound of Lemma~\ref{lem:modsw}.
+The implementation uses a separate helper for $\sum_{i=0}^{j} n^i$, while retaining
+\texttt{log\_geometric\_sum} for the multiplication recurrence whose indexing starts at $i=1$.
+This removes the avoidable factor-$n$ loss in the modulus-switching bound without changing
+SEAL's ciphertext arithmetic.
+\end{remark}
+
+\begin{remark}[Multiplication recurrence indexing]
+The same $\sum_{i=0}^{j}n^i$ factor occurs in both rounding coefficients and
+the final multiplication-rounding term of Lemma~11.  The implementation therefore
+uses $\texttt{log\_geometric\_sum\_including\_one}(n,j)$ for these terms.
+Using $\texttt{log\_geometric\_sum}(n,j+1)$ there would introduce an additional
+factor of $n$ and would be a valid but unnecessarily loose certificate.
 \end{remark}
 
 % =================================================================
