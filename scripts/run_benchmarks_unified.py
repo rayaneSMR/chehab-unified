@@ -56,7 +56,8 @@ RL_FIELDS = ["initial_ops", "initial_keys", "initial_noise_est", "agent_ops", "a
              "safety_activated", "best_valid_step", "rl_steps", "rl_time_ms"]
 COLUMNS = (["benchmark", "slot_count", "w_ops", "w_keys", "budget", "status"] + OPERATIONS
            + ["Depth", "Multiplicative Depth", "compile_time (s)"] + list(EXEC_METRICS.values())
-           + ["exec_runs", "outputs_match"] + RL_FIELDS)
+           + ["exec_runs", "outputs_match"] + RL_FIELDS
+           + ["method", "rollback"])   # appended last so older CSV readers are unaffected
 
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
@@ -224,6 +225,10 @@ def main():
     ap.add_argument("--model", required=True, help="unified joint agent .zip")
     ap.add_argument("--budget", type=int, required=True, help="noise budget (bits)")
     ap.add_argument("--train_budgets", default="230,236,369,9000000")
+    ap.add_argument("--method", default="nato_sc",
+                    help="constraint method the agent was trained with (nato_sc, margin_barrier, noise_masking, none)")
+    ap.add_argument("--no-rollback", action="store_true",
+                    help="compile the agent's final expression instead of the safety-rollback one")
     ap.add_argument("--benchmarks", default="all",
                     help=f"comma-separated subset of {list(SUITE) + [POLY]} (default: all)")
     ap.add_argument("--slots", default=None, help="override the sizes, e.g. '4,8'")
@@ -256,7 +261,8 @@ def main():
         "FHE_RL_BUDGET": str(args.budget),
         "FHE_RL_TRAIN_BUDGETS": args.train_budgets,
         "FHE_RL_CONSTRAINT": "noise",
-        "FHE_RL_METHOD": "nato_sc",
+        "FHE_RL_METHOD": args.method,
+        "FHE_RL_ROLLBACK": "0" if args.no_rollback else "1",
         "FHE_RL_RUN_LOG": str(rl_log),
         "PYTHON": env.get("PYTHON") or sys.executable,   # otherwise the compiler may pick /usr/bin/python3
         "PYTHONPATH": f"{REPO / 'RL'}:{REPO / 'RL' / 'pytrs'}:{env.get('PYTHONPATH', '')}",
@@ -278,14 +284,16 @@ def main():
             sizes = [int(s) for s in args.slots.split(",")] if args.slots else SUITE[bench]
             points += [(bench, s, None) for s in sizes]
 
-    log(f"Model {model} | budget {args.budget} | {len(points)} benchmark configs x {len(prefs)} preferences")
+    log(f"Model {model} | budget {args.budget} | {len(points)} benchmark configs x {len(prefs)} preferences"
+        f" | method {args.method} | rollback {'off' if args.no_rollback else 'on'}")
     log(f"Work dir {work} | output {out}")
     t_start = time.perf_counter()
     for bench, slot, poly_cfg in points:
         bdir = work / "benchmarks" / bench
         name = f"tree_{poly_cfg[0]}_{poly_cfg[1]}_{POLY_INSTANCE}" if poly_cfg else f"{bench}_{slot}"
         for w_ops, w_keys in prefs:
-            row = {"benchmark": name, "slot_count": slot, "w_ops": w_ops, "w_keys": w_keys, "budget": args.budget}
+            row = {"benchmark": name, "slot_count": slot, "w_ops": w_ops, "w_keys": w_keys, "budget": args.budget,
+                   "method": args.method, "rollback": not args.no_rollback}
             n_before = len(rl_log.read_text().splitlines()) if rl_log.exists() else 0
             try:
                 ok, compile_s, depth, mdepth, cout = compile_point(

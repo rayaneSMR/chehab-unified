@@ -1,0 +1,6 @@
+agent,source,saved_at,best_step,best_score
+unconstrained,RL/eval/best_model_model_19070388_none_film_a_gnn_abl_unconstrained/best_model.zip,2026-11-07 04:04,3800000,29.1278
+v4_mb,RL/eval/best_model_model_19070389_margin_barrier_film_a_gnn_abl_v4_mb/best_model.zip,2026-11-07 00:34,3600000,7.3334
+v4_nmask,RL/eval/best_model_model_19070390_noise_masking_film_a_gnn_abl_v4_nmask/best_model.zip,2026-11-07 13:52,3000000,25.7957
+v4_mb_film,RL/eval/best_model_model_19070391_margin_barrier_film_a_gnn_abl_v4_mb_film/best_model.zip,2026-11-07 23:08,4000000,7.4718
+v5_focops,RL/eval/best_model_model_19070392_nato_sc_film_a_gnn_abl_v5_focops/best_model.zip,2026-11-07 23:33,4400000,26.9496

@@ -11,6 +11,13 @@
 # Usually submitted by scripts/launch_unified_e2e.sh. Needs a built clone
 # (bash scripts/build_e2e_benchmarks.sh) and SEAL 4.1.
 # Output: RL/test_results/e2e_<benchmarks>_b<budget>_<jobid>.csv
+#
+# Optional environment (sbatch --export=ALL,...), all defaulting to the behaviour above:
+#   METHOD=nato_sc|margin_barrier|noise_masking|none   constraint method the agent was trained with
+#   ROLLBACK=1|0      0 = compile the agent's raw output (no safety rollback)
+#   OUT_DIR=<dir>     folder for the CSV (default RL/test_results)
+#   CONDA_ENV=<path>  conda env to activate first (default: chehabEnv)
+# (used by scripts/ablation_unified/e2e_4pref.sh for the 4-preference ablation agents)
 
 #SBATCH -p compute
 #SBATCH --mem 32GB
@@ -29,13 +36,18 @@ PREFERENCES="${4:-}"
 
 # System compiler for the generated SEAL programs, found before conda (see build_e2e_benchmarks.sh)
 module load gcc 2>/dev/null || true
+# cmake builds the generated SEAL programs; the fhe_rl conda env has none (base conda had it)
+module load cmake/3.28.0 2>/dev/null || true
+command -v cmake >/dev/null || { echo "ERROR: cmake not found (module load cmake/3.28.0 failed)"; exit 1; }
 export FHE_E2E_CXX="${FHE_E2E_CXX:-$(which g++ 2>/dev/null || echo /usr/bin/g++)}"
 
 set +u
+set --   # arguments are already read above; otherwise conda's activate receives them (ArgumentError)
 if [ -f "/share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate" ]; then
     source /share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate
 fi
-conda activate /scratch/${USER}/conda/envs/chehabEnv 2>/dev/null \
+{ [ -n "${CONDA_ENV:-}" ] && conda activate "$CONDA_ENV" 2>/dev/null; } \
+    || conda activate /scratch/${USER}/conda/envs/chehabEnv 2>/dev/null \
     || conda activate chehabEnv 2>/dev/null \
     || true
 set -u
@@ -64,15 +76,22 @@ fi
 
 TAG="$(echo "$BENCHMARKS" | tr ',' '-')"
 JOB="${SLURM_JOB_ID:-local}"
-OUT="RL/test_results/e2e_${TAG}_b${BUDGET}_${JOB}.csv"
+OUT_DIR="${OUT_DIR:-RL/test_results}"
+mkdir -p "$OUT_DIR"
+OUT="$OUT_DIR/e2e_${TAG}_b${BUDGET}_${JOB}.csv"
+METHOD="${METHOD:-nato_sc}"
+ROLLBACK="${ROLLBACK:-1}"
 PREF_ARGS=()
 [ -n "$PREFERENCES" ] && PREF_ARGS=(--prefs "$PREFERENCES")
+EXTRA_ARGS=(--method "$METHOD")
+[ "$ROLLBACK" = "0" ] && EXTRA_ARGS+=(--no-rollback)
 
 echo "════════════════════════════════════════════════════════════"
 echo "  UNIFIED AGENT: REAL COMPILE + SEAL EXECUTION"
 echo "  Model:       $MODEL"
 echo "  Benchmarks:  $BENCHMARKS"
 echo "  Budget:      $BUDGET bits"
+echo "  Method:      $METHOD   rollback: $([ "$ROLLBACK" = "0" ] && echo off || echo on)"
 echo "  Python:      $PYTHON"
 echo "  C++:         $FHE_E2E_CXX"
 echo "  SEAL:        $SEAL_DIR"
@@ -84,6 +103,7 @@ python -u scripts/run_benchmarks_unified.py \
     --budget "$BUDGET" \
     --benchmarks "$BENCHMARKS" \
     ${PREF_ARGS[@]+"${PREF_ARGS[@]}"} \
+    "${EXTRA_ARGS[@]}" \
     --work-dir "e2e_${TAG}_b${BUDGET}_${JOB}" \
     --seal-dir "$SEAL_DIR" \
     --cxx "$FHE_E2E_CXX" \

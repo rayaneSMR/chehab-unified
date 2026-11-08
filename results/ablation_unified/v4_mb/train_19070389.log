@@ -19271,3 +19271,1889 @@ Logging to ./tensorboard/model_19070389_margin_barrier_film_a_gnn_abl_v4_mb/PPO_
 [34m=========================================================================================================[0m
 [1mStep 4,400,000 [Evaluation]: Starting Pareto & Safe Execution Evaluation (10 front points, 69 benchmarks each)[0m
 [34m=========================================================================================================[0m
+[1mPt  | Preference w             | Exec Red% (Safe/Raw)   | Keys Red% (Safe/Raw)   | Avg Noise      | Safe Status / Rollback[0m
+---------------------------------------------------------------------------------------------------------
+#1  | [ops=1.00, keys=0.00] | +58.0% / +51.4%        | -71.0% / -91.3%        | 179.1 / 1826316 bits | [93m 81.2% SAFE[0m (Rollback: 100%)
+#2  | [ops=0.90, keys=0.10] | +56.6% / +50.1%        | -20.3% / -47.8%        | 181.9 / 1956740 bits | [91m 73.9% SAFE[0m (Rollback: 100%)
+#3  | [ops=0.80, keys=0.20] | +56.3% / +51.0%        | -10.1% /  +0.0%        | 183.6 / 2739318 bits | [91m 73.9% SAFE[0m (Rollback: 100%)
+#4  | [ops=0.70, keys=0.30] | +56.8% / +56.3%        |  +7.2% / +39.1%        | 182.5 / 3130624 bits | [93m 82.6% SAFE[0m (Rollback: 99%)
+#5  | [ops=0.60, keys=0.40] | +53.9% / +55.9%        | +27.5% / +47.8%        | 181.4 / 2478457 bits | [91m 78.3% SAFE[0m (Rollback: 99%)
+#6  | [ops=0.50, keys=0.50] | +54.1% / +56.3%        | +44.9% / +59.4%        | 178.7 / 2348034 bits | [91m 79.7% SAFE[0m (Rollback: 97%)
+#7  | [ops=0.40, keys=0.60] | +50.1% / +55.3%        | +53.6% / +62.3%        | 177.1 / 1956733 bits | [91m 78.3% SAFE[0m (Rollback: 91%)
+#8  | [ops=0.30, keys=0.70] | +51.7% / +53.4%        | +60.9% / +66.7%        | 180.2 / 3000187 bits | [93m 85.5% SAFE[0m (Rollback: 90%)
+#9  | [ops=0.20, keys=0.80] | +40.2% / +44.0%        | +78.3% / +81.2%        | 177.5 / 2869755 bits | [91m 79.7% SAFE[0m (Rollback: 78%)
+#10 | [ops=0.10, keys=0.90] | +32.6% / +36.0%        | +92.8% / +92.8%        | 174.9 / 1565449 bits | [91m 79.7% SAFE[0m (Rollback: 67%)
+---------------------------------------------------------------------------------------------------------
+[1mFront Summary (Step 4,400,000):[0m
+  • [1mMean Pareto Reward[0m        : [96m5.7779[0m +/- 15.7224
+  • [1mSafe Compliance Rate[0m      : [91m79.3% SAFE[0m (143 total violations / 690 evaluations)
+  • [1mSafety Rollback Rate[0m      : [96m92.0%[0m (rescued infeasible trajectories)
+  • [1mSafe Exec Cost Red% [0m      : [92m+51.0%[0m (Raw: +51.0%) [FHE Exec Time/Ops]
+  • [1mSafe Total Cost Red%[0m      : [92m+51.0%[0m (Raw: +51.0%)
+  • [1mSafe Keys Cost Red% [0m      : [92m+26.4%[0m (Raw: +31.0%)
+  • [1mAvg Safe Headroom   [0m      : [96m+2386981.7 bits[0m
+  • [1mAvg RL Inference Time[0m     : 3659.2 ms / benchmark
+  • [1mAvg Episode Length  [0m      : 34.4 steps
+[34m=========================================================================================================[0m
+
+-------------------------------------------------
+| eval/                           |             |
+|    constraint_w_0.00            | 179         |
+|    constraint_w_0.10            | 182         |
+|    constraint_w_0.20            | 184         |
+|    constraint_w_0.30            | 183         |
+|    constraint_w_0.40            | 181         |
+|    constraint_w_0.50            | 179         |
+|    constraint_w_0.60            | 177         |
+|    constraint_w_0.70            | 180         |
+|    constraint_w_0.80            | 177         |
+|    constraint_w_0.90            | 175         |
+|    pareto_avg_ep_length         | 34.4        |
+|    pareto_avg_margin            | 2.39e+06    |
+|    pareto_avg_raw_cost_red_pct  | 51          |
+|    pareto_avg_raw_exec_red_pct  | 51          |
+|    pareto_avg_reward            | 5.78        |
+|    pareto_avg_rl_time_ms        | 3.66e+03    |
+|    pareto_avg_safe_cost_red_pct | 51          |
+|    pareto_avg_safe_exec_red_pct | 51          |
+|    pareto_avg_safe_keys_red_pct | 26.4        |
+|    pareto_avg_violation         | 24.1        |
+|    pareto_safe_compliance_rate  | 79.3        |
+|    pareto_safety_rollback_rate  | 92          |
+|    raw_cost_red_w_0.00          | 51.4        |
+|    raw_cost_red_w_0.10          | 50.1        |
+|    raw_cost_red_w_0.20          | 51          |
+|    raw_cost_red_w_0.30          | 56.3        |
+|    raw_cost_red_w_0.40          | 55.9        |
+|    raw_cost_red_w_0.50          | 56.3        |
+|    raw_cost_red_w_0.60          | 55.3        |
+|    raw_cost_red_w_0.70          | 53.4        |
+|    raw_cost_red_w_0.80          | 44          |
+|    raw_cost_red_w_0.90          | 36          |
+|    raw_exec_red_w_0.00          | 51.4        |
+|    raw_exec_red_w_0.10          | 50.1        |
+|    raw_exec_red_w_0.20          | 51          |
+|    raw_exec_red_w_0.30          | 56.3        |
+|    raw_exec_red_w_0.40          | 55.9        |
+|    raw_exec_red_w_0.50          | 56.3        |
+|    raw_exec_red_w_0.60          | 55.3        |
+|    raw_exec_red_w_0.70          | 53.4        |
+|    raw_exec_red_w_0.80          | 44          |
+|    raw_exec_red_w_0.90          | 36          |
+|    raw_keys_red_w_0.00          | -91.3       |
+|    raw_keys_red_w_0.10          | -47.8       |
+|    raw_keys_red_w_0.20          | 0           |
+|    raw_keys_red_w_0.30          | 39.1        |
+|    raw_keys_red_w_0.40          | 47.8        |
+|    raw_keys_red_w_0.50          | 59.4        |
+|    raw_keys_red_w_0.60          | 62.3        |
+|    raw_keys_red_w_0.70          | 66.7        |
+|    raw_keys_red_w_0.80          | 81.2        |
+|    raw_keys_red_w_0.90          | 92.8        |
+|    reward_w_0.00                | 36.7        |
+|    reward_w_0.10                | 19.2        |
+|    reward_w_0.20                | 11.9        |
+|    reward_w_0.30                | 18.5        |
+|    reward_w_0.40                | 7.57        |
+|    reward_w_0.50                | 3.2         |
+|    reward_w_0.60                | -4.94       |
+|    reward_w_0.70                | -2.7        |
+|    reward_w_0.80                | -14.5       |
+|    reward_w_0.90                | -17.2       |
+|    rl_time_ms_w_0.00            | 4.95e+03    |
+|    rl_time_ms_w_0.10            | 1.32e+04    |
+|    rl_time_ms_w_0.20            | 6.63e+03    |
+|    rl_time_ms_w_0.30            | 4.1e+03     |
+|    rl_time_ms_w_0.40            | 1.63e+03    |
+|    rl_time_ms_w_0.50            | 1.04e+03    |
+|    rl_time_ms_w_0.60            | 1.53e+03    |
+|    rl_time_ms_w_0.70            | 1.68e+03    |
+|    rl_time_ms_w_0.80            | 1.02e+03    |
+|    rl_time_ms_w_0.90            | 789         |
+|    safe_cost_red_w_0.00         | 58          |
+|    safe_cost_red_w_0.10         | 56.6        |
+|    safe_cost_red_w_0.20         | 56.3        |
+|    safe_cost_red_w_0.30         | 56.8        |
+|    safe_cost_red_w_0.40         | 53.9        |
+|    safe_cost_red_w_0.50         | 54.1        |
+|    safe_cost_red_w_0.60         | 50.1        |
+|    safe_cost_red_w_0.70         | 51.7        |
+|    safe_cost_red_w_0.80         | 40.2        |
+|    safe_cost_red_w_0.90         | 32.6        |
+|    safe_exec_red_w_0.00         | 58          |
+|    safe_exec_red_w_0.10         | 56.6        |
+|    safe_exec_red_w_0.20         | 56.3        |
+|    safe_exec_red_w_0.30         | 56.8        |
+|    safe_exec_red_w_0.40         | 53.9        |
+|    safe_exec_red_w_0.50         | 54.1        |
+|    safe_exec_red_w_0.60         | 50.1        |
+|    safe_exec_red_w_0.70         | 51.7        |
+|    safe_exec_red_w_0.80         | 40.2        |
+|    safe_exec_red_w_0.90         | 32.6        |
+|    safe_keys_red_w_0.00         | -71         |
+|    safe_keys_red_w_0.10         | -20.3       |
+|    safe_keys_red_w_0.20         | -10.1       |
+|    safe_keys_red_w_0.30         | 7.25        |
+|    safe_keys_red_w_0.40         | 27.5        |
+|    safe_keys_red_w_0.50         | 44.9        |
+|    safe_keys_red_w_0.60         | 53.6        |
+|    safe_keys_red_w_0.70         | 60.9        |
+|    safe_keys_red_w_0.80         | 78.3        |
+|    safe_keys_red_w_0.90         | 92.8        |
+|    safe_rate_w_0.00             | 81.2        |
+|    safe_rate_w_0.10             | 73.9        |
+|    safe_rate_w_0.20             | 73.9        |
+|    safe_rate_w_0.30             | 82.6        |
+|    safe_rate_w_0.40             | 78.3        |
+|    safe_rate_w_0.50             | 79.7        |
+|    safe_rate_w_0.60             | 78.3        |
+|    safe_rate_w_0.70             | 85.5        |
+|    safe_rate_w_0.80             | 79.7        |
+|    safe_rate_w_0.90             | 79.7        |
+|    safety_act_rate_w_0.00       | 100         |
+|    safety_act_rate_w_0.10       | 100         |
+|    safety_act_rate_w_0.20       | 100         |
+|    safety_act_rate_w_0.30       | 98.6        |
+|    safety_act_rate_w_0.40       | 98.6        |
+|    safety_act_rate_w_0.50       | 97.1        |
+|    safety_act_rate_w_0.60       | 91.3        |
+|    safety_act_rate_w_0.70       | 89.9        |
+|    safety_act_rate_w_0.80       | 78.3        |
+|    safety_act_rate_w_0.90       | 66.7        |
+|    violation_w_0.00             | 21.1        |
+|    violation_w_0.10             | 27.4        |
+|    violation_w_0.20             | 29.7        |
+|    violation_w_0.30             | 22.5        |
+|    violation_w_0.40             | 25.1        |
+|    violation_w_0.50             | 22.5        |
+|    violation_w_0.60             | 24.6        |
+|    violation_w_0.70             | 19          |
+|    violation_w_0.80             | 23.7        |
+|    violation_w_0.90             | 25.2        |
+| train/                          |             |
+|    approx_kl                    | 0.005170077 |
+|    clip_fraction                | 0.15        |
+|    clip_range                   | 0.1         |
+|    clip_range_vf                | 0.2         |
+|    entropy_loss                 | -1.02       |
+|    explained_variance           | 0.888       |
+|    learning_rate                | 0.0001      |
+|    loss                         | 46.8        |
+|    n_updates                    | 4020        |
+|    policy_gradient_loss         | -0.0104     |
+|    value_loss                   | 130         |
+-------------------------------------------------
+[Step Progress] 4,400,928 / 5,000,000 (88.02%) | Elapsed: 62:28:13 | ETA: 08:30:13 | FPS:   0.7 (avg:  19.6) | Cost Red: +76.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,402,944 / 5,000,000 (88.06%) | Elapsed: 62:30:13 | ETA: 08:28:32 | FPS:  16.8 (avg:  19.6) | Cost Red: +79.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,404,960 / 5,000,000 (88.10%) | Elapsed: 62:31:20 | ETA: 08:26:44 | FPS:  30.5 (avg:  19.6) | Cost Red: +81.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,406,976 / 5,000,000 (88.14%) | Elapsed: 62:32:51 | ETA: 08:25:00 | FPS:  22.0 (avg:  19.6) | Cost Red: +81.4% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,407,296 / 5,000,000 (88.15%)] Elapsed: 62:33:05 | FPS: 19.6 | λ: 0.0000 ---
+    Cost Red: +79.6% (Exec: +79.6%, Keys: -88.7%) | Constraint Mean: 78.9 | Safe Compliance: 100.0%
+
+-----------------------------------------
+| rollout/                   |          |
+|    embed_fallback_count    | 0        |
+|    ep_len_mean             | 13.8     |
+|    ep_rew_mean             | 65.9     |
+| time/                      |          |
+|    fps                     | 19       |
+|    iterations              | 269      |
+|    time_elapsed            | 225186   |
+|    total_timesteps         | 4407296  |
+| unified/                   |          |
+|    compliance_rate         | 1        |
+|    constraint_final_mean   | 78.9     |
+|    cost_final_mean         | 1.77e+03 |
+|    cost_reduction_pct_mean | 79.6     |
+|    exec_cost_final_mean    | 1.77e+03 |
+|    exec_reduction_pct_mean | 79.6     |
+|    keys_cost_final_mean    | 0.887    |
+|    keys_reduction_pct_mean | -88.7    |
+|    violation_mean          | 0        |
+-----------------------------------------
+[Step Progress] 4,408,992 / 5,000,000 (88.18%) | Elapsed: 62:35:04 | ETA: 08:23:21 | FPS:  15.1 (avg:  19.6) | Cost Red: +77.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,411,008 / 5,000,000 (88.22%) | Elapsed: 62:36:28 | ETA: 08:21:35 | FPS:  24.1 (avg:  19.6) | Cost Red: +87.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,413,024 / 5,000,000 (88.26%) | Elapsed: 62:39:01 | ETA: 08:19:59 | FPS:  13.1 (avg:  19.6) | Cost Red: +79.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,415,040 / 5,000,000 (88.30%) | Elapsed: 62:42:55 | ETA: 08:18:33 | FPS:   8.6 (avg:  19.6) | Cost Red: +80.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,417,056 / 5,000,000 (88.34%) | Elapsed: 62:48:20 | ETA: 08:17:19 | FPS:   6.2 (avg:  19.5) | Cost Red: +80.2% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,419,072 / 5,000,000 (88.38%) | Elapsed: 62:52:02 | ETA: 08:15:52 | FPS:   9.1 (avg:  19.5) | Cost Red: +75.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,421,088 / 5,000,000 (88.42%) | Elapsed: 62:54:24 | ETA: 08:14:14 | FPS:  14.2 (avg:  19.5) | Cost Red: +80.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,423,104 / 5,000,000 (88.46%) | Elapsed: 62:56:23 | ETA: 08:12:32 | FPS:  16.9 (avg:  19.5) | Cost Red: +85.1% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,423,680 / 5,000,000 (88.47%)] Elapsed: 62:57:13 | FPS: 19.5 | λ: 0.0000 ---
+    Cost Red: +81.7% (Exec: +81.7%, Keys: -95.9%) | Constraint Mean: 79.0 | Safe Compliance: 99.9%
+
+--------------------------------------------
+| rollout/                   |             |
+|    embed_fallback_count    | 0           |
+|    ep_len_mean             | 11.9        |
+|    ep_rew_mean             | 68.2        |
+| time/                      |             |
+|    fps                     | 19          |
+|    iterations              | 270         |
+|    time_elapsed            | 226633      |
+|    total_timesteps         | 4423680     |
+| train/                     |             |
+|    approx_kl               | 0.005591833 |
+|    clip_fraction           | 0.13        |
+|    clip_range              | 0.1         |
+|    clip_range_vf           | 0.2         |
+|    entropy_loss            | -1.03       |
+|    explained_variance      | 0.837       |
+|    learning_rate           | 0.0001      |
+|    loss                    | 69          |
+|    n_updates               | 4035        |
+|    policy_gradient_loss    | -0.0086     |
+|    value_loss              | 184         |
+| unified/                   |             |
+|    compliance_rate         | 0.999       |
+|    constraint_final_mean   | 79          |
+|    cost_final_mean         | 1.54e+03    |
+|    cost_reduction_pct_mean | 81.7        |
+|    exec_cost_final_mean    | 1.54e+03    |
+|    exec_reduction_pct_mean | 81.7        |
+|    keys_cost_final_mean    | 0.959       |
+|    keys_reduction_pct_mean | -95.9       |
+|    violation_mean          | 0.0185      |
+--------------------------------------------
+[Step Progress] 4,425,120 / 5,000,000 (88.50%) | Elapsed: 62:59:09 | ETA: 08:10:57 | FPS:  12.2 (avg:  19.5) | Cost Red: +82.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,427,136 / 5,000,000 (88.54%) | Elapsed: 63:01:08 | ETA: 08:09:16 | FPS:  16.9 (avg:  19.5) | Cost Red: +87.9% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,429,152 / 5,000,000 (88.58%) | Elapsed: 63:04:23 | ETA: 08:07:44 | FPS:  10.3 (avg:  19.5) | Cost Red: +87.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,431,168 / 5,000,000 (88.62%) | Elapsed: 63:06:16 | ETA: 08:06:02 | FPS:  17.8 (avg:  19.5) | Cost Red: +81.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,433,184 / 5,000,000 (88.66%) | Elapsed: 63:08:56 | ETA: 08:04:26 | FPS:  12.6 (avg:  19.5) | Cost Red: +84.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,435,200 / 5,000,000 (88.70%) | Elapsed: 63:11:28 | ETA: 08:02:49 | FPS:  13.3 (avg:  19.5) | Cost Red: +85.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,437,216 / 5,000,000 (88.74%) | Elapsed: 63:14:15 | ETA: 08:01:14 | FPS:  12.1 (avg:  19.5) | Cost Red: +85.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,439,232 / 5,000,000 (88.78%) | Elapsed: 63:15:36 | ETA: 07:59:27 | FPS:  24.9 (avg:  19.5) | Cost Red: +86.4% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,440,064 / 5,000,000 (88.80%)] Elapsed: 63:16:56 | FPS: 19.5 | λ: 0.0000 ---
+    Cost Red: +84.9% (Exec: +84.9%, Keys: -95.2%) | Constraint Mean: 77.3 | Safe Compliance: 99.9%
+
+--------------------------------------------
+| rollout/                   |             |
+|    embed_fallback_count    | 0           |
+|    ep_len_mean             | 12.3        |
+|    ep_rew_mean             | 67.2        |
+| time/                      |             |
+|    fps                     | 19          |
+|    iterations              | 271         |
+|    time_elapsed            | 227816      |
+|    total_timesteps         | 4440064     |
+| train/                     |             |
+|    approx_kl               | 0.005424086 |
+|    clip_fraction           | 0.135       |
+|    clip_range              | 0.1         |
+|    clip_range_vf           | 0.2         |
+|    entropy_loss            | -0.965      |
+|    explained_variance      | 0.859       |
+|    learning_rate           | 0.0001      |
+|    loss                    | 71.5        |
+|    n_updates               | 4050        |
+|    policy_gradient_loss    | -0.00845    |
+|    value_loss              | 158         |
+| unified/                   |             |
+|    compliance_rate         | 0.999       |
+|    constraint_final_mean   | 77.3        |
+|    cost_final_mean         | 1.25e+03    |
+|    cost_reduction_pct_mean | 84.9        |
+|    exec_cost_final_mean    | 1.25e+03    |
+|    exec_reduction_pct_mean | 84.9        |
+|    keys_cost_final_mean    | 0.952       |
+|    keys_reduction_pct_mean | -95.2       |
+|    violation_mean          | 0.0154      |
+--------------------------------------------
+[Step Progress] 4,441,248 / 5,000,000 (88.82%) | Elapsed: 63:18:36 | ETA: 07:57:54 | FPS:  11.2 (avg:  19.5) | Cost Red: +84.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,443,264 / 5,000,000 (88.87%) | Elapsed: 63:21:33 | ETA: 07:56:19 | FPS:  11.4 (avg:  19.5) | Cost Red: +85.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,445,280 / 5,000,000 (88.91%) | Elapsed: 63:23:21 | ETA: 07:54:36 | FPS:  18.7 (avg:  19.5) | Cost Red: +86.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,447,296 / 5,000,000 (88.95%) | Elapsed: 63:25:11 | ETA: 07:52:54 | FPS:  18.3 (avg:  19.5) | Cost Red: +85.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,449,312 / 5,000,000 (88.99%) | Elapsed: 63:27:01 | ETA: 07:51:11 | FPS:  18.3 (avg:  19.5) | Cost Red: +83.5% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,451,328 / 5,000,000 (89.03%) | Elapsed: 63:29:07 | ETA: 07:49:30 | FPS:  16.0 (avg:  19.5) | Cost Red: +86.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,453,344 / 5,000,000 (89.07%) | Elapsed: 63:30:40 | ETA: 07:47:46 | FPS:  21.6 (avg:  19.5) | Cost Red: +86.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,455,360 / 5,000,000 (89.11%) | Elapsed: 63:34:18 | ETA: 07:46:16 | FPS:   9.2 (avg:  19.5) | Cost Red: +87.0% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,456,448 / 5,000,000 (89.13%)] Elapsed: 63:36:16 | FPS: 19.5 | λ: 0.0000 ---
+    Cost Red: +85.5% (Exec: +85.5%, Keys: -94.1%) | Constraint Mean: 77.4 | Safe Compliance: 99.9%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 11.6         |
+|    ep_rew_mean             | 67.6         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 272          |
+|    time_elapsed            | 228976       |
+|    total_timesteps         | 4456448      |
+| train/                     |              |
+|    approx_kl               | 0.0070923334 |
+|    clip_fraction           | 0.14         |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -0.719       |
+|    explained_variance      | 0.937        |
+|    learning_rate           | 0.0001       |
+|    loss                    | 16.5         |
+|    n_updates               | 4065         |
+|    policy_gradient_loss    | -0.00704     |
+|    value_loss              | 60.7         |
+| unified/                   |              |
+|    compliance_rate         | 0.999        |
+|    constraint_final_mean   | 77.4         |
+|    cost_final_mean         | 1.2e+03      |
+|    cost_reduction_pct_mean | 85.5         |
+|    exec_cost_final_mean    | 1.2e+03      |
+|    exec_reduction_pct_mean | 85.5         |
+|    keys_cost_final_mean    | 0.941        |
+|    keys_reduction_pct_mean | -94.1        |
+|    violation_mean          | 0.0203       |
+---------------------------------------------
+[Step Progress] 4,457,376 / 5,000,000 (89.15%) | Elapsed: 63:39:28 | ETA: 07:44:58 | FPS:   6.5 (avg:  19.5) | Cost Red: +86.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,459,392 / 5,000,000 (89.19%) | Elapsed: 63:41:29 | ETA: 07:43:16 | FPS:  16.8 (avg:  19.4) | Cost Red: +86.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,461,408 / 5,000,000 (89.23%) | Elapsed: 63:45:14 | ETA: 07:41:47 | FPS:   9.0 (avg:  19.4) | Cost Red: +88.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,463,424 / 5,000,000 (89.27%) | Elapsed: 63:48:25 | ETA: 07:40:14 | FPS:  10.5 (avg:  19.4) | Cost Red: +86.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,465,440 / 5,000,000 (89.31%) | Elapsed: 63:51:36 | ETA: 07:38:41 | FPS:  10.6 (avg:  19.4) | Cost Red: +86.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,467,456 / 5,000,000 (89.35%) | Elapsed: 63:53:46 | ETA: 07:37:00 | FPS:  15.5 (avg:  19.4) | Cost Red: +86.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,469,472 / 5,000,000 (89.39%) | Elapsed: 63:56:43 | ETA: 07:35:25 | FPS:  11.4 (avg:  19.4) | Cost Red: +86.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,471,488 / 5,000,000 (89.43%) | Elapsed: 63:58:25 | ETA: 07:33:41 | FPS:  19.8 (avg:  19.4) | Cost Red: +85.6% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,472,832 / 5,000,000 (89.46%)] Elapsed: 63:59:47 | FPS: 19.4 | λ: 0.0000 ---
+    Cost Red: +86.7% (Exec: +86.7%, Keys: -97.0%) | Constraint Mean: 77.0 | Safe Compliance: 100.0%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 11.9         |
+|    ep_rew_mean             | 69.6         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 273          |
+|    time_elapsed            | 230388       |
+|    total_timesteps         | 4472832      |
+| train/                     |              |
+|    approx_kl               | 0.0073682037 |
+|    clip_fraction           | 0.126        |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -0.667       |
+|    explained_variance      | 0.93         |
+|    learning_rate           | 0.0001       |
+|    loss                    | 16.3         |
+|    n_updates               | 4080         |
+|    policy_gradient_loss    | -0.00703     |
+|    value_loss              | 64.4         |
+| unified/                   |              |
+|    compliance_rate         | 1            |
+|    constraint_final_mean   | 77           |
+|    cost_final_mean         | 1.07e+03     |
+|    cost_reduction_pct_mean | 86.7         |
+|    exec_cost_final_mean    | 1.07e+03     |
+|    exec_reduction_pct_mean | 86.7         |
+|    keys_cost_final_mean    | 0.97         |
+|    keys_reduction_pct_mean | -97          |
+|    violation_mean          | 0            |
+---------------------------------------------
+[Step Progress] 4,473,504 / 5,000,000 (89.47%) | Elapsed: 64:00:21 | ETA: 07:31:58 | FPS:  17.3 (avg:  19.4) | Cost Red: +87.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,475,520 / 5,000,000 (89.51%) | Elapsed: 64:02:33 | ETA: 07:30:18 | FPS:  15.3 (avg:  19.4) | Cost Red: +84.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,477,536 / 5,000,000 (89.55%) | Elapsed: 64:05:13 | ETA: 07:28:40 | FPS:  12.7 (avg:  19.4) | Cost Red: +88.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,479,552 / 5,000,000 (89.59%) | Elapsed: 64:06:44 | ETA: 07:26:55 | FPS:  22.2 (avg:  19.4) | Cost Red: +83.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,481,568 / 5,000,000 (89.63%) | Elapsed: 64:09:47 | ETA: 07:25:20 | FPS:  11.0 (avg:  19.4) | Cost Red: +84.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,483,584 / 5,000,000 (89.67%) | Elapsed: 64:12:38 | ETA: 07:23:44 | FPS:  11.8 (avg:  19.4) | Cost Red: +83.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,485,600 / 5,000,000 (89.71%) | Elapsed: 64:13:44 | ETA: 07:21:56 | FPS:  30.2 (avg:  19.4) | Cost Red: +82.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,487,616 / 5,000,000 (89.75%) | Elapsed: 64:16:21 | ETA: 07:20:18 | FPS:  12.9 (avg:  19.4) | Cost Red: +76.8% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,489,216 / 5,000,000 (89.78%)] Elapsed: 64:17:21 | FPS: 19.4 | λ: 0.0000 ---
+    Cost Red: +84.2% (Exec: +84.2%, Keys: -94.4%) | Constraint Mean: 75.6 | Safe Compliance: 99.9%
+
+--------------------------------------------
+| rollout/                   |             |
+|    embed_fallback_count    | 0           |
+|    ep_len_mean             | 14.2        |
+|    ep_rew_mean             | 66.3        |
+| time/                      |             |
+|    fps                     | 19          |
+|    iterations              | 274         |
+|    time_elapsed            | 231442      |
+|    total_timesteps         | 4489216     |
+| train/                     |             |
+|    approx_kl               | 0.006543171 |
+|    clip_fraction           | 0.126       |
+|    clip_range              | 0.1         |
+|    clip_range_vf           | 0.2         |
+|    entropy_loss            | -0.639      |
+|    explained_variance      | 0.95        |
+|    learning_rate           | 0.0001      |
+|    loss                    | 29.7        |
+|    n_updates               | 4095        |
+|    policy_gradient_loss    | -0.00731    |
+|    value_loss              | 43.4        |
+| unified/                   |             |
+|    compliance_rate         | 0.999       |
+|    constraint_final_mean   | 75.6        |
+|    cost_final_mean         | 1.27e+03    |
+|    cost_reduction_pct_mean | 84.2        |
+|    exec_cost_final_mean    | 1.27e+03    |
+|    exec_reduction_pct_mean | 84.2        |
+|    keys_cost_final_mean    | 0.944       |
+|    keys_reduction_pct_mean | -94.4       |
+|    violation_mean          | 0.0122      |
+--------------------------------------------
+[Step Progress] 4,489,632 / 5,000,000 (89.79%) | Elapsed: 64:17:49 | ETA: 07:18:32 | FPS:  22.8 (avg:  19.4) | Cost Red: +80.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,491,648 / 5,000,000 (89.83%) | Elapsed: 64:18:47 | ETA: 07:16:43 | FPS:  34.8 (avg:  19.4) | Cost Red: +81.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,493,664 / 5,000,000 (89.87%) | Elapsed: 64:20:25 | ETA: 07:14:58 | FPS:  20.7 (avg:  19.4) | Cost Red: +81.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,495,680 / 5,000,000 (89.91%) | Elapsed: 64:21:37 | ETA: 07:13:11 | FPS:  27.9 (avg:  19.4) | Cost Red: +83.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,497,696 / 5,000,000 (89.95%) | Elapsed: 64:23:11 | ETA: 07:11:26 | FPS:  21.3 (avg:  19.4) | Cost Red: +79.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,499,712 / 5,000,000 (89.99%) | Elapsed: 64:24:34 | ETA: 07:09:40 | FPS:  24.5 (avg:  19.4) | Cost Red: +76.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,501,728 / 5,000,000 (90.03%) | Elapsed: 64:25:43 | ETA: 07:07:52 | FPS:  29.0 (avg:  19.4) | Cost Red: +78.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,503,744 / 5,000,000 (90.07%) | Elapsed: 64:26:56 | ETA: 07:06:05 | FPS:  27.6 (avg:  19.4) | Cost Red: +80.5% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,505,600 / 5,000,000 (90.11%)] Elapsed: 64:27:51 | FPS: 19.4 | λ: 0.0000 ---
+    Cost Red: +80.5% (Exec: +80.5%, Keys: -92.2%) | Constraint Mean: 77.4 | Safe Compliance: 100.0%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 12.9         |
+|    ep_rew_mean             | 64.9         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 275          |
+|    time_elapsed            | 232071       |
+|    total_timesteps         | 4505600      |
+| train/                     |              |
+|    approx_kl               | 0.0049402406 |
+|    clip_fraction           | 0.145        |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -0.738       |
+|    explained_variance      | 0.796        |
+|    learning_rate           | 0.0001       |
+|    loss                    | 39.2         |
+|    n_updates               | 4110         |
+|    policy_gradient_loss    | -0.00758     |
+|    value_loss              | 283          |
+| unified/                   |              |
+|    compliance_rate         | 1            |
+|    constraint_final_mean   | 77.4         |
+|    cost_final_mean         | 1.8e+03      |
+|    cost_reduction_pct_mean | 80.5         |
+|    exec_cost_final_mean    | 1.8e+03      |
+|    exec_reduction_pct_mean | 80.5         |
+|    keys_cost_final_mean    | 0.922        |
+|    keys_reduction_pct_mean | -92.2        |
+|    violation_mean          | 0            |
+---------------------------------------------
+[Step Progress] 4,505,760 / 5,000,000 (90.12%) | Elapsed: 64:28:09 | ETA: 07:04:18 | FPS:  27.8 (avg:  19.4) | Cost Red: +80.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,507,776 / 5,000,000 (90.16%) | Elapsed: 64:29:39 | ETA: 07:02:32 | FPS:  22.3 (avg:  19.4) | Cost Red: +82.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,509,792 / 5,000,000 (90.20%) | Elapsed: 64:30:49 | ETA: 07:00:45 | FPS:  28.7 (avg:  19.4) | Cost Red: +83.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,511,808 / 5,000,000 (90.24%) | Elapsed: 64:31:46 | ETA: 06:58:56 | FPS:  35.3 (avg:  19.4) | Cost Red: +81.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,513,824 / 5,000,000 (90.28%) | Elapsed: 64:32:48 | ETA: 06:57:07 | FPS:  32.8 (avg:  19.4) | Cost Red: +79.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,515,840 / 5,000,000 (90.32%) | Elapsed: 64:35:09 | ETA: 06:55:28 | FPS:  14.2 (avg:  19.4) | Cost Red: +79.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,517,856 / 5,000,000 (90.36%) | Elapsed: 64:38:13 | ETA: 06:53:52 | FPS:  11.0 (avg:  19.4) | Cost Red: +80.4% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,519,872 / 5,000,000 (90.40%) | Elapsed: 64:39:37 | ETA: 06:52:07 | FPS:  23.8 (avg:  19.4) | Cost Red: +76.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,521,888 / 5,000,000 (90.44%) | Elapsed: 64:41:06 | ETA: 06:50:21 | FPS:  22.9 (avg:  19.4) | Cost Red: +82.5% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,521,984 / 5,000,000 (90.44%)] Elapsed: 64:41:09 | FPS: 19.4 | λ: 0.0000 ---
+    Cost Red: +79.4% (Exec: +79.4%, Keys: -90.6%) | Constraint Mean: 75.0 | Safe Compliance: 99.9%
+
+--------------------------------------------
+| rollout/                   |             |
+|    embed_fallback_count    | 0           |
+|    ep_len_mean             | 11.3        |
+|    ep_rew_mean             | 68.1        |
+| time/                      |             |
+|    fps                     | 19          |
+|    iterations              | 276         |
+|    time_elapsed            | 232869      |
+|    total_timesteps         | 4521984     |
+| train/                     |             |
+|    approx_kl               | 0.007876205 |
+|    clip_fraction           | 0.157       |
+|    clip_range              | 0.1         |
+|    clip_range_vf           | 0.2         |
+|    entropy_loss            | -0.935      |
+|    explained_variance      | 0.976       |
+|    learning_rate           | 0.0001      |
+|    loss                    | 16.6        |
+|    n_updates               | 4125        |
+|    policy_gradient_loss    | -0.00805    |
+|    value_loss              | 27          |
+| unified/                   |             |
+|    compliance_rate         | 0.999       |
+|    constraint_final_mean   | 75          |
+|    cost_final_mean         | 1.89e+03    |
+|    cost_reduction_pct_mean | 79.4        |
+|    exec_cost_final_mean    | 1.89e+03    |
+|    exec_reduction_pct_mean | 79.4        |
+|    keys_cost_final_mean    | 0.906       |
+|    keys_reduction_pct_mean | -90.6       |
+|    violation_mean          | 0.0173      |
+--------------------------------------------
+[Step Progress] 4,523,904 / 5,000,000 (90.48%) | Elapsed: 64:42:25 | ETA: 06:48:35 | FPS:  25.4 (avg:  19.4) | Cost Red: +78.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,525,920 / 5,000,000 (90.52%) | Elapsed: 64:43:22 | ETA: 06:46:46 | FPS:  35.0 (avg:  19.4) | Cost Red: +78.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,527,936 / 5,000,000 (90.56%) | Elapsed: 64:44:46 | ETA: 06:45:00 | FPS:  24.2 (avg:  19.4) | Cost Red: +75.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,529,952 / 5,000,000 (90.60%) | Elapsed: 64:47:04 | ETA: 06:43:20 | FPS:  14.6 (avg:  19.4) | Cost Red: +77.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,531,968 / 5,000,000 (90.64%) | Elapsed: 64:48:52 | ETA: 06:41:37 | FPS:  18.6 (avg:  19.4) | Cost Red: +78.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,533,984 / 5,000,000 (90.68%) | Elapsed: 64:51:07 | ETA: 06:39:56 | FPS:  14.9 (avg:  19.4) | Cost Red: +77.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,536,000 / 5,000,000 (90.72%) | Elapsed: 64:53:11 | ETA: 06:38:14 | FPS:  16.3 (avg:  19.4) | Cost Red: +77.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,538,016 / 5,000,000 (90.76%) | Elapsed: 64:54:36 | ETA: 06:36:28 | FPS:  23.7 (avg:  19.4) | Cost Red: +69.7% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,538,368 / 5,000,000 (90.77%)] Elapsed: 64:54:56 | FPS: 19.4 | λ: 0.0000 ---
+    Cost Red: +76.4% (Exec: +76.4%, Keys: -89.3%) | Constraint Mean: 74.9 | Safe Compliance: 100.0%
+
+--------------------------------------------
+| rollout/                   |             |
+|    embed_fallback_count    | 0           |
+|    ep_len_mean             | 16.8        |
+|    ep_rew_mean             | 58          |
+| time/                      |             |
+|    fps                     | 19          |
+|    iterations              | 277         |
+|    time_elapsed            | 233697      |
+|    total_timesteps         | 4538368     |
+| train/                     |             |
+|    approx_kl               | 0.008373148 |
+|    clip_fraction           | 0.176       |
+|    clip_range              | 0.1         |
+|    clip_range_vf           | 0.2         |
+|    entropy_loss            | -0.997      |
+|    explained_variance      | 0.957       |
+|    learning_rate           | 0.0001      |
+|    loss                    | 51.6        |
+|    n_updates               | 4140        |
+|    policy_gradient_loss    | -0.0102     |
+|    value_loss              | 55.9        |
+| unified/                   |             |
+|    compliance_rate         | 1           |
+|    constraint_final_mean   | 74.9        |
+|    cost_final_mean         | 2.62e+03    |
+|    cost_reduction_pct_mean | 76.4        |
+|    exec_cost_final_mean    | 2.62e+03    |
+|    exec_reduction_pct_mean | 76.4        |
+|    keys_cost_final_mean    | 0.893       |
+|    keys_reduction_pct_mean | -89.3       |
+|    violation_mean          | 0           |
+--------------------------------------------
+[Step Progress] 4,540,032 / 5,000,000 (90.80%) | Elapsed: 64:57:14 | ETA: 06:34:50 | FPS:  12.7 (avg:  19.4) | Cost Red: +76.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,542,048 / 5,000,000 (90.84%) | Elapsed: 64:58:44 | ETA: 06:33:05 | FPS:  22.6 (avg:  19.4) | Cost Red: +78.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,544,064 / 5,000,000 (90.88%) | Elapsed: 65:01:49 | ETA: 06:31:29 | FPS:  10.9 (avg:  19.4) | Cost Red: +78.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,546,080 / 5,000,000 (90.92%) | Elapsed: 65:03:50 | ETA: 06:29:47 | FPS:  16.6 (avg:  19.4) | Cost Red: +80.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,548,096 / 5,000,000 (90.96%) | Elapsed: 65:05:11 | ETA: 06:28:01 | FPS:  25.0 (avg:  19.4) | Cost Red: +76.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,550,112 / 5,000,000 (91.00%) | Elapsed: 65:07:28 | ETA: 06:26:20 | FPS:  14.7 (avg:  19.4) | Cost Red: +76.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,552,128 / 5,000,000 (91.04%) | Elapsed: 65:09:31 | ETA: 06:24:38 | FPS:  16.3 (avg:  19.4) | Cost Red: +80.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,554,144 / 5,000,000 (91.08%) | Elapsed: 65:10:59 | ETA: 06:22:53 | FPS:  23.1 (avg:  19.4) | Cost Red: +76.6% | Compl:  99.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,554,752 / 5,000,000 (91.10%)] Elapsed: 65:11:41 | FPS: 19.4 | λ: 0.0000 ---
+    Cost Red: +78.7% (Exec: +78.7%, Keys: -96.6%) | Constraint Mean: 76.8 | Safe Compliance: 99.9%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 14.4         |
+|    ep_rew_mean             | 67.5         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 278          |
+|    time_elapsed            | 234701       |
+|    total_timesteps         | 4554752      |
+| train/                     |              |
+|    approx_kl               | 0.0048242975 |
+|    clip_fraction           | 0.134        |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -1.16        |
+|    explained_variance      | 0.956        |
+|    learning_rate           | 0.0001       |
+|    loss                    | 25.4         |
+|    n_updates               | 4155         |
+|    policy_gradient_loss    | -0.00972     |
+|    value_loss              | 59           |
+| unified/                   |              |
+|    compliance_rate         | 0.999        |
+|    constraint_final_mean   | 76.8         |
+|    cost_final_mean         | 2.04e+03     |
+|    cost_reduction_pct_mean | 78.7         |
+|    exec_cost_final_mean    | 2.04e+03     |
+|    exec_reduction_pct_mean | 78.7         |
+|    keys_cost_final_mean    | 0.966        |
+|    keys_reduction_pct_mean | -96.6        |
+|    violation_mean          | 0.0207       |
+---------------------------------------------
+[Step Progress] 4,556,160 / 5,000,000 (91.12%) | Elapsed: 65:14:04 | ETA: 06:21:17 | FPS:  10.9 (avg:  19.4) | Cost Red: +84.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,558,176 / 5,000,000 (91.16%) | Elapsed: 65:16:20 | ETA: 06:19:36 | FPS:  14.8 (avg:  19.4) | Cost Red: +86.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,560,192 / 5,000,000 (91.20%) | Elapsed: 65:18:47 | ETA: 06:17:56 | FPS:  13.7 (avg:  19.4) | Cost Red: +82.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,562,208 / 5,000,000 (91.24%) | Elapsed: 65:21:21 | ETA: 06:16:17 | FPS:  13.1 (avg:  19.4) | Cost Red: +76.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,564,224 / 5,000,000 (91.28%) | Elapsed: 65:23:14 | ETA: 06:14:34 | FPS:  17.9 (avg:  19.4) | Cost Red: +79.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,566,240 / 5,000,000 (91.32%) | Elapsed: 65:25:02 | ETA: 06:12:51 | FPS:  18.6 (avg:  19.4) | Cost Red: +84.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,568,256 / 5,000,000 (91.37%) | Elapsed: 65:27:53 | ETA: 06:11:13 | FPS:  11.8 (avg:  19.4) | Cost Red: +78.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,570,272 / 5,000,000 (91.41%) | Elapsed: 65:30:35 | ETA: 06:09:34 | FPS:  12.4 (avg:  19.4) | Cost Red: +84.0% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,571,136 / 5,000,000 (91.42%)] Elapsed: 65:31:23 | FPS: 19.4 | λ: 0.0000 ---
+    Cost Red: +82.0% (Exec: +82.0%, Keys: -97.9%) | Constraint Mean: 78.2 | Safe Compliance: 100.0%
+
+--------------------------------------------
+| rollout/                   |             |
+|    embed_fallback_count    | 0           |
+|    ep_len_mean             | 13.9        |
+|    ep_rew_mean             | 66.3        |
+| time/                      |             |
+|    fps                     | 19          |
+|    iterations              | 279         |
+|    time_elapsed            | 235883      |
+|    total_timesteps         | 4571136     |
+| train/                     |             |
+|    approx_kl               | 0.007005548 |
+|    clip_fraction           | 0.175       |
+|    clip_range              | 0.1         |
+|    clip_range_vf           | 0.2         |
+|    entropy_loss            | -1.05       |
+|    explained_variance      | 0.959       |
+|    learning_rate           | 0.0001      |
+|    loss                    | 20.5        |
+|    n_updates               | 4170        |
+|    policy_gradient_loss    | -0.0106     |
+|    value_loss              | 56.7        |
+| unified/                   |             |
+|    compliance_rate         | 1           |
+|    constraint_final_mean   | 78.2        |
+|    cost_final_mean         | 1.55e+03    |
+|    cost_reduction_pct_mean | 82          |
+|    exec_cost_final_mean    | 1.55e+03    |
+|    exec_reduction_pct_mean | 82          |
+|    keys_cost_final_mean    | 0.979       |
+|    keys_reduction_pct_mean | -97.9       |
+|    violation_mean          | 0           |
+--------------------------------------------
+[Step Progress] 4,572,288 / 5,000,000 (91.45%) | Elapsed: 65:32:31 | ETA: 06:07:51 | FPS:  17.4 (avg:  19.4) | Cost Red: +83.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,574,304 / 5,000,000 (91.49%) | Elapsed: 65:34:39 | ETA: 06:06:10 | FPS:  15.7 (avg:  19.4) | Cost Red: +79.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,576,320 / 5,000,000 (91.53%) | Elapsed: 65:37:12 | ETA: 06:04:30 | FPS:  13.2 (avg:  19.4) | Cost Red: +81.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,578,336 / 5,000,000 (91.57%) | Elapsed: 65:39:25 | ETA: 06:02:49 | FPS:  15.2 (avg:  19.4) | Cost Red: +83.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,580,352 / 5,000,000 (91.61%) | Elapsed: 65:40:53 | ETA: 06:01:03 | FPS:  22.9 (avg:  19.4) | Cost Red: +81.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,582,368 / 5,000,000 (91.65%) | Elapsed: 65:42:26 | ETA: 05:59:18 | FPS:  21.6 (avg:  19.4) | Cost Red: +81.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,584,384 / 5,000,000 (91.69%) | Elapsed: 65:43:48 | ETA: 05:57:32 | FPS:  24.8 (avg:  19.4) | Cost Red: +80.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,586,400 / 5,000,000 (91.73%) | Elapsed: 65:45:06 | ETA: 05:55:46 | FPS:  25.7 (avg:  19.4) | Cost Red: +81.3% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,587,520 / 5,000,000 (91.75%)] Elapsed: 65:45:47 | FPS: 19.4 | λ: 0.0000 ---
+    Cost Red: +81.6% (Exec: +81.6%, Keys: -100.8%) | Constraint Mean: 78.0 | Safe Compliance: 100.0%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 13.2         |
+|    ep_rew_mean             | 64.7         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 280          |
+|    time_elapsed            | 236747       |
+|    total_timesteps         | 4587520      |
+| train/                     |              |
+|    approx_kl               | 0.0058234716 |
+|    clip_fraction           | 0.135        |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -0.923       |
+|    explained_variance      | 0.944        |
+|    learning_rate           | 0.0001       |
+|    loss                    | 31.7         |
+|    n_updates               | 4185         |
+|    policy_gradient_loss    | -0.00713     |
+|    value_loss              | 71.2         |
+| unified/                   |              |
+|    compliance_rate         | 1            |
+|    constraint_final_mean   | 78           |
+|    cost_final_mean         | 1.37e+03     |
+|    cost_reduction_pct_mean | 81.6         |
+|    exec_cost_final_mean    | 1.37e+03     |
+|    exec_reduction_pct_mean | 81.6         |
+|    keys_cost_final_mean    | 1.01         |
+|    keys_reduction_pct_mean | -101         |
+|    violation_mean          | 0            |
+---------------------------------------------
+[Step Progress] 4,588,416 / 5,000,000 (91.77%) | Elapsed: 65:46:34 | ETA: 05:54:00 | FPS:  23.0 (avg:  19.4) | Cost Red: +79.6% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,590,432 / 5,000,000 (91.81%) | Elapsed: 65:48:21 | ETA: 05:52:16 | FPS:  18.8 (avg:  19.4) | Cost Red: +79.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,592,448 / 5,000,000 (91.85%) | Elapsed: 65:49:51 | ETA: 05:50:31 | FPS:  22.5 (avg:  19.4) | Cost Red: +81.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,594,464 / 5,000,000 (91.89%) | Elapsed: 65:51:17 | ETA: 05:48:45 | FPS:  23.2 (avg:  19.4) | Cost Red: +82.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,596,480 / 5,000,000 (91.93%) | Elapsed: 65:54:47 | ETA: 05:47:11 | FPS:   9.6 (avg:  19.4) | Cost Red: +79.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,598,496 / 5,000,000 (91.97%) | Elapsed: 65:56:29 | ETA: 05:45:26 | FPS:  19.8 (avg:  19.4) | Cost Red: +81.6% | Compl: 100.0% | λ: 0.0000
+
+[34m=========================================================================================================[0m
+[1mStep 4,600,000 [Evaluation]: Starting Pareto & Safe Execution Evaluation (10 front points, 69 benchmarks each)[0m
+[34m=========================================================================================================[0m
+[1mPt  | Preference w             | Exec Red% (Safe/Raw)   | Keys Red% (Safe/Raw)   | Avg Noise      | Safe Status / Rollback[0m
+---------------------------------------------------------------------------------------------------------
+#1  | [ops=1.00, keys=0.00] | +58.1% / +49.1%        | -75.4% / -89.9%        | 178.1 / 2217599 bits | [91m 79.7% SAFE[0m (Rollback: 100%)
+#2  | [ops=0.90, keys=0.10] | +55.3% / +44.6%        | -33.3% / -37.7%        | 175.5 / 2087171 bits | [91m 76.8% SAFE[0m (Rollback: 100%)
+#3  | [ops=0.80, keys=0.20] | +54.6% / +48.0%        |  -5.8% / +10.1%        | 175.3 / 3000185 bits | [91m 69.6% SAFE[0m (Rollback: 100%)
+#4  | [ops=0.70, keys=0.30] | +56.3% / +49.0%        | +14.5% / +42.0%        | 177.6 / 1956730 bits | [91m 76.8% SAFE[0m (Rollback: 99%)
+#5  | [ops=0.60, keys=0.40] | +54.1% / +47.8%        | +34.8% / +52.2%        | 177.6 / 1695877 bits | [91m 73.9% SAFE[0m (Rollback: 99%)
+#6  | [ops=0.50, keys=0.50] | +51.2% / +47.3%        | +49.3% / +59.4%        | 178.4 / 1826320 bits | [93m 81.2% SAFE[0m (Rollback: 97%)
+#7  | [ops=0.40, keys=0.60] | +50.6% / +51.7%        | +56.5% / +62.3%        | 175.8 / 2478467 bits | [91m 76.8% SAFE[0m (Rollback: 96%)
+#8  | [ops=0.30, keys=0.70] | +49.5% / +50.8%        | +59.4% / +63.8%        | 179.8 / 1956735 bits | [91m 76.8% SAFE[0m (Rollback: 91%)
+#9  | [ops=0.20, keys=0.80] | +44.6% / +47.9%        | +69.6% / +73.9%        | 179.5 / 1826310 bits | [91m 72.5% SAFE[0m (Rollback: 91%)
+#10 | [ops=0.10, keys=0.90] | +32.1% / +34.7%        | +92.8% / +94.2%        | 174.9 / 2348030 bits | [91m 79.7% SAFE[0m (Rollback: 68%)
+---------------------------------------------------------------------------------------------------------
+[1mFront Summary (Step 4,600,000):[0m
+  • [1mMean Pareto Reward[0m        : [96m2.9887[0m +/- 17.4313
+  • [1mSafe Compliance Rate[0m      : [91m76.4% SAFE[0m (163 total violations / 690 evaluations)
+  • [1mSafety Rollback Rate[0m      : [96m94.1%[0m (rescued infeasible trajectories)
+  • [1mSafe Exec Cost Red% [0m      : [92m+50.6%[0m (Raw: +47.1%) [FHE Exec Time/Ops]
+  • [1mSafe Total Cost Red%[0m      : [92m+50.6%[0m (Raw: +47.1%)
+  • [1mSafe Keys Cost Red% [0m      : [92m+26.2%[0m (Raw: +33.0%)
+  • [1mAvg Safe Headroom   [0m      : [96m+2139165.1 bits[0m
+  • [1mAvg RL Inference Time[0m     : 4569.7 ms / benchmark
+  • [1mAvg Episode Length  [0m      : 35.9 steps
+[34m=========================================================================================================[0m
+
+--------------------------------------------------
+| eval/                           |              |
+|    constraint_w_0.00            | 178          |
+|    constraint_w_0.10            | 175          |
+|    constraint_w_0.20            | 175          |
+|    constraint_w_0.30            | 178          |
+|    constraint_w_0.40            | 178          |
+|    constraint_w_0.50            | 178          |
+|    constraint_w_0.60            | 176          |
+|    constraint_w_0.70            | 180          |
+|    constraint_w_0.80            | 180          |
+|    constraint_w_0.90            | 175          |
+|    pareto_avg_ep_length         | 35.9         |
+|    pareto_avg_margin            | 2.14e+06     |
+|    pareto_avg_raw_cost_red_pct  | 47.1         |
+|    pareto_avg_raw_exec_red_pct  | 47.1         |
+|    pareto_avg_reward            | 2.99         |
+|    pareto_avg_rl_time_ms        | 4.57e+03     |
+|    pareto_avg_safe_cost_red_pct | 50.6         |
+|    pareto_avg_safe_exec_red_pct | 50.6         |
+|    pareto_avg_safe_keys_red_pct | 26.2         |
+|    pareto_avg_violation         | 25.3         |
+|    pareto_safe_compliance_rate  | 76.4         |
+|    pareto_safety_rollback_rate  | 94.1         |
+|    raw_cost_red_w_0.00          | 49.1         |
+|    raw_cost_red_w_0.10          | 44.6         |
+|    raw_cost_red_w_0.20          | 48           |
+|    raw_cost_red_w_0.30          | 49           |
+|    raw_cost_red_w_0.40          | 47.8         |
+|    raw_cost_red_w_0.50          | 47.3         |
+|    raw_cost_red_w_0.60          | 51.7         |
+|    raw_cost_red_w_0.70          | 50.8         |
+|    raw_cost_red_w_0.80          | 47.9         |
+|    raw_cost_red_w_0.90          | 34.7         |
+|    raw_exec_red_w_0.00          | 49.1         |
+|    raw_exec_red_w_0.10          | 44.6         |
+|    raw_exec_red_w_0.20          | 48           |
+|    raw_exec_red_w_0.30          | 49           |
+|    raw_exec_red_w_0.40          | 47.8         |
+|    raw_exec_red_w_0.50          | 47.3         |
+|    raw_exec_red_w_0.60          | 51.7         |
+|    raw_exec_red_w_0.70          | 50.8         |
+|    raw_exec_red_w_0.80          | 47.9         |
+|    raw_exec_red_w_0.90          | 34.7         |
+|    raw_keys_red_w_0.00          | -89.9        |
+|    raw_keys_red_w_0.10          | -37.7        |
+|    raw_keys_red_w_0.20          | 10.1         |
+|    raw_keys_red_w_0.30          | 42           |
+|    raw_keys_red_w_0.40          | 52.2         |
+|    raw_keys_red_w_0.50          | 59.4         |
+|    raw_keys_red_w_0.60          | 62.3         |
+|    raw_keys_red_w_0.70          | 63.8         |
+|    raw_keys_red_w_0.80          | 73.9         |
+|    raw_keys_red_w_0.90          | 94.2         |
+|    reward_w_0.00                | 37.1         |
+|    reward_w_0.10                | 22.2         |
+|    reward_w_0.20                | 10.5         |
+|    reward_w_0.30                | 12.3         |
+|    reward_w_0.40                | 2.89         |
+|    reward_w_0.50                | 3.03         |
+|    reward_w_0.60                | -6.55        |
+|    reward_w_0.70                | -12.6        |
+|    reward_w_0.80                | -21.9        |
+|    reward_w_0.90                | -17.2        |
+|    rl_time_ms_w_0.00            | 1.47e+04     |
+|    rl_time_ms_w_0.10            | 6.85e+03     |
+|    rl_time_ms_w_0.20            | 5.76e+03     |
+|    rl_time_ms_w_0.30            | 5.81e+03     |
+|    rl_time_ms_w_0.40            | 4.43e+03     |
+|    rl_time_ms_w_0.50            | 3.63e+03     |
+|    rl_time_ms_w_0.60            | 1.54e+03     |
+|    rl_time_ms_w_0.70            | 1.84e+03     |
+|    rl_time_ms_w_0.80            | 534          |
+|    rl_time_ms_w_0.90            | 599          |
+|    safe_cost_red_w_0.00         | 58.1         |
+|    safe_cost_red_w_0.10         | 55.3         |
+|    safe_cost_red_w_0.20         | 54.6         |
+|    safe_cost_red_w_0.30         | 56.3         |
+|    safe_cost_red_w_0.40         | 54.1         |
+|    safe_cost_red_w_0.50         | 51.2         |
+|    safe_cost_red_w_0.60         | 50.6         |
+|    safe_cost_red_w_0.70         | 49.5         |
+|    safe_cost_red_w_0.80         | 44.6         |
+|    safe_cost_red_w_0.90         | 32.1         |
+|    safe_exec_red_w_0.00         | 58.1         |
+|    safe_exec_red_w_0.10         | 55.3         |
+|    safe_exec_red_w_0.20         | 54.6         |
+|    safe_exec_red_w_0.30         | 56.3         |
+|    safe_exec_red_w_0.40         | 54.1         |
+|    safe_exec_red_w_0.50         | 51.2         |
+|    safe_exec_red_w_0.60         | 50.6         |
+|    safe_exec_red_w_0.70         | 49.5         |
+|    safe_exec_red_w_0.80         | 44.6         |
+|    safe_exec_red_w_0.90         | 32.1         |
+|    safe_keys_red_w_0.00         | -75.4        |
+|    safe_keys_red_w_0.10         | -33.3        |
+|    safe_keys_red_w_0.20         | -5.8         |
+|    safe_keys_red_w_0.30         | 14.5         |
+|    safe_keys_red_w_0.40         | 34.8         |
+|    safe_keys_red_w_0.50         | 49.3         |
+|    safe_keys_red_w_0.60         | 56.5         |
+|    safe_keys_red_w_0.70         | 59.4         |
+|    safe_keys_red_w_0.80         | 69.6         |
+|    safe_keys_red_w_0.90         | 92.8         |
+|    safe_rate_w_0.00             | 79.7         |
+|    safe_rate_w_0.10             | 76.8         |
+|    safe_rate_w_0.20             | 69.6         |
+|    safe_rate_w_0.30             | 76.8         |
+|    safe_rate_w_0.40             | 73.9         |
+|    safe_rate_w_0.50             | 81.2         |
+|    safe_rate_w_0.60             | 76.8         |
+|    safe_rate_w_0.70             | 76.8         |
+|    safe_rate_w_0.80             | 72.5         |
+|    safe_rate_w_0.90             | 79.7         |
+|    safety_act_rate_w_0.00       | 100          |
+|    safety_act_rate_w_0.10       | 100          |
+|    safety_act_rate_w_0.20       | 100          |
+|    safety_act_rate_w_0.30       | 98.6         |
+|    safety_act_rate_w_0.40       | 98.6         |
+|    safety_act_rate_w_0.50       | 97.1         |
+|    safety_act_rate_w_0.60       | 95.7         |
+|    safety_act_rate_w_0.70       | 91.3         |
+|    safety_act_rate_w_0.80       | 91.3         |
+|    safety_act_rate_w_0.90       | 68.1         |
+|    violation_w_0.00             | 23.1         |
+|    violation_w_0.10             | 26           |
+|    violation_w_0.20             | 23.9         |
+|    violation_w_0.30             | 25.8         |
+|    violation_w_0.40             | 28.1         |
+|    violation_w_0.50             | 21.5         |
+|    violation_w_0.60             | 24.5         |
+|    violation_w_0.70             | 23.2         |
+|    violation_w_0.80             | 32.7         |
+|    violation_w_0.90             | 23.6         |
+| train/                          |              |
+|    approx_kl                    | 0.0046653235 |
+|    clip_fraction                | 0.12         |
+|    clip_range                   | 0.1          |
+|    clip_range_vf                | 0.2          |
+|    entropy_loss                 | -1.05        |
+|    explained_variance           | 0.958        |
+|    learning_rate                | 0.0001       |
+|    loss                         | 31.8         |
+|    n_updates                    | 4200         |
+|    policy_gradient_loss         | -0.0102      |
+|    value_loss                   | 50.8         |
+--------------------------------------------------
+[Step Progress] 4,600,512 / 5,000,000 (92.01%) | Elapsed: 66:51:08 | ETA: 05:48:18 | FPS:   0.6 (avg:  19.1) | Cost Red: +79.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,602,528 / 5,000,000 (92.05%) | Elapsed: 66:52:38 | ETA: 05:46:31 | FPS:  22.4 (avg:  19.1) | Cost Red: +80.2% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,603,904 / 5,000,000 (92.08%)] Elapsed: 66:53:58 | FPS: 19.1 | λ: 0.0000 ---
+    Cost Red: +80.8% (Exec: +80.8%, Keys: -92.2%) | Constraint Mean: 77.4 | Safe Compliance: 99.9%
+
+-----------------------------------------
+| rollout/                   |          |
+|    embed_fallback_count    | 0        |
+|    ep_len_mean             | 13       |
+|    ep_rew_mean             | 66.3     |
+| time/                      |          |
+|    fps                     | 19       |
+|    iterations              | 281      |
+|    time_elapsed            | 240839   |
+|    total_timesteps         | 4603904  |
+| unified/                   |          |
+|    compliance_rate         | 0.999    |
+|    constraint_final_mean   | 77.4     |
+|    cost_final_mean         | 1.53e+03 |
+|    cost_reduction_pct_mean | 80.8     |
+|    exec_cost_final_mean    | 1.53e+03 |
+|    exec_reduction_pct_mean | 80.8     |
+|    keys_cost_final_mean    | 0.922    |
+|    keys_reduction_pct_mean | -92.2    |
+|    violation_mean          | 0.0232   |
+-----------------------------------------
+[Step Progress] 4,604,544 / 5,000,000 (92.09%) | Elapsed: 66:55:00 | ETA: 05:44:49 | FPS:  14.2 (avg:  19.1) | Cost Red: +83.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,606,560 / 5,000,000 (92.13%) | Elapsed: 66:58:43 | ETA: 05:43:14 | FPS:   9.0 (avg:  19.1) | Cost Red: +74.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,608,576 / 5,000,000 (92.17%) | Elapsed: 67:00:02 | ETA: 05:41:26 | FPS:  25.5 (avg:  19.1) | Cost Red: +82.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,610,592 / 5,000,000 (92.21%) | Elapsed: 67:02:46 | ETA: 05:39:45 | FPS:  12.3 (avg:  19.1) | Cost Red: +81.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,612,608 / 5,000,000 (92.25%) | Elapsed: 67:04:29 | ETA: 05:37:59 | FPS:  19.7 (avg:  19.1) | Cost Red: +83.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,614,624 / 5,000,000 (92.29%) | Elapsed: 67:06:21 | ETA: 05:36:14 | FPS:  18.0 (avg:  19.1) | Cost Red: +83.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,616,640 / 5,000,000 (92.33%) | Elapsed: 67:08:02 | ETA: 05:34:29 | FPS:  19.9 (avg:  19.1) | Cost Red: +75.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,618,656 / 5,000,000 (92.37%) | Elapsed: 67:09:45 | ETA: 05:32:43 | FPS:  19.5 (avg:  19.1) | Cost Red: +79.4% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,620,288 / 5,000,000 (92.41%)] Elapsed: 67:11:40 | FPS: 19.1 | λ: 0.0000 ---
+    Cost Red: +80.0% (Exec: +80.0%, Keys: -95.3%) | Constraint Mean: 79.7 | Safe Compliance: 100.0%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 12.1         |
+|    ep_rew_mean             | 66.6         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 282          |
+|    time_elapsed            | 241900       |
+|    total_timesteps         | 4620288      |
+| train/                     |              |
+|    approx_kl               | 0.0053638546 |
+|    clip_fraction           | 0.129        |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -1.03        |
+|    explained_variance      | 0.963        |
+|    learning_rate           | 0.0001       |
+|    loss                    | 22.5         |
+|    n_updates               | 4215         |
+|    policy_gradient_loss    | -0.00858     |
+|    value_loss              | 41           |
+| unified/                   |              |
+|    compliance_rate         | 1            |
+|    constraint_final_mean   | 79.7         |
+|    cost_final_mean         | 1.58e+03     |
+|    cost_reduction_pct_mean | 80           |
+|    exec_cost_final_mean    | 1.58e+03     |
+|    exec_reduction_pct_mean | 80           |
+|    keys_cost_final_mean    | 0.953        |
+|    keys_reduction_pct_mean | -95.3        |
+|    violation_mean          | 0            |
+---------------------------------------------
+[Step Progress] 4,620,672 / 5,000,000 (92.41%) | Elapsed: 67:12:12 | ETA: 05:31:01 | FPS:  13.8 (avg:  19.1) | Cost Red: +82.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,622,688 / 5,000,000 (92.45%) | Elapsed: 67:13:47 | ETA: 05:29:14 | FPS:  21.2 (avg:  19.1) | Cost Red: +73.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,624,704 / 5,000,000 (92.49%) | Elapsed: 67:15:22 | ETA: 05:27:28 | FPS:  21.3 (avg:  19.1) | Cost Red: +81.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,626,720 / 5,000,000 (92.53%) | Elapsed: 67:16:54 | ETA: 05:25:41 | FPS:  21.9 (avg:  19.1) | Cost Red: +80.0% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,628,736 / 5,000,000 (92.57%) | Elapsed: 67:18:11 | ETA: 05:23:53 | FPS:  26.1 (avg:  19.1) | Cost Red: +82.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,630,752 / 5,000,000 (92.62%) | Elapsed: 67:19:34 | ETA: 05:22:06 | FPS:  24.3 (avg:  19.1) | Cost Red: +86.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,632,768 / 5,000,000 (92.66%) | Elapsed: 67:21:13 | ETA: 05:20:20 | FPS:  20.2 (avg:  19.1) | Cost Red: +83.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,634,784 / 5,000,000 (92.70%) | Elapsed: 67:22:39 | ETA: 05:18:33 | FPS:  23.6 (avg:  19.1) | Cost Red: +86.9% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,636,672 / 5,000,000 (92.73%)] Elapsed: 67:23:47 | FPS: 19.1 | λ: 0.0000 ---
+    Cost Red: +82.5% (Exec: +82.5%, Keys: -84.9%) | Constraint Mean: 80.1 | Safe Compliance: 99.8%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 13.4         |
+|    ep_rew_mean             | 65.7         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 283          |
+|    time_elapsed            | 242627       |
+|    total_timesteps         | 4636672      |
+| train/                     |              |
+|    approx_kl               | 0.0060567446 |
+|    clip_fraction           | 0.151        |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -1.06        |
+|    explained_variance      | 0.882        |
+|    learning_rate           | 0.0001       |
+|    loss                    | 48.9         |
+|    n_updates               | 4230         |
+|    policy_gradient_loss    | -0.00796     |
+|    value_loss              | 148          |
+| unified/                   |              |
+|    compliance_rate         | 0.998        |
+|    constraint_final_mean   | 80.1         |
+|    cost_final_mean         | 1.64e+03     |
+|    cost_reduction_pct_mean | 82.5         |
+|    exec_cost_final_mean    | 1.64e+03     |
+|    exec_reduction_pct_mean | 82.5         |
+|    keys_cost_final_mean    | 0.849        |
+|    keys_reduction_pct_mean | -84.9        |
+|    violation_mean          | 0.0737       |
+---------------------------------------------
+[Step Progress] 4,636,800 / 5,000,000 (92.74%) | Elapsed: 67:24:06 | ETA: 05:16:46 | FPS:  23.2 (avg:  19.1) | Cost Red: +82.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,638,816 / 5,000,000 (92.78%) | Elapsed: 67:25:31 | ETA: 05:14:59 | FPS:  23.5 (avg:  19.1) | Cost Red: +82.5% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,640,832 / 5,000,000 (92.82%) | Elapsed: 67:26:54 | ETA: 05:13:12 | FPS:  24.4 (avg:  19.1) | Cost Red: +82.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,642,848 / 5,000,000 (92.86%) | Elapsed: 67:28:24 | ETA: 05:11:25 | FPS:  22.5 (avg:  19.1) | Cost Red: +79.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,644,864 / 5,000,000 (92.90%) | Elapsed: 67:29:43 | ETA: 05:09:37 | FPS:  25.3 (avg:  19.1) | Cost Red: +82.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,646,880 / 5,000,000 (92.94%) | Elapsed: 67:31:31 | ETA: 05:07:52 | FPS:  18.7 (avg:  19.1) | Cost Red: +79.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,648,896 / 5,000,000 (92.98%) | Elapsed: 67:32:56 | ETA: 05:06:05 | FPS:  23.9 (avg:  19.1) | Cost Red: +76.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,650,912 / 5,000,000 (93.02%) | Elapsed: 67:34:27 | ETA: 05:04:19 | FPS:  22.1 (avg:  19.1) | Cost Red: +81.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,652,928 / 5,000,000 (93.06%) | Elapsed: 67:36:10 | ETA: 05:02:33 | FPS:  19.6 (avg:  19.1) | Cost Red: +82.8% | Compl:  98.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,653,056 / 5,000,000 (93.06%)] Elapsed: 67:36:16 | FPS: 19.1 | λ: 0.0000 ---
+    Cost Red: +81.0% (Exec: +81.0%, Keys: -84.4%) | Constraint Mean: 82.4 | Safe Compliance: 99.7%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 14.3         |
+|    ep_rew_mean             | 66.7         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 284          |
+|    time_elapsed            | 243376       |
+|    total_timesteps         | 4653056      |
+| train/                     |              |
+|    approx_kl               | 0.0077343127 |
+|    clip_fraction           | 0.14         |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -0.832       |
+|    explained_variance      | 0.943        |
+|    learning_rate           | 0.0001       |
+|    loss                    | 14.2         |
+|    n_updates               | 4245         |
+|    policy_gradient_loss    | -0.00827     |
+|    value_loss              | 57.2         |
+| unified/                   |              |
+|    compliance_rate         | 0.997        |
+|    constraint_final_mean   | 82.4         |
+|    cost_final_mean         | 1.75e+03     |
+|    cost_reduction_pct_mean | 81           |
+|    exec_cost_final_mean    | 1.75e+03     |
+|    exec_reduction_pct_mean | 81           |
+|    keys_cost_final_mean    | 0.844        |
+|    keys_reduction_pct_mean | -84.4        |
+|    violation_mean          | 0.104        |
+---------------------------------------------
+[Step Progress] 4,654,944 / 5,000,000 (93.10%) | Elapsed: 67:38:03 | ETA: 05:00:48 | FPS:  17.8 (avg:  19.1) | Cost Red: +81.4% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,656,960 / 5,000,000 (93.14%) | Elapsed: 67:39:35 | ETA: 04:59:02 | FPS:  22.0 (avg:  19.1) | Cost Red: +81.8% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,658,976 / 5,000,000 (93.18%) | Elapsed: 67:40:46 | ETA: 04:57:14 | FPS:  28.2 (avg:  19.1) | Cost Red: +76.0% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,660,992 / 5,000,000 (93.22%) | Elapsed: 67:42:10 | ETA: 04:55:27 | FPS:  24.3 (avg:  19.1) | Cost Red: +82.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,663,008 / 5,000,000 (93.26%) | Elapsed: 67:43:29 | ETA: 04:53:39 | FPS:  25.5 (avg:  19.1) | Cost Red: +74.9% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,665,024 / 5,000,000 (93.30%) | Elapsed: 67:44:47 | ETA: 04:51:52 | FPS:  25.9 (avg:  19.1) | Cost Red: +77.8% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,667,040 / 5,000,000 (93.34%) | Elapsed: 67:45:51 | ETA: 04:50:04 | FPS:  31.3 (avg:  19.1) | Cost Red: +80.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,669,056 / 5,000,000 (93.38%) | Elapsed: 67:47:00 | ETA: 04:48:16 | FPS:  29.3 (avg:  19.1) | Cost Red: +69.8% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,669,440 / 5,000,000 (93.39%)] Elapsed: 67:47:12 | FPS: 19.1 | λ: 0.0000 ---
+    Cost Red: +77.8% (Exec: +77.8%, Keys: -86.5%) | Constraint Mean: 84.5 | Safe Compliance: 99.4%
+
+--------------------------------------------
+| rollout/                   |             |
+|    embed_fallback_count    | 0           |
+|    ep_len_mean             | 15.5        |
+|    ep_rew_mean             | 47.8        |
+| time/                      |             |
+|    fps                     | 19          |
+|    iterations              | 285         |
+|    time_elapsed            | 244032      |
+|    total_timesteps         | 4669440     |
+| train/                     |             |
+|    approx_kl               | 0.005539468 |
+|    clip_fraction           | 0.144       |
+|    clip_range              | 0.1         |
+|    clip_range_vf           | 0.2         |
+|    entropy_loss            | -0.949      |
+|    explained_variance      | 0.916       |
+|    learning_rate           | 0.0001      |
+|    loss                    | 36.5        |
+|    n_updates               | 4260        |
+|    policy_gradient_loss    | -0.00972    |
+|    value_loss              | 95.6        |
+| unified/                   |             |
+|    compliance_rate         | 0.994       |
+|    constraint_final_mean   | 84.5        |
+|    cost_final_mean         | 2.03e+03    |
+|    cost_reduction_pct_mean | 77.8        |
+|    exec_cost_final_mean    | 2.03e+03    |
+|    exec_reduction_pct_mean | 77.8        |
+|    keys_cost_final_mean    | 0.865       |
+|    keys_reduction_pct_mean | -86.5       |
+|    violation_mean          | 0.22        |
+--------------------------------------------
+[Step Progress] 4,671,072 / 5,000,000 (93.42%) | Elapsed: 67:48:19 | ETA: 04:46:29 | FPS:  25.5 (avg:  19.1) | Cost Red: +76.7% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,673,088 / 5,000,000 (93.46%) | Elapsed: 67:49:35 | ETA: 04:44:41 | FPS:  26.6 (avg:  19.1) | Cost Red: +79.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,675,104 / 5,000,000 (93.50%) | Elapsed: 67:50:31 | ETA: 04:42:52 | FPS:  35.5 (avg:  19.1) | Cost Red: +78.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,677,120 / 5,000,000 (93.54%) | Elapsed: 67:51:40 | ETA: 04:41:05 | FPS:  29.4 (avg:  19.1) | Cost Red: +74.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,679,136 / 5,000,000 (93.58%) | Elapsed: 67:52:57 | ETA: 04:39:17 | FPS:  26.1 (avg:  19.1) | Cost Red: +83.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,681,152 / 5,000,000 (93.62%) | Elapsed: 67:54:29 | ETA: 04:37:31 | FPS:  22.0 (avg:  19.1) | Cost Red: +76.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,683,168 / 5,000,000 (93.66%) | Elapsed: 67:55:57 | ETA: 04:35:45 | FPS:  22.9 (avg:  19.1) | Cost Red: +83.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,685,184 / 5,000,000 (93.70%) | Elapsed: 67:57:05 | ETA: 04:33:57 | FPS:  29.6 (avg:  19.2) | Cost Red: +77.6% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,685,824 / 5,000,000 (93.72%)] Elapsed: 67:57:24 | FPS: 19.2 | λ: 0.0000 ---
+    Cost Red: +78.9% (Exec: +78.9%, Keys: -96.8%) | Constraint Mean: 80.8 | Safe Compliance: 99.8%
+
+--------------------------------------------
+| rollout/                   |             |
+|    embed_fallback_count    | 0           |
+|    ep_len_mean             | 15.6        |
+|    ep_rew_mean             | 61.8        |
+| time/                      |             |
+|    fps                     | 19          |
+|    iterations              | 286         |
+|    time_elapsed            | 244644      |
+|    total_timesteps         | 4685824     |
+| train/                     |             |
+|    approx_kl               | 0.006560457 |
+|    clip_fraction           | 0.146       |
+|    clip_range              | 0.1         |
+|    clip_range_vf           | 0.2         |
+|    entropy_loss            | -0.923      |
+|    explained_variance      | 0.928       |
+|    learning_rate           | 0.0001      |
+|    loss                    | 45.4        |
+|    n_updates               | 4275        |
+|    policy_gradient_loss    | -0.00637    |
+|    value_loss              | 92          |
+| unified/                   |             |
+|    compliance_rate         | 0.998       |
+|    constraint_final_mean   | 80.8        |
+|    cost_final_mean         | 1.89e+03    |
+|    cost_reduction_pct_mean | 78.9        |
+|    exec_cost_final_mean    | 1.89e+03    |
+|    exec_reduction_pct_mean | 78.9        |
+|    keys_cost_final_mean    | 0.968       |
+|    keys_reduction_pct_mean | -96.8       |
+|    violation_mean          | 0.0774      |
+--------------------------------------------
+[Step Progress] 4,687,200 / 5,000,000 (93.74%) | Elapsed: 67:58:23 | ETA: 04:32:10 | FPS:  25.9 (avg:  19.2) | Cost Red: +81.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,689,216 / 5,000,000 (93.78%) | Elapsed: 67:59:40 | ETA: 04:30:23 | FPS:  26.3 (avg:  19.2) | Cost Red: +81.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,691,232 / 5,000,000 (93.82%) | Elapsed: 68:00:49 | ETA: 04:28:35 | FPS:  29.2 (avg:  19.2) | Cost Red: +78.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,693,248 / 5,000,000 (93.86%) | Elapsed: 68:01:58 | ETA: 04:26:47 | FPS:  29.2 (avg:  19.2) | Cost Red: +71.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,695,264 / 5,000,000 (93.91%) | Elapsed: 68:02:57 | ETA: 04:24:59 | FPS:  34.0 (avg:  19.2) | Cost Red: +80.4% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,697,280 / 5,000,000 (93.95%) | Elapsed: 68:04:01 | ETA: 04:23:11 | FPS:  31.3 (avg:  19.2) | Cost Red: +78.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,699,296 / 5,000,000 (93.99%) | Elapsed: 68:04:58 | ETA: 04:21:23 | FPS:  35.4 (avg:  19.2) | Cost Red: +75.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,701,312 / 5,000,000 (94.03%) | Elapsed: 68:06:18 | ETA: 04:19:36 | FPS:  25.2 (avg:  19.2) | Cost Red: +78.0% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,702,208 / 5,000,000 (94.04%)] Elapsed: 68:06:54 | FPS: 19.2 | λ: 0.0000 ---
+    Cost Red: +78.1% (Exec: +78.1%, Keys: -97.3%) | Constraint Mean: 76.7 | Safe Compliance: 99.9%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 15.6         |
+|    ep_rew_mean             | 64           |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 287          |
+|    time_elapsed            | 245214       |
+|    total_timesteps         | 4702208      |
+| train/                     |              |
+|    approx_kl               | 0.0050388984 |
+|    clip_fraction           | 0.117        |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -0.987       |
+|    explained_variance      | 0.965        |
+|    learning_rate           | 0.0001       |
+|    loss                    | 28.9         |
+|    n_updates               | 4290         |
+|    policy_gradient_loss    | -0.00796     |
+|    value_loss              | 39.6         |
+| unified/                   |              |
+|    compliance_rate         | 0.999        |
+|    constraint_final_mean   | 76.7         |
+|    cost_final_mean         | 2.42e+03     |
+|    cost_reduction_pct_mean | 78.1         |
+|    exec_cost_final_mean    | 2.42e+03     |
+|    exec_reduction_pct_mean | 78.1         |
+|    keys_cost_final_mean    | 0.973        |
+|    keys_reduction_pct_mean | -97.3        |
+|    violation_mean          | 0.0909       |
+---------------------------------------------
+[Step Progress] 4,703,328 / 5,000,000 (94.07%) | Elapsed: 68:07:48 | ETA: 04:17:50 | FPS:  22.4 (avg:  19.2) | Cost Red: +77.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,705,344 / 5,000,000 (94.11%) | Elapsed: 68:08:51 | ETA: 04:16:03 | FPS:  32.3 (avg:  19.2) | Cost Red: +80.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,707,360 / 5,000,000 (94.15%) | Elapsed: 68:09:48 | ETA: 04:14:14 | FPS:  35.3 (avg:  19.2) | Cost Red: +79.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,709,376 / 5,000,000 (94.19%) | Elapsed: 68:11:21 | ETA: 04:12:29 | FPS:  21.7 (avg:  19.2) | Cost Red: +79.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,711,392 / 5,000,000 (94.23%) | Elapsed: 68:12:52 | ETA: 04:10:43 | FPS:  22.2 (avg:  19.2) | Cost Red: +77.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,713,408 / 5,000,000 (94.27%) | Elapsed: 68:14:11 | ETA: 04:08:56 | FPS:  25.6 (avg:  19.2) | Cost Red: +75.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,715,424 / 5,000,000 (94.31%) | Elapsed: 68:15:53 | ETA: 04:07:11 | FPS:  19.7 (avg:  19.2) | Cost Red: +80.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,717,440 / 5,000,000 (94.35%) | Elapsed: 68:17:20 | ETA: 04:05:25 | FPS:  23.1 (avg:  19.2) | Cost Red: +83.6% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,718,592 / 5,000,000 (94.37%)] Elapsed: 68:17:56 | FPS: 19.2 | λ: 0.0000 ---
+    Cost Red: +77.8% (Exec: +77.8%, Keys: -106.5%) | Constraint Mean: 79.4 | Safe Compliance: 100.0%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 13.8         |
+|    ep_rew_mean             | 64.4         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 288          |
+|    time_elapsed            | 245877       |
+|    total_timesteps         | 4718592      |
+| train/                     |              |
+|    approx_kl               | 0.0047210525 |
+|    clip_fraction           | 0.136        |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -1.14        |
+|    explained_variance      | 0.928        |
+|    learning_rate           | 0.0001       |
+|    loss                    | 43           |
+|    n_updates               | 4305         |
+|    policy_gradient_loss    | -0.0101      |
+|    value_loss              | 84.2         |
+| unified/                   |              |
+|    compliance_rate         | 1            |
+|    constraint_final_mean   | 79.4         |
+|    cost_final_mean         | 2.78e+03     |
+|    cost_reduction_pct_mean | 77.8         |
+|    exec_cost_final_mean    | 2.78e+03     |
+|    exec_reduction_pct_mean | 77.8         |
+|    keys_cost_final_mean    | 1.07         |
+|    keys_reduction_pct_mean | -107         |
+|    violation_mean          | 0            |
+---------------------------------------------
+[Step Progress] 4,719,456 / 5,000,000 (94.39%) | Elapsed: 68:18:50 | ETA: 04:03:39 | FPS:  22.6 (avg:  19.2) | Cost Red: +75.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,721,472 / 5,000,000 (94.43%) | Elapsed: 68:20:37 | ETA: 04:01:54 | FPS:  18.8 (avg:  19.2) | Cost Red: +78.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,723,488 / 5,000,000 (94.47%) | Elapsed: 68:21:47 | ETA: 04:00:07 | FPS:  28.8 (avg:  19.2) | Cost Red: +77.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,725,504 / 5,000,000 (94.51%) | Elapsed: 68:23:03 | ETA: 03:58:20 | FPS:  26.7 (avg:  19.2) | Cost Red: +77.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,727,520 / 5,000,000 (94.55%) | Elapsed: 68:24:39 | ETA: 03:56:34 | FPS:  20.9 (avg:  19.2) | Cost Red: +77.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,729,536 / 5,000,000 (94.59%) | Elapsed: 68:26:16 | ETA: 03:54:49 | FPS:  20.9 (avg:  19.2) | Cost Red: +78.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,731,552 / 5,000,000 (94.63%) | Elapsed: 68:27:21 | ETA: 03:53:02 | FPS:  31.0 (avg:  19.2) | Cost Red: +74.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,733,568 / 5,000,000 (94.67%) | Elapsed: 68:28:36 | ETA: 03:51:15 | FPS:  27.0 (avg:  19.2) | Cost Red: +72.9% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,734,976 / 5,000,000 (94.70%)] Elapsed: 68:29:57 | FPS: 19.2 | λ: 0.0000 ---
+    Cost Red: +77.7% (Exec: +77.7%, Keys: -103.4%) | Constraint Mean: 81.0 | Safe Compliance: 99.9%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 15.8         |
+|    ep_rew_mean             | 59.7         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 289          |
+|    time_elapsed            | 246597       |
+|    total_timesteps         | 4734976      |
+| train/                     |              |
+|    approx_kl               | 0.0050906865 |
+|    clip_fraction           | 0.143        |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -1.17        |
+|    explained_variance      | 0.905        |
+|    learning_rate           | 0.0001       |
+|    loss                    | 46.1         |
+|    n_updates               | 4320         |
+|    policy_gradient_loss    | -0.00548     |
+|    value_loss              | 104          |
+| unified/                   |              |
+|    compliance_rate         | 0.999        |
+|    constraint_final_mean   | 81           |
+|    cost_final_mean         | 2.66e+03     |
+|    cost_reduction_pct_mean | 77.7         |
+|    exec_cost_final_mean    | 2.66e+03     |
+|    exec_reduction_pct_mean | 77.7         |
+|    keys_cost_final_mean    | 1.03         |
+|    keys_reduction_pct_mean | -103         |
+|    violation_mean          | 0.000228     |
+---------------------------------------------
+[Step Progress] 4,735,584 / 5,000,000 (94.71%) | Elapsed: 68:30:49 | ETA: 03:49:31 | FPS:  15.2 (avg:  19.2) | Cost Red: +78.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,737,600 / 5,000,000 (94.75%) | Elapsed: 68:32:11 | ETA: 03:47:45 | FPS:  24.5 (avg:  19.2) | Cost Red: +81.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,739,616 / 5,000,000 (94.79%) | Elapsed: 68:33:27 | ETA: 03:45:59 | FPS:  26.6 (avg:  19.2) | Cost Red: +76.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,741,632 / 5,000,000 (94.83%) | Elapsed: 68:34:46 | ETA: 03:44:12 | FPS:  25.5 (avg:  19.2) | Cost Red: +76.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,743,648 / 5,000,000 (94.87%) | Elapsed: 68:36:25 | ETA: 03:42:27 | FPS:  20.3 (avg:  19.2) | Cost Red: +80.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,745,664 / 5,000,000 (94.91%) | Elapsed: 68:37:40 | ETA: 03:40:40 | FPS:  26.7 (avg:  19.2) | Cost Red: +81.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,747,680 / 5,000,000 (94.95%) | Elapsed: 68:39:09 | ETA: 03:38:54 | FPS:  22.7 (avg:  19.2) | Cost Red: +77.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,749,696 / 5,000,000 (94.99%) | Elapsed: 68:40:41 | ETA: 03:37:09 | FPS:  22.0 (avg:  19.2) | Cost Red: +78.2% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,751,360 / 5,000,000 (95.03%)] Elapsed: 68:41:44 | FPS: 19.2 | λ: 0.0000 ---
+    Cost Red: +78.2% (Exec: +78.2%, Keys: -106.5%) | Constraint Mean: 80.1 | Safe Compliance: 99.9%
+
+--------------------------------------------
+| rollout/                   |             |
+|    embed_fallback_count    | 0           |
+|    ep_len_mean             | 12.6        |
+|    ep_rew_mean             | 72.2        |
+| time/                      |             |
+|    fps                     | 19          |
+|    iterations              | 290         |
+|    time_elapsed            | 247305      |
+|    total_timesteps         | 4751360     |
+| train/                     |             |
+|    approx_kl               | 0.006060833 |
+|    clip_fraction           | 0.155       |
+|    clip_range              | 0.1         |
+|    clip_range_vf           | 0.2         |
+|    entropy_loss            | -1.27       |
+|    explained_variance      | 0.898       |
+|    learning_rate           | 0.0001      |
+|    loss                    | 77.3        |
+|    n_updates               | 4335        |
+|    policy_gradient_loss    | -0.00776    |
+|    value_loss              | 113         |
+| unified/                   |             |
+|    compliance_rate         | 0.999       |
+|    constraint_final_mean   | 80.1        |
+|    cost_final_mean         | 2.05e+03    |
+|    cost_reduction_pct_mean | 78.2        |
+|    exec_cost_final_mean    | 2.05e+03    |
+|    exec_reduction_pct_mean | 78.2        |
+|    keys_cost_final_mean    | 1.07        |
+|    keys_reduction_pct_mean | -107        |
+|    violation_mean          | 0.0516      |
+--------------------------------------------
+[Step Progress] 4,751,712 / 5,000,000 (95.03%) | Elapsed: 68:42:09 | ETA: 03:35:23 | FPS:  22.7 (avg:  19.2) | Cost Red: +84.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,753,728 / 5,000,000 (95.07%) | Elapsed: 68:43:51 | ETA: 03:33:38 | FPS:  19.7 (avg:  19.2) | Cost Red: +79.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,755,744 / 5,000,000 (95.11%) | Elapsed: 68:45:21 | ETA: 03:31:52 | FPS:  22.5 (avg:  19.2) | Cost Red: +79.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,757,760 / 5,000,000 (95.16%) | Elapsed: 68:46:57 | ETA: 03:30:07 | FPS:  20.9 (avg:  19.2) | Cost Red: +78.1% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,759,776 / 5,000,000 (95.20%) | Elapsed: 68:49:08 | ETA: 03:28:23 | FPS:  15.4 (avg:  19.2) | Cost Red: +80.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,761,792 / 5,000,000 (95.24%) | Elapsed: 68:50:21 | ETA: 03:26:37 | FPS:  27.9 (avg:  19.2) | Cost Red: +73.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,763,808 / 5,000,000 (95.28%) | Elapsed: 68:51:59 | ETA: 03:24:51 | FPS:  20.4 (avg:  19.2) | Cost Red: +79.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,765,824 / 5,000,000 (95.32%) | Elapsed: 68:53:48 | ETA: 03:23:07 | FPS:  18.6 (avg:  19.2) | Cost Red: +78.4% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,767,744 / 5,000,000 (95.35%)] Elapsed: 68:55:10 | FPS: 19.2 | λ: 0.0000 ---
+    Cost Red: +78.6% (Exec: +78.6%, Keys: -101.8%) | Constraint Mean: 78.2 | Safe Compliance: 99.9%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 11.7         |
+|    ep_rew_mean             | 67.9         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 291          |
+|    time_elapsed            | 248110       |
+|    total_timesteps         | 4767744      |
+| train/                     |              |
+|    approx_kl               | 0.0064781457 |
+|    clip_fraction           | 0.172        |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -1.18        |
+|    explained_variance      | 0.93         |
+|    learning_rate           | 0.0001       |
+|    loss                    | 30.4         |
+|    n_updates               | 4350         |
+|    policy_gradient_loss    | -0.00848     |
+|    value_loss              | 83.1         |
+| unified/                   |              |
+|    compliance_rate         | 0.999        |
+|    constraint_final_mean   | 78.2         |
+|    cost_final_mean         | 1.83e+03     |
+|    cost_reduction_pct_mean | 78.6         |
+|    exec_cost_final_mean    | 1.83e+03     |
+|    exec_reduction_pct_mean | 78.6         |
+|    keys_cost_final_mean    | 1.02         |
+|    keys_reduction_pct_mean | -102         |
+|    violation_mean          | 0.0453       |
+---------------------------------------------
+[Step Progress] 4,767,840 / 5,000,000 (95.36%) | Elapsed: 68:55:32 | ETA: 03:21:22 | FPS:  19.3 (avg:  19.2) | Cost Red: +76.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,769,856 / 5,000,000 (95.40%) | Elapsed: 68:57:14 | ETA: 03:19:37 | FPS:  19.8 (avg:  19.2) | Cost Red: +76.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,771,872 / 5,000,000 (95.44%) | Elapsed: 68:58:43 | ETA: 03:17:51 | FPS:  22.7 (avg:  19.2) | Cost Red: +74.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,773,888 / 5,000,000 (95.48%) | Elapsed: 69:00:16 | ETA: 03:16:06 | FPS:  21.6 (avg:  19.2) | Cost Red: +78.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,775,904 / 5,000,000 (95.52%) | Elapsed: 69:01:37 | ETA: 03:14:20 | FPS:  24.9 (avg:  19.2) | Cost Red: +77.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,777,920 / 5,000,000 (95.56%) | Elapsed: 69:02:38 | ETA: 03:12:33 | FPS:  32.9 (avg:  19.2) | Cost Red: +69.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,779,936 / 5,000,000 (95.60%) | Elapsed: 69:04:34 | ETA: 03:10:48 | FPS:  17.4 (avg:  19.2) | Cost Red: +75.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,781,952 / 5,000,000 (95.64%) | Elapsed: 69:05:54 | ETA: 03:09:02 | FPS:  25.1 (avg:  19.2) | Cost Red: +75.7% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,783,968 / 5,000,000 (95.68%) | Elapsed: 69:07:15 | ETA: 03:07:16 | FPS:  25.1 (avg:  19.2) | Cost Red: +77.9% | Compl:  99.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,784,128 / 5,000,000 (95.68%)] Elapsed: 69:07:22 | FPS: 19.2 | λ: 0.0000 ---
+    Cost Red: +76.3% (Exec: +76.3%, Keys: -101.9%) | Constraint Mean: 78.1 | Safe Compliance: 99.7%
+
+--------------------------------------------
+| rollout/                   |             |
+|    embed_fallback_count    | 0           |
+|    ep_len_mean             | 14.2        |
+|    ep_rew_mean             | 59.4        |
+| time/                      |             |
+|    fps                     | 19          |
+|    iterations              | 292         |
+|    time_elapsed            | 248842      |
+|    total_timesteps         | 4784128     |
+| train/                     |             |
+|    approx_kl               | 0.007873521 |
+|    clip_fraction           | 0.156       |
+|    clip_range              | 0.1         |
+|    clip_range_vf           | 0.2         |
+|    entropy_loss            | -0.931      |
+|    explained_variance      | 0.965       |
+|    learning_rate           | 0.0001      |
+|    loss                    | 11.7        |
+|    n_updates               | 4365        |
+|    policy_gradient_loss    | -0.00863    |
+|    value_loss              | 39.1        |
+| unified/                   |             |
+|    compliance_rate         | 0.997       |
+|    constraint_final_mean   | 78.1        |
+|    cost_final_mean         | 2.34e+03    |
+|    cost_reduction_pct_mean | 76.3        |
+|    exec_cost_final_mean    | 2.34e+03    |
+|    exec_reduction_pct_mean | 76.3        |
+|    keys_cost_final_mean    | 1.02        |
+|    keys_reduction_pct_mean | -102        |
+|    violation_mean          | 0.00356     |
+--------------------------------------------
+[Step Progress] 4,785,984 / 5,000,000 (95.72%) | Elapsed: 69:09:02 | ETA: 03:05:32 | FPS:  18.8 (avg:  19.2) | Cost Red: +79.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,788,000 / 5,000,000 (95.76%) | Elapsed: 69:10:31 | ETA: 03:03:46 | FPS:  22.6 (avg:  19.2) | Cost Red: +79.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,790,016 / 5,000,000 (95.80%) | Elapsed: 69:11:33 | ETA: 03:01:59 | FPS:  32.4 (avg:  19.2) | Cost Red: +72.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,792,032 / 5,000,000 (95.84%) | Elapsed: 69:13:03 | ETA: 03:00:14 | FPS:  22.5 (avg:  19.2) | Cost Red: +76.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,794,048 / 5,000,000 (95.88%) | Elapsed: 69:14:45 | ETA: 02:58:29 | FPS:  19.7 (avg:  19.2) | Cost Red: +81.7% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,796,064 / 5,000,000 (95.92%) | Elapsed: 69:15:44 | ETA: 02:56:42 | FPS:  34.2 (avg:  19.2) | Cost Red: +76.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,798,080 / 5,000,000 (95.96%) | Elapsed: 69:17:22 | ETA: 02:54:57 | FPS:  20.6 (avg:  19.2) | Cost Red: +73.0% | Compl:  99.0% | λ: 0.0000
+
+[34m=========================================================================================================[0m
+[1mStep 4,800,000 [Evaluation]: Starting Pareto & Safe Execution Evaluation (10 front points, 69 benchmarks each)[0m
+[34m=========================================================================================================[0m
+[1mPt  | Preference w             | Exec Red% (Safe/Raw)   | Keys Red% (Safe/Raw)   | Avg Noise      | Safe Status / Rollback[0m
+---------------------------------------------------------------------------------------------------------
+#1  | [ops=1.00, keys=0.00] | +58.0% / +48.5%        | -69.6% / -92.8%        | 181.0 / 2608885 bits | [91m 75.4% SAFE[0m (Rollback: 100%)
+#2  | [ops=0.90, keys=0.10] | +60.4% / +52.2%        | -49.3% / -56.5%        | 180.3 / 2478463 bits | [93m 84.1% SAFE[0m (Rollback: 100%)
+#3  | [ops=0.80, keys=0.20] | +58.8% / +52.5%        | -20.3% / -20.3%        | 180.9 / 1956745 bits | [91m 78.3% SAFE[0m (Rollback: 100%)
+#4  | [ops=0.70, keys=0.30] | +58.1% / +56.5%        |  +2.9% / +14.5%        | 180.9 / 2478467 bits | [91m 78.3% SAFE[0m (Rollback: 99%)
+#5  | [ops=0.60, keys=0.40] | +56.3% / +55.4%        | +27.5% / +44.9%        | 180.9 / 1826328 bits | [91m 75.4% SAFE[0m (Rollback: 99%)
+#6  | [ops=0.50, keys=0.50] | +50.9% / +52.4%        | +39.1% / +55.1%        | 179.9 / 2348036 bits | [91m 73.9% SAFE[0m (Rollback: 99%)
+#7  | [ops=0.40, keys=0.60] | +51.0% / +53.9%        | +53.6% / +62.3%        | 180.4 / 2217600 bits | [91m 79.7% SAFE[0m (Rollback: 96%)
+#8  | [ops=0.30, keys=0.70] | +51.1% / +52.4%        | +63.8% / +66.7%        | 173.2 / 1695873 bits | [91m 78.3% SAFE[0m (Rollback: 91%)
+#9  | [ops=0.20, keys=0.80] | +43.1% / +45.0%        | +76.8% / +78.3%        | 176.8 / 2739320 bits | [91m 78.3% SAFE[0m (Rollback: 83%)
+#10 | [ops=0.10, keys=0.90] | +33.6% / +36.0%        | +92.8% / +92.8%        | 175.5 / 2869756 bits | [93m 81.2% SAFE[0m (Rollback: 70%)
+---------------------------------------------------------------------------------------------------------
+[1mFront Summary (Step 4,800,000):[0m
+  • [1mMean Pareto Reward[0m        : [96m6.1384[0m +/- 18.4095
+  • [1mSafe Compliance Rate[0m      : [91m78.3% SAFE[0m (150 total violations / 690 evaluations)
+  • [1mSafety Rollback Rate[0m      : [96m93.5%[0m (rescued infeasible trajectories)
+  • [1mSafe Exec Cost Red% [0m      : [92m+52.1%[0m (Raw: +50.5%) [FHE Exec Time/Ops]
+  • [1mSafe Total Cost Red%[0m      : [92m+52.1%[0m (Raw: +50.5%)
+  • [1mSafe Keys Cost Red% [0m      : [92m+21.7%[0m (Raw: +24.5%)
+  • [1mAvg Safe Headroom   [0m      : [96m+2321768.3 bits[0m
+  • [1mAvg RL Inference Time[0m     : 3602.6 ms / benchmark
+  • [1mAvg Episode Length  [0m      : 35.0 steps
+[34m=========================================================================================================[0m
+
+-------------------------------------------------
+| eval/                           |             |
+|    constraint_w_0.00            | 181         |
+|    constraint_w_0.10            | 180         |
+|    constraint_w_0.20            | 181         |
+|    constraint_w_0.30            | 181         |
+|    constraint_w_0.40            | 181         |
+|    constraint_w_0.50            | 180         |
+|    constraint_w_0.60            | 180         |
+|    constraint_w_0.70            | 173         |
+|    constraint_w_0.80            | 177         |
+|    constraint_w_0.90            | 175         |
+|    pareto_avg_ep_length         | 35          |
+|    pareto_avg_margin            | 2.32e+06    |
+|    pareto_avg_raw_cost_red_pct  | 50.5        |
+|    pareto_avg_raw_exec_red_pct  | 50.5        |
+|    pareto_avg_reward            | 6.14        |
+|    pareto_avg_rl_time_ms        | 3.6e+03     |
+|    pareto_avg_safe_cost_red_pct | 52.1        |
+|    pareto_avg_safe_exec_red_pct | 52.1        |
+|    pareto_avg_safe_keys_red_pct | 21.7        |
+|    pareto_avg_violation         | 22.7        |
+|    pareto_safe_compliance_rate  | 78.3        |
+|    pareto_safety_rollback_rate  | 93.5        |
+|    raw_cost_red_w_0.00          | 48.5        |
+|    raw_cost_red_w_0.10          | 52.2        |
+|    raw_cost_red_w_0.20          | 52.5        |
+|    raw_cost_red_w_0.30          | 56.5        |
+|    raw_cost_red_w_0.40          | 55.4        |
+|    raw_cost_red_w_0.50          | 52.4        |
+|    raw_cost_red_w_0.60          | 53.9        |
+|    raw_cost_red_w_0.70          | 52.4        |
+|    raw_cost_red_w_0.80          | 45          |
+|    raw_cost_red_w_0.90          | 36          |
+|    raw_exec_red_w_0.00          | 48.5        |
+|    raw_exec_red_w_0.10          | 52.2        |
+|    raw_exec_red_w_0.20          | 52.5        |
+|    raw_exec_red_w_0.30          | 56.5        |
+|    raw_exec_red_w_0.40          | 55.4        |
+|    raw_exec_red_w_0.50          | 52.4        |
+|    raw_exec_red_w_0.60          | 53.9        |
+|    raw_exec_red_w_0.70          | 52.4        |
+|    raw_exec_red_w_0.80          | 45          |
+|    raw_exec_red_w_0.90          | 36          |
+|    raw_keys_red_w_0.00          | -92.8       |
+|    raw_keys_red_w_0.10          | -56.5       |
+|    raw_keys_red_w_0.20          | -20.3       |
+|    raw_keys_red_w_0.30          | 14.5        |
+|    raw_keys_red_w_0.40          | 44.9        |
+|    raw_keys_red_w_0.50          | 55.1        |
+|    raw_keys_red_w_0.60          | 62.3        |
+|    raw_keys_red_w_0.70          | 66.7        |
+|    raw_keys_red_w_0.80          | 78.3        |
+|    raw_keys_red_w_0.90          | 92.8        |
+|    reward_w_0.00                | 34          |
+|    reward_w_0.10                | 36.1        |
+|    reward_w_0.20                | 21          |
+|    reward_w_0.30                | 14.5        |
+|    reward_w_0.40                | 5.38        |
+|    reward_w_0.50                | -4.33       |
+|    reward_w_0.60                | -3.54       |
+|    reward_w_0.70                | -9.87       |
+|    reward_w_0.80                | -15.8       |
+|    reward_w_0.90                | -15.9       |
+|    rl_time_ms_w_0.00            | 9.25e+03    |
+|    rl_time_ms_w_0.10            | 7.51e+03    |
+|    rl_time_ms_w_0.20            | 4.93e+03    |
+|    rl_time_ms_w_0.30            | 2.5e+03     |
+|    rl_time_ms_w_0.40            | 3.63e+03    |
+|    rl_time_ms_w_0.50            | 2.54e+03    |
+|    rl_time_ms_w_0.60            | 1.71e+03    |
+|    rl_time_ms_w_0.70            | 1.88e+03    |
+|    rl_time_ms_w_0.80            | 1.18e+03    |
+|    rl_time_ms_w_0.90            | 893         |
+|    safe_cost_red_w_0.00         | 58          |
+|    safe_cost_red_w_0.10         | 60.4        |
+|    safe_cost_red_w_0.20         | 58.8        |
+|    safe_cost_red_w_0.30         | 58.1        |
+|    safe_cost_red_w_0.40         | 56.3        |
+|    safe_cost_red_w_0.50         | 50.9        |
+|    safe_cost_red_w_0.60         | 51          |
+|    safe_cost_red_w_0.70         | 51.1        |
+|    safe_cost_red_w_0.80         | 43.1        |
+|    safe_cost_red_w_0.90         | 33.6        |
+|    safe_exec_red_w_0.00         | 58          |
+|    safe_exec_red_w_0.10         | 60.4        |
+|    safe_exec_red_w_0.20         | 58.8        |
+|    safe_exec_red_w_0.30         | 58.1        |
+|    safe_exec_red_w_0.40         | 56.3        |
+|    safe_exec_red_w_0.50         | 50.9        |
+|    safe_exec_red_w_0.60         | 51          |
+|    safe_exec_red_w_0.70         | 51.1        |
+|    safe_exec_red_w_0.80         | 43.1        |
+|    safe_exec_red_w_0.90         | 33.6        |
+|    safe_keys_red_w_0.00         | -69.6       |
+|    safe_keys_red_w_0.10         | -49.3       |
+|    safe_keys_red_w_0.20         | -20.3       |
+|    safe_keys_red_w_0.30         | 2.9         |
+|    safe_keys_red_w_0.40         | 27.5        |
+|    safe_keys_red_w_0.50         | 39.1        |
+|    safe_keys_red_w_0.60         | 53.6        |
+|    safe_keys_red_w_0.70         | 63.8        |
+|    safe_keys_red_w_0.80         | 76.8        |
+|    safe_keys_red_w_0.90         | 92.8        |
+|    safe_rate_w_0.00             | 75.4        |
+|    safe_rate_w_0.10             | 84.1        |
+|    safe_rate_w_0.20             | 78.3        |
+|    safe_rate_w_0.30             | 78.3        |
+|    safe_rate_w_0.40             | 75.4        |
+|    safe_rate_w_0.50             | 73.9        |
+|    safe_rate_w_0.60             | 79.7        |
+|    safe_rate_w_0.70             | 78.3        |
+|    safe_rate_w_0.80             | 78.3        |
+|    safe_rate_w_0.90             | 81.2        |
+|    safety_act_rate_w_0.00       | 100         |
+|    safety_act_rate_w_0.10       | 100         |
+|    safety_act_rate_w_0.20       | 100         |
+|    safety_act_rate_w_0.30       | 98.6        |
+|    safety_act_rate_w_0.40       | 98.6        |
+|    safety_act_rate_w_0.50       | 98.6        |
+|    safety_act_rate_w_0.60       | 95.7        |
+|    safety_act_rate_w_0.70       | 91.3        |
+|    safety_act_rate_w_0.80       | 82.6        |
+|    safety_act_rate_w_0.90       | 69.6        |
+|    violation_w_0.00             | 31.7        |
+|    violation_w_0.10             | 20.2        |
+|    violation_w_0.20             | 26.1        |
+|    violation_w_0.30             | 17.9        |
+|    violation_w_0.40             | 28.3        |
+|    violation_w_0.50             | 23.5        |
+|    violation_w_0.60             | 21.8        |
+|    violation_w_0.70             | 23.1        |
+|    violation_w_0.80             | 20.5        |
+|    violation_w_0.90             | 13.7        |
+| train/                          |             |
+|    approx_kl                    | 0.006471567 |
+|    clip_fraction                | 0.126       |
+|    clip_range                   | 0.1         |
+|    clip_range_vf                | 0.2         |
+|    entropy_loss                 | -0.913      |
+|    explained_variance           | 0.949       |
+|    learning_rate                | 0.0001      |
+|    loss                         | 35.1        |
+|    n_updates                    | 4380        |
+|    policy_gradient_loss         | -0.00815    |
+|    value_loss                   | 65.3        |
+-------------------------------------------------
+[Step Progress] 4,800,096 / 5,000,000 (96.00%) | Elapsed: 69:59:55 | ETA: 02:54:54 | FPS:   0.8 (avg:  19.0) | Cost Red: +78.5% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,800,512 / 5,000,000 (96.01%)] Elapsed: 70:00:05 | FPS: 19.0 | λ: 0.0000 ---
+    Cost Red: +77.2% (Exec: +77.2%, Keys: -97.8%) | Constraint Mean: 79.3 | Safe Compliance: 99.8%
+
+-----------------------------------------
+| rollout/                   |          |
+|    embed_fallback_count    | 0        |
+|    ep_len_mean             | 15.4     |
+|    ep_rew_mean             | 60.6     |
+| time/                      |          |
+|    fps                     | 19       |
+|    iterations              | 293      |
+|    time_elapsed            | 252005   |
+|    total_timesteps         | 4800512  |
+| unified/                   |          |
+|    compliance_rate         | 0.998    |
+|    constraint_final_mean   | 79.3     |
+|    cost_final_mean         | 2.4e+03  |
+|    cost_reduction_pct_mean | 77.2     |
+|    exec_cost_final_mean    | 2.4e+03  |
+|    exec_reduction_pct_mean | 77.2     |
+|    keys_cost_final_mean    | 0.978    |
+|    keys_reduction_pct_mean | -97.8    |
+|    violation_mean          | 0.00138  |
+-----------------------------------------
+[Step Progress] 4,802,112 / 5,000,000 (96.04%) | Elapsed: 70:01:23 | ETA: 02:53:07 | FPS:  22.7 (avg:  19.0) | Cost Red: +74.7% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,804,128 / 5,000,000 (96.08%) | Elapsed: 70:02:32 | ETA: 02:51:20 | FPS:  29.2 (avg:  19.1) | Cost Red: +81.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,806,144 / 5,000,000 (96.12%) | Elapsed: 70:03:40 | ETA: 02:49:33 | FPS:  29.7 (avg:  19.1) | Cost Red: +78.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,808,160 / 5,000,000 (96.16%) | Elapsed: 70:04:44 | ETA: 02:47:45 | FPS:  31.7 (avg:  19.1) | Cost Red: +79.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,810,176 / 5,000,000 (96.20%) | Elapsed: 70:05:55 | ETA: 02:45:58 | FPS:  28.2 (avg:  19.1) | Cost Red: +68.5% | Compl:  98.0% | λ: 0.0000
+[Step Progress] 4,812,192 / 5,000,000 (96.24%) | Elapsed: 70:07:25 | ETA: 02:44:12 | FPS:  22.4 (avg:  19.1) | Cost Red: +83.6% | Compl:  97.0% | λ: 0.0000
+[Step Progress] 4,814,208 / 5,000,000 (96.28%) | Elapsed: 70:08:44 | ETA: 02:42:25 | FPS:  25.6 (avg:  19.1) | Cost Red: +80.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,816,224 / 5,000,000 (96.32%) | Elapsed: 70:10:13 | ETA: 02:40:39 | FPS:  22.5 (avg:  19.1) | Cost Red: +78.2% | Compl:  99.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,816,896 / 5,000,000 (96.34%)] Elapsed: 70:10:42 | FPS: 19.1 | λ: 0.0000 ---
+    Cost Red: +77.7% (Exec: +77.7%, Keys: -99.2%) | Constraint Mean: 83.0 | Safe Compliance: 99.2%
+
+--------------------------------------------
+| rollout/                   |             |
+|    embed_fallback_count    | 0           |
+|    ep_len_mean             | 14.6        |
+|    ep_rew_mean             | 57.4        |
+| time/                      |             |
+|    fps                     | 19          |
+|    iterations              | 294         |
+|    time_elapsed            | 252642      |
+|    total_timesteps         | 4816896     |
+| train/                     |             |
+|    approx_kl               | 0.009645021 |
+|    clip_fraction           | 0.177       |
+|    clip_range              | 0.1         |
+|    clip_range_vf           | 0.2         |
+|    entropy_loss            | -0.99       |
+|    explained_variance      | 0.968       |
+|    learning_rate           | 0.0001      |
+|    loss                    | 22.1        |
+|    n_updates               | 4395        |
+|    policy_gradient_loss    | -0.00817    |
+|    value_loss              | 43.6        |
+| unified/                   |             |
+|    compliance_rate         | 0.992       |
+|    constraint_final_mean   | 83          |
+|    cost_final_mean         | 2.47e+03    |
+|    cost_reduction_pct_mean | 77.7        |
+|    exec_cost_final_mean    | 2.47e+03    |
+|    exec_reduction_pct_mean | 77.7        |
+|    keys_cost_final_mean    | 0.992       |
+|    keys_reduction_pct_mean | -99.2       |
+|    violation_mean          | 0.324       |
+--------------------------------------------
+[Step Progress] 4,818,240 / 5,000,000 (96.36%) | Elapsed: 70:11:50 | ETA: 02:38:53 | FPS:  20.8 (avg:  19.1) | Cost Red: +75.3% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,820,256 / 5,000,000 (96.41%) | Elapsed: 70:12:56 | ETA: 02:37:05 | FPS:  30.4 (avg:  19.1) | Cost Red: +81.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,822,272 / 5,000,000 (96.45%) | Elapsed: 70:14:25 | ETA: 02:35:19 | FPS:  22.8 (avg:  19.1) | Cost Red: +79.3% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,824,288 / 5,000,000 (96.49%) | Elapsed: 70:15:39 | ETA: 02:33:32 | FPS:  27.1 (avg:  19.1) | Cost Red: +83.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,826,304 / 5,000,000 (96.53%) | Elapsed: 70:16:52 | ETA: 02:31:45 | FPS:  27.5 (avg:  19.1) | Cost Red: +80.0% | Compl:  98.0% | λ: 0.0000
+[Step Progress] 4,828,320 / 5,000,000 (96.57%) | Elapsed: 70:18:06 | ETA: 02:29:58 | FPS:  27.4 (avg:  19.1) | Cost Red: +77.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,830,336 / 5,000,000 (96.61%) | Elapsed: 70:19:16 | ETA: 02:28:12 | FPS:  28.9 (avg:  19.1) | Cost Red: +79.7% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,832,352 / 5,000,000 (96.65%) | Elapsed: 70:20:11 | ETA: 02:26:24 | FPS:  36.4 (avg:  19.1) | Cost Red: +75.5% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,833,280 / 5,000,000 (96.67%)] Elapsed: 70:20:59 | FPS: 19.1 | λ: 0.0000 ---
+    Cost Red: +79.4% (Exec: +79.4%, Keys: -92.4%) | Constraint Mean: 81.2 | Safe Compliance: 99.4%
+
+--------------------------------------------
+| rollout/                   |             |
+|    embed_fallback_count    | 0           |
+|    ep_len_mean             | 13.4        |
+|    ep_rew_mean             | 62.3        |
+| time/                      |             |
+|    fps                     | 19          |
+|    iterations              | 295         |
+|    time_elapsed            | 253259      |
+|    total_timesteps         | 4833280     |
+| train/                     |             |
+|    approx_kl               | 0.006555406 |
+|    clip_fraction           | 0.17        |
+|    clip_range              | 0.1         |
+|    clip_range_vf           | 0.2         |
+|    entropy_loss            | -1.11       |
+|    explained_variance      | 0.932       |
+|    learning_rate           | 0.0001      |
+|    loss                    | 57.1        |
+|    n_updates               | 4410        |
+|    policy_gradient_loss    | -0.0102     |
+|    value_loss              | 106         |
+| unified/                   |             |
+|    compliance_rate         | 0.994       |
+|    constraint_final_mean   | 81.2        |
+|    cost_final_mean         | 1.85e+03    |
+|    cost_reduction_pct_mean | 79.4        |
+|    exec_cost_final_mean    | 1.85e+03    |
+|    exec_reduction_pct_mean | 79.4        |
+|    keys_cost_final_mean    | 0.924       |
+|    keys_reduction_pct_mean | -92.4       |
+|    violation_mean          | 0.277       |
+--------------------------------------------
+[Step Progress] 4,834,368 / 5,000,000 (96.69%) | Elapsed: 70:21:52 | ETA: 02:24:38 | FPS:  19.9 (avg:  19.1) | Cost Red: +78.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,836,384 / 5,000,000 (96.73%) | Elapsed: 70:23:05 | ETA: 02:22:52 | FPS:  27.9 (avg:  19.1) | Cost Red: +79.6% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,838,400 / 5,000,000 (96.77%) | Elapsed: 70:24:25 | ETA: 02:21:05 | FPS:  25.2 (avg:  19.1) | Cost Red: +80.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,840,416 / 5,000,000 (96.81%) | Elapsed: 70:25:44 | ETA: 02:19:19 | FPS:  25.5 (avg:  19.1) | Cost Red: +79.5% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,842,432 / 5,000,000 (96.85%) | Elapsed: 70:27:28 | ETA: 02:17:33 | FPS:  19.3 (avg:  19.1) | Cost Red: +78.2% | Compl:  98.0% | λ: 0.0000
+[Step Progress] 4,844,448 / 5,000,000 (96.89%) | Elapsed: 70:28:48 | ETA: 02:15:47 | FPS:  25.2 (avg:  19.1) | Cost Red: +84.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,846,464 / 5,000,000 (96.93%) | Elapsed: 70:30:23 | ETA: 02:14:01 | FPS:  21.2 (avg:  19.1) | Cost Red: +81.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,848,480 / 5,000,000 (96.97%) | Elapsed: 70:31:55 | ETA: 02:12:15 | FPS:  22.1 (avg:  19.1) | Cost Red: +78.8% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,849,664 / 5,000,000 (96.99%)] Elapsed: 70:32:36 | FPS: 19.1 | λ: 0.0000 ---
+    Cost Red: +80.4% (Exec: +80.4%, Keys: -98.2%) | Constraint Mean: 83.5 | Safe Compliance: 99.5%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 11.4         |
+|    ep_rew_mean             | 67.8         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 296          |
+|    time_elapsed            | 253957       |
+|    total_timesteps         | 4849664      |
+| train/                     |              |
+|    approx_kl               | 0.0052045686 |
+|    clip_fraction           | 0.152        |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -0.969       |
+|    explained_variance      | 0.948        |
+|    learning_rate           | 0.0001       |
+|    loss                    | 56.8         |
+|    n_updates               | 4425         |
+|    policy_gradient_loss    | -0.0122      |
+|    value_loss              | 83.8         |
+| unified/                   |              |
+|    compliance_rate         | 0.995        |
+|    constraint_final_mean   | 83.5         |
+|    cost_final_mean         | 1.84e+03     |
+|    cost_reduction_pct_mean | 80.4         |
+|    exec_cost_final_mean    | 1.84e+03     |
+|    exec_reduction_pct_mean | 80.4         |
+|    keys_cost_final_mean    | 0.982        |
+|    keys_reduction_pct_mean | -98.2        |
+|    violation_mean          | 0.328        |
+---------------------------------------------
+[Step Progress] 4,850,496 / 5,000,000 (97.01%) | Elapsed: 70:33:13 | ETA: 02:10:28 | FPS:  25.9 (avg:  19.1) | Cost Red: +83.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,852,512 / 5,000,000 (97.05%) | Elapsed: 70:34:22 | ETA: 02:08:42 | FPS:  29.1 (avg:  19.1) | Cost Red: +79.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,854,528 / 5,000,000 (97.09%) | Elapsed: 70:35:24 | ETA: 02:06:55 | FPS:  32.6 (avg:  19.1) | Cost Red: +85.7% | Compl:  99.0% | λ: 0.0000
+[Step Progress] 4,856,544 / 5,000,000 (97.13%) | Elapsed: 70:36:44 | ETA: 02:05:08 | FPS:  25.0 (avg:  19.1) | Cost Red: +84.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,858,560 / 5,000,000 (97.17%) | Elapsed: 70:37:53 | ETA: 02:03:22 | FPS:  29.2 (avg:  19.1) | Cost Red: +83.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,860,576 / 5,000,000 (97.21%) | Elapsed: 70:39:11 | ETA: 02:01:35 | FPS:  25.9 (avg:  19.1) | Cost Red: +84.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,862,592 / 5,000,000 (97.25%) | Elapsed: 70:41:03 | ETA: 01:59:50 | FPS:  18.0 (avg:  19.1) | Cost Red: +81.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,864,608 / 5,000,000 (97.29%) | Elapsed: 70:42:21 | ETA: 01:58:04 | FPS:  25.9 (avg:  19.1) | Cost Red: +84.7% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,866,048 / 5,000,000 (97.32%)] Elapsed: 70:43:15 | FPS: 19.1 | λ: 0.0000 ---
+    Cost Red: +83.3% (Exec: +83.3%, Keys: -92.4%) | Constraint Mean: 77.6 | Safe Compliance: 99.7%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 11.3         |
+|    ep_rew_mean             | 67.5         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 297          |
+|    time_elapsed            | 254595       |
+|    total_timesteps         | 4866048      |
+| train/                     |              |
+|    approx_kl               | 0.0038879684 |
+|    clip_fraction           | 0.103        |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -0.831       |
+|    explained_variance      | 0.949        |
+|    learning_rate           | 0.0001       |
+|    loss                    | 64.7         |
+|    n_updates               | 4440         |
+|    policy_gradient_loss    | -0.00763     |
+|    value_loss              | 60.7         |
+| unified/                   |              |
+|    compliance_rate         | 0.997        |
+|    constraint_final_mean   | 77.6         |
+|    cost_final_mean         | 1.6e+03      |
+|    cost_reduction_pct_mean | 83.3         |
+|    exec_cost_final_mean    | 1.6e+03      |
+|    exec_reduction_pct_mean | 83.3         |
+|    keys_cost_final_mean    | 0.924        |
+|    keys_reduction_pct_mean | -92.4        |
+|    violation_mean          | 0.126        |
+---------------------------------------------
+[Step Progress] 4,866,624 / 5,000,000 (97.33%) | Elapsed: 70:43:48 | ETA: 01:56:18 | FPS:  23.1 (avg:  19.1) | Cost Red: +87.0% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,868,640 / 5,000,000 (97.37%) | Elapsed: 70:45:01 | ETA: 01:54:32 | FPS:  27.8 (avg:  19.1) | Cost Red: +82.7% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,870,656 / 5,000,000 (97.41%) | Elapsed: 70:46:27 | ETA: 01:52:46 | FPS:  23.3 (avg:  19.1) | Cost Red: +79.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,872,672 / 5,000,000 (97.45%) | Elapsed: 70:47:40 | ETA: 01:50:59 | FPS:  27.7 (avg:  19.1) | Cost Red: +83.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,874,688 / 5,000,000 (97.49%) | Elapsed: 70:49:12 | ETA: 01:49:13 | FPS:  22.0 (avg:  19.1) | Cost Red: +79.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,876,704 / 5,000,000 (97.53%) | Elapsed: 70:50:19 | ETA: 01:47:27 | FPS:  30.1 (avg:  19.1) | Cost Red: +81.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,878,720 / 5,000,000 (97.57%) | Elapsed: 70:51:28 | ETA: 01:45:41 | FPS:  29.3 (avg:  19.1) | Cost Red: +76.3% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,880,736 / 5,000,000 (97.61%) | Elapsed: 70:52:41 | ETA: 01:43:55 | FPS:  27.7 (avg:  19.1) | Cost Red: +84.1% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,882,432 / 5,000,000 (97.65%)] Elapsed: 70:53:48 | FPS: 19.1 | λ: 0.0000 ---
+    Cost Red: +81.4% (Exec: +81.4%, Keys: -101.0%) | Constraint Mean: 78.2 | Safe Compliance: 99.9%
+
+---------------------------------------------
+| rollout/                   |              |
+|    embed_fallback_count    | 0            |
+|    ep_len_mean             | 12.4         |
+|    ep_rew_mean             | 69.5         |
+| time/                      |              |
+|    fps                     | 19           |
+|    iterations              | 298          |
+|    time_elapsed            | 255229       |
+|    total_timesteps         | 4882432      |
+| train/                     |              |
+|    approx_kl               | 0.0038918657 |
+|    clip_fraction           | 0.106        |
+|    clip_range              | 0.1          |
+|    clip_range_vf           | 0.2          |
+|    entropy_loss            | -0.801       |
+|    explained_variance      | 0.923        |
+|    learning_rate           | 0.0001       |
+|    loss                    | 98.8         |
+|    n_updates               | 4455         |
+|    policy_gradient_loss    | -0.00739     |
+|    value_loss              | 106          |
+| unified/                   |              |
+|    compliance_rate         | 0.999        |
+|    constraint_final_mean   | 78.2         |
+|    cost_final_mean         | 1.37e+03     |
+|    cost_reduction_pct_mean | 81.4         |
+|    exec_cost_final_mean    | 1.37e+03     |
+|    exec_reduction_pct_mean | 81.4         |
+|    keys_cost_final_mean    | 1.01         |
+|    keys_reduction_pct_mean | -101         |
+|    violation_mean          | 0.0235       |
+---------------------------------------------
+[Step Progress] 4,882,752 / 5,000,000 (97.66%) | Elapsed: 70:54:15 | ETA: 01:42:09 | FPS:  21.5 (avg:  19.1) | Cost Red: +84.9% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,884,768 / 5,000,000 (97.70%) | Elapsed: 70:54:56 | ETA: 01:40:22 | FPS:  48.6 (avg:  19.1) | Cost Red: +87.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,886,784 / 5,000,000 (97.74%) | Elapsed: 70:55:46 | ETA: 01:38:35 | FPS:  40.2 (avg:  19.1) | Cost Red: +79.1% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,888,800 / 5,000,000 (97.78%) | Elapsed: 70:56:54 | ETA: 01:36:49 | FPS:  29.8 (avg:  19.1) | Cost Red: +78.5% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,890,816 / 5,000,000 (97.82%) | Elapsed: 70:58:17 | ETA: 01:35:03 | FPS:  24.3 (avg:  19.1) | Cost Red: +83.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,892,832 / 5,000,000 (97.86%) | Elapsed: 70:59:21 | ETA: 01:33:17 | FPS:  31.6 (avg:  19.1) | Cost Red: +76.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,894,848 / 5,000,000 (97.90%) | Elapsed: 71:00:33 | ETA: 01:31:31 | FPS:  27.7 (avg:  19.1) | Cost Red: +81.2% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,896,864 / 5,000,000 (97.94%) | Elapsed: 71:01:40 | ETA: 01:29:45 | FPS:  30.1 (avg:  19.2) | Cost Red: +82.8% | Compl: 100.0% | λ: 0.0000
+
+--- [Rollout Complete @ Step 4,898,816 / 5,000,000 (97.98%)] Elapsed: 71:02:41 | FPS: 19.2 | λ: 0.0000 ---
+    Cost Red: +82.0% (Exec: +82.0%, Keys: -95.9%) | Constraint Mean: 74.3 | Safe Compliance: 100.0%
+
+-------------------------------------------
+| rollout/                   |            |
+|    embed_fallback_count    | 0          |
+|    ep_len_mean             | 14.8       |
+|    ep_rew_mean             | 70.4       |
+| time/                      |            |
+|    fps                     | 19         |
+|    iterations              | 299        |
+|    time_elapsed            | 255761     |
+|    total_timesteps         | 4898816    |
+| train/                     |            |
+|    approx_kl               | 0.00538587 |
+|    clip_fraction           | 0.116      |
+|    clip_range              | 0.1        |
+|    clip_range_vf           | 0.2        |
+|    entropy_loss            | -0.842     |
+|    explained_variance      | 0.959      |
+|    learning_rate           | 0.0001     |
+|    loss                    | 24.5       |
+|    n_updates               | 4470       |
+|    policy_gradient_loss    | -0.00845   |
+|    value_loss              | 47.9       |
+| unified/                   |            |
+|    compliance_rate         | 1          |
+|    constraint_final_mean   | 74.3       |
+|    cost_final_mean         | 1.19e+03   |
+|    cost_reduction_pct_mean | 82         |
+|    exec_cost_final_mean    | 1.19e+03   |
+|    exec_reduction_pct_mean | 82         |
+|    keys_cost_final_mean    | 0.959      |
+|    keys_reduction_pct_mean | -95.9      |
+|    violation_mean          | 0          |
+-------------------------------------------
+[Step Progress] 4,898,880 / 5,000,000 (97.98%) | Elapsed: 71:02:57 | ETA: 01:27:59 | FPS:  26.3 (avg:  19.2) | Cost Red: +82.6% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,900,896 / 5,000,000 (98.02%) | Elapsed: 71:04:05 | ETA: 01:26:13 | FPS:  29.6 (avg:  19.2) | Cost Red: +80.4% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,902,912 / 5,000,000 (98.06%) | Elapsed: 71:05:13 | ETA: 01:24:27 | FPS:  29.8 (avg:  19.2) | Cost Red: +81.8% | Compl: 100.0% | λ: 0.0000
+[Step Progress] 4,904,928 / 5,000,000 (98.10%) | Elapsed: 71:06:14 | ETA: 01:22:41 | FPS:  33.2 (avg:  19.2) | Cost Red: +77.3% | Compl: 100.0% | λ: 0.0000
