@@ -37,6 +37,15 @@ FAMILY = [("dot_product", "Dot Product"), ("l2_distance", "L2 Distance"), ("hamm
           ("matrix_mul", "Mat. Mul."), ("max", "Max"), ("sort", "Sort"), ("tree", "Tree")]
 BUDGET_LABEL = {9000000: r"$\infty$"}
 
+# The 46 end-to-end benchmarks (SUITE of scripts/run_benchmarks_unified.py + the 6 polynomial trees)
+_SIZES = {"box_blur": [3, 4, 5], "gx_kernel": [3, 4, 5], "gy_kernel": [3, 4, 5],
+          "roberts_cross": [3, 4, 5], "matrix_mul": [3, 4, 5],
+          "dot_product": [4, 8, 16, 32], "hamming_dist": [4, 8, 16, 32], "l2_distance": [4, 8, 16, 32],
+          "lin_reg": [4, 8, 16, 32], "poly_reg": [4, 8, 16, 32], "max": [3, 4, 5], "sort": [3, 4]}
+SUITE46 = ({f"{b}_{n}" for b, sizes in _SIZES.items() for n in sizes}
+           | {f"tree_{r}-{d}_poly" for r in ("50-50", "100-50", "100-100") for d in (5, 10)})
+assert len(SUITE46) == 46
+
 
 def family(name):
     return next(label for prefix, label in FAMILY if name.startswith(prefix))
@@ -182,6 +191,13 @@ def main():
             sys.exit(f"Benchmarks in both runs: {sorted(dup)}")
         probes.append(p9)
     probes = pd.concat(probes, ignore_index=True)
+    if args.run9:
+        # the 43-run also has sizes 3 and 5 of dot_product / hamming_dist / l2_distance, which are
+        # not in the 46-benchmark suite (scripts/run_benchmarks_unified.py SUITE + 6 trees)
+        extra = sorted(set(probes.Expression) - SUITE46)
+        if extra:
+            print(f"Not in the 46-benchmark suite, dropped: {extra}")
+        probes = probes[probes.Expression.isin(SUITE46)]
     per = compute(probes)
     n = per.Benchmark.nunique()
     print(f"{n} benchmarks")
