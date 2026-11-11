@@ -20,7 +20,8 @@ from pathlib import Path
 
 import pandas as pd
 
-T = "circuit_execution_time (s)"
+T = "circuit_execution_time (s)"           # encrypt inputs + evaluate the circuit
+TT = "total_execution_time (s)"            # circuit + rotation key generation
 K = "rotation_keys_size (MB)"
 C = "compile_time (s)"
 
@@ -56,7 +57,7 @@ def main():
     m = pd.DataFrame({
         "benchmark": inp["benchmark"], "B": inp["B"],
         "init_noise": inp["initial_noise_est"],
-        "t_in": inp[T], "keys_in": inp[K], "ok_in": inp["status"].eq("ok"), "match_in": inp["outputs_match"],
+        "t_in": inp[T], "tt_in": inp[TT], "tt_cm": cm[TT], "tt_un": un[TT], "keys_in": inp[K], "ok_in": inp["status"].eq("ok"), "match_in": inp["outputs_match"],
         "t_cm": cm[T], "keys_cm": cm[K], "comp_cm": cm[C],
         "agent_noise_cm": cm["agent_noise_est"], "noise_cm": cm["safe_noise_est"],
         "ok_cm": cm["status"].eq("ok"), "match_cm": cm["outputs_match"], "cert_cm": cm["certified"],
@@ -97,6 +98,13 @@ def main():
             "Unc. rollback %": round(g.rollback_un.astype(bool).mean() * 100, 1),
             "CMO-RL exec red. %": red(g.t_cm, g.t_in),
             "Unc. exec red. %": red(g.t_un, g.t_in),
+            "CMO-RL total time red. %": red(g.tt_cm, g.tt_in),
+            "Unc. total time red. %": red(g.tt_un, g.tt_in),
+            "CMO-RL exec s (mean)": round(g.t_cm.mean(), 3),
+            "Unc. exec s (mean)": round(g.t_un.mean(), 3),
+            "CMO-RL total s (mean)": round(g.tt_cm.mean(), 3),
+            "Unc. total s (mean)": round(g.tt_un.mean(), 3),
+            "input total s (mean)": round(g.tt_in.mean(), 3),
             "CMO-RL keys MB": round(g.keys_cm.mean(), 1),
             "Unc. keys MB": round(g.keys_un.mean(), 1),
             "keys red. vs Unc. %": round((1 - g.keys_cm.sum() / g.keys_un.sum()) * 100, 1),
