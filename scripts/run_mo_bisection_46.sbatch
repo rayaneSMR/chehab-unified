@@ -17,6 +17,7 @@
 # Uses scripts/dump_benchmark_expressions.py and scripts/mo_metrics_46.py.
 # Requires the CHEHAB build (scripts/build_e2e_benchmarks.sh).
 
+#SBATCH --reservation=c2
 #SBATCH -p compute
 #SBATCH --mem 32GB
 #SBATCH -N 1
