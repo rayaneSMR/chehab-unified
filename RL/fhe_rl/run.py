@@ -138,7 +138,15 @@ def run_agent_unified(
         res = _run_single_episode(model, env, expr, budget, estimator, verifier, constraint_metric,
                                   preference_vector=preference, rollback=rollback, agent_budget=agent_budget)
     safe_expr = res["safe_expr"]
-    _write_compiler_output(safe_expr, output_file)
+    # FHE_RL_FOLD_CONSTANTS=1: fold the constant-only subexpressions of the program given to the
+    # compiler (CHEHAB cannot generate SEAL code for an operation between two plaintexts).
+    # The RL-side numbers below stay those of the agent's program.
+    compiled_expr, n_folded = safe_expr, 0
+    if os.environ.get("FHE_RL_FOLD_CONSTANTS", "0") == "1":
+        from .const_fold import fold_constants
+        compiled_expr, n_folded = fold_constants(safe_expr)
+        print(f"[unified run] constant folding: {n_folded} subexpression(s) folded", flush=True)
+    _write_compiler_output(compiled_expr, output_file)
 
     ops0, keys0 = _get_split_costs(expr)
     agent_ops, agent_keys = _get_split_costs(res["agent_final"]["expression"])
@@ -156,6 +164,7 @@ def run_agent_unified(
         "certified_remaining_bits": (res["certificate"].remaining_noise_budget_bits
                                      if res["certificate"] is not None else None),
         "input_expression": expr, "safe_expression": safe_expr,
+        "constants_folded": n_folded, "compiled_expression": compiled_expr,
         "compiler_expression": compiler_expr, "input_overridden": bool(override),
         "pipeline": "separated" if separated else "joint",
         "rollback": rollback, "method": constraint_method,

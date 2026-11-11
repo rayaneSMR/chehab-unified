@@ -33,7 +33,10 @@ def load(root, kind):
     if not files:
         sys.exit(f"No CSV in {root / kind}")
     d = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
-    d = d.drop_duplicates("dataset_line", keep="last").set_index("dataset_line").sort_index()
+    # a program run twice: keep the successful run, else the last one
+    d = (d.assign(_ok=d["status"].eq("ok")).sort_values("_ok", kind="stable")
+         .drop_duplicates("dataset_line", keep="last").drop(columns="_ok")
+         .set_index("dataset_line").sort_index())
     d["B"] = d["benchmark"].str.extract(r"thresh_b(\d+)_", expand=False).astype(int)
     return d
 
@@ -66,6 +69,8 @@ def main():
     root = Path(args.root)
     inp = load(root, "input")
     rows = [row("Unconstrained", load(root, "unconstrained_norollback"), inp, [230, 236], "agent_noise_est")]
+    if (root / "unconstrained").is_dir():   # same agent, rollback at B
+        rows.append(row("Unconstrained + rollback", load(root, "unconstrained"), inp, [230, 236], "safe_noise_est"))
     cm = load(root, "cmorl")
     rows += [row(f"Lagrangian (B = {b})", cm, inp, [b], "safe_noise_est") for b in (230, 236, 369)]
     tab = pd.DataFrame(rows).set_index("Agent")
@@ -76,10 +81,12 @@ def main():
     tab.round(3).to_csv(root / "table4_total_time.csv")
 
     print("\n% rows of tab:near-threshold (Violations, Time red., Key size, RL time)")
-    for i, (name, r) in enumerate(tab.iterrows()):
-        label = "Unconstrained" if i == 0 else rf"\ToolName{{}} ($B={name.split('= ')[1].rstrip(')')}$)"
+    names = list(tab.index)
+    for name, r in tab.iterrows():
+        label = name if name.startswith("Unconstrained") else rf"\ToolName{{}} ($B={name.split('= ')[1].rstrip(')')}$)"
+        last_unc = name.startswith("Unconstrained") and not names[names.index(name) + 1].startswith("Unconstrained")
         print(f"{label:<24} & {r['Violations (%)']:.1f} & {r['Total time red. (%)']:.1f} & "
-              f"{r['Key size (MB)']:.1f} & {r['RL time (s)']:.1f} \\\\" + ("\n\\midrule" if i == 0 else ""))
+              f"{r['Key size (MB)']:.1f} & {r['RL time (s)']:.1f} \\\\" + ("\n\\midrule" if last_unc else ""))
     print(f"\nWritten: {root / 'table4_total_time.csv'}")
 
 

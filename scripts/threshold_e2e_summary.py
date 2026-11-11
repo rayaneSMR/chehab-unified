@@ -32,10 +32,14 @@ def load(folder):
         sys.exit(f"No CSV in {folder}")
     df = pd.concat([pd.read_csv(f) for f in files], ignore_index=True)
     df["B"] = df["benchmark"].str.extract(r"thresh_b(\d+)_", expand=False).astype(int)
+    # a program run twice (e.g. a failed compile, then a rerun with constant folding):
+    # keep the successful run, else the last one
+    df = df.assign(_ok=df["status"].eq("ok")).sort_values("_ok", kind="stable")
     dup = df["dataset_line"].duplicated(keep="last")
     if dup.any():
-        print(f"  {folder}: {dup.sum()} duplicate lines, keeping the last run")
+        print(f"  {folder}: {dup.sum()} duplicate lines, keeping the successful (else last) run")
         df = df[~dup]
+    df = df.drop(columns="_ok")
     return df.set_index("dataset_line").sort_index()
 
 

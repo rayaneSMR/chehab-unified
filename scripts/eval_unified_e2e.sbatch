@@ -112,11 +112,15 @@ STAGE2_ARGS+=(--method "$METHOD")
 # AGENT_BUDGET=9000000: the agent runs with this budget, the rollback still uses BUDGET
 AGENT_BUDGET="${AGENT_BUDGET:-}"
 [ -n "$AGENT_BUDGET" ] && STAGE2_ARGS+=(--agent-budget "$AGENT_BUDGET")
+# FOLD_CONSTANTS=1: fold the constant-only subexpressions before compiling (plaintext-plaintext ops)
+FOLD_CONSTANTS="${FOLD_CONSTANTS:-0}"
+[ "$FOLD_CONSTANTS" = "1" ] && STAGE2_ARGS+=(--fold-constants)
 LINES="${LINES:-}"
 PASSTHROUGH="${PASSTHROUGH:-0}"
 [ -n "$LINES" ] && STAGE2_ARGS+=(--lines "$LINES") && TAG="${TAG}_L${LINES//,/_}"
 [ "$PASSTHROUGH" = "1" ] && STAGE2_ARGS+=(--passthrough) && TAG="${TAG}_input"
 [ -n "$AGENT_BUDGET" ] && TAG="${TAG}_agent${AGENT_BUDGET}"
+[ "$FOLD_CONSTANTS" = "1" ] && TAG="${TAG}_fold"
 if [ "$FRAMEWORK" = "original" ]; then
     OUT="$OUT_DIR/e2e_original_${TAG}_${JOB}.csv"
 elif [ -n "$MODEL2" ]; then
@@ -135,6 +139,8 @@ echo "  Model:       $MODEL"
 [ -n "$MODEL2" ] && echo "  Stage 2:     $MODEL2 (separated pipeline)"
 echo "  Method:      $METHOD   rollback: $([ "$ROLLBACK" = "0" ] && echo off || echo on)"
 echo "  Benchmarks:  $BENCHMARKS${LINES:+   lines $LINES}$([ "$PASSTHROUGH" = "1" ] && echo '   PASSTHROUGH (input program)')"
+[ -n "$AGENT_BUDGET" ] && echo "  Agent budget: $AGENT_BUDGET (rollback at $BUDGET)"
+[ "$FOLD_CONSTANTS" = "1" ] && echo "  Constant folding: ON"
 echo "  cmake:       $(command -v cmake)"
 echo "  Budget:      $BUDGET bits"
 echo "  Python:      $PYTHON"

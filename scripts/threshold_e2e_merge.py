@@ -31,7 +31,9 @@ def main():
             print(f"  {kind}: no CSV, skipped")
             continue
         d = pd.concat([pd.read_csv(f).assign(source_file=f.name) for f in files], ignore_index=True)
-        d = d.drop_duplicates("dataset_line", keep="last").sort_values("dataset_line")
+        # a program run twice: keep the successful run, else the last one
+        d = (d.assign(_ok=d["status"].eq("ok")).sort_values("_ok", kind="stable")
+             .drop_duplicates("dataset_line", keep="last").drop(columns="_ok").sort_values("dataset_line"))
         d.insert(0, "B", d["benchmark"].str.extract(r"thresh_b(\d+)_", expand=False).astype(int))
         runs[kind] = d
         print(f"  {kind}: {len(d)} programs from {len(files)} files, status {d.status.value_counts().to_dict()}")
