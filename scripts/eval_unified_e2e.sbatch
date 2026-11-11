@@ -28,6 +28,7 @@
 #   LINES=1-20      benchmark "threshold" (near-threshold dataset): dataset lines to run
 #   PASSTHROUGH=1   no agent: compile and run the input program (baseline execution time)
 
+#SBATCH --reservation=c2
 #SBATCH -p compute
 #SBATCH --mem 32GB
 #SBATCH -N 1
@@ -42,9 +43,12 @@ BUDGET="${1:?usage: sbatch eval_unified_e2e.sbatch BUDGET MODEL BENCHMARKS [PREF
 MODEL="${2:?missing MODEL}"
 BENCHMARKS="${3:?missing BENCHMARKS}"
 PREFERENCES="${4:-}"
+set --        # otherwise conda's activate script reads the job's arguments as an environment name
 
 # System compiler for the generated SEAL programs, found before conda (see build_e2e_benchmarks.sh)
 module load gcc 2>/dev/null || true
+# cmake builds the generated SEAL programs; some nodes (e.g. the c2 reservation) only have it as a module
+command -v cmake >/dev/null 2>&1 || module load cmake 2>/dev/null || true
 export FHE_E2E_CXX="${FHE_E2E_CXX:-$(which g++ 2>/dev/null || echo /usr/bin/g++)}"
 
 set +u
@@ -58,6 +62,11 @@ set -u
 unset CXX CC CXXFLAGS CFLAGS CPPFLAGS LDFLAGS
 export PYTHONUNBUFFERED=1
 export PYTHON="$(which python)"     # the compiler calls $PYTHON -m fhe_rl (else /usr/bin/python3)
+if ! command -v cmake >/dev/null 2>&1; then
+    echo "ERROR: cmake not found on $(hostname). Install it in the conda env once (on the login node):"
+    echo "  conda activate /scratch/${USER}/conda/envs/chehabEnv && pip install cmake"
+    exit 1
+fi
 
 if [ -n "${SLURM_SUBMIT_DIR:-}" ] && [ -d "${SLURM_SUBMIT_DIR}/RL" ]; then
     PROJ_ROOT="$SLURM_SUBMIT_DIR"
@@ -126,7 +135,8 @@ echo "  Framework:   $FRAMEWORK"
 echo "  Model:       $MODEL"
 [ -n "$MODEL2" ] && echo "  Stage 2:     $MODEL2 (separated pipeline)"
 echo "  Method:      $METHOD   rollback: $([ "$ROLLBACK" = "0" ] && echo off || echo on)"
-echo "  Benchmarks:  $BENCHMARKS"
+echo "  Benchmarks:  $BENCHMARKS${LINES:+   lines $LINES}$([ "$PASSTHROUGH" = "1" ] && echo '   PASSTHROUGH (input program)')"
+echo "  cmake:       $(command -v cmake)"
 echo "  Budget:      $BUDGET bits"
 echo "  Python:      $PYTHON"
 echo "  C++:         $FHE_E2E_CXX"

@@ -11,6 +11,7 @@
 # logs/unified_bisection_19038297.log):
 #   sbatch scripts/run_unified_bisection_missing.sbatch /path/to/best_model.zip [expressions_file]
 
+#SBATCH --reservation=c2
 #SBATCH -p compute
 #SBATCH --mem 32GB
 #SBATCH -N 1

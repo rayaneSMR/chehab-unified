@@ -41,21 +41,22 @@ mkdir -p "$OUT_ROOT"/{cmorl,unconstrained,input}
 declare -A LINES_OF=([230]="1-20" [236]="21-40" [369]="41-60")
 for B in 230 236 369; do
     L="${LINES_OF[$B]}"
+    # Job settings go through the environment of sbatch (--export=ALL copies it into the job)
     if [[ "$ONLY" == *,cmorl,* ]]; then
-    jid=$(sbatch --parsable -J "thr-cmorl-$B" \
-        --export=ALL,LINES="$L",METHOD=nato_sc,ROLLBACK=1,OUT_DIR="$OUT_ROOT/cmorl" \
+    jid=$(LINES="$L" METHOD=nato_sc ROLLBACK=1 AGENT_BUDGET= PASSTHROUGH=0 OUT_DIR="$OUT_ROOT/cmorl" \
+        sbatch --parsable --export=ALL -J "thr-cmorl-$B" \
         scripts/eval_unified_e2e.sbatch "$B" "$MODEL" threshold "$PREF")
     echo "  submitted $jid   cmorl          lines $L   B=$B"
     fi
     if [[ "$ONLY" == *,unconstrained,* ]]; then
-    jid=$(sbatch --parsable -J "thr-unc-$B" \
-        --export=ALL,LINES="$L",METHOD=nato_sc,ROLLBACK=1,AGENT_BUDGET=9000000,OUT_DIR="$OUT_ROOT/unconstrained" \
+    jid=$(LINES="$L" METHOD=nato_sc ROLLBACK=1 AGENT_BUDGET=9000000 PASSTHROUGH=0 OUT_DIR="$OUT_ROOT/unconstrained" \
+        sbatch --parsable --export=ALL -J "thr-unc-$B" \
         scripts/eval_unified_e2e.sbatch "$B" "$MODEL" threshold "$PREF")
     echo "  submitted $jid   unconstrained  lines $L   (agent budget 9000000, rollback at B=$B)"
     fi
     if [[ "$ONLY" == *,input,* ]]; then
-    jid=$(sbatch --parsable -J "thr-input-$B" \
-        --export=ALL,LINES="$L",PASSTHROUGH=1,OUT_DIR="$OUT_ROOT/input" \
+    jid=$(LINES="$L" METHOD=nato_sc ROLLBACK=1 AGENT_BUDGET= PASSTHROUGH=1 OUT_DIR="$OUT_ROOT/input" \
+        sbatch --parsable --export=ALL -J "thr-input-$B" \
         scripts/eval_unified_e2e.sbatch "$B" "$MODEL" threshold "$PREF")
     echo "  submitted $jid   input          lines $L"
     fi
