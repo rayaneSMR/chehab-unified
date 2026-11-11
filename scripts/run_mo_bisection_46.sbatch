@@ -31,6 +31,13 @@
 #SBATCH -e logs/error.mo_bisection_46.%j.txt
 #SBATCH -J mo-bisect-46
 
+MODEL_ARG="${1:-}"
+set --        # otherwise conda's activate script reads the job's arguments as an environment name
+
+# Same compiler module as the build (scripts/build_e2e_benchmarks.sh): the benchmark binaries
+# need its libstdc++ (GLIBCXX_3.4.26), loaded before conda as in eval_unified_e2e.sbatch
+module load gcc 2>/dev/null || true
+
 set +u
 if [ -f "/share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate" ]; then
     source /share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate
@@ -56,6 +63,15 @@ JOB="${SLURM_JOB_ID:-local}"
 mkdir -p "$PROJ_ROOT/logs" "$PROJ_ROOT/RL/test_results"
 export PYTHONPATH="$PROJ_ROOT/RL:$PROJ_ROOT/RL/pytrs:${PYTHONPATH:-}"
 export PYTHON="$(which python)"
+unset CXX CC CXXFLAGS CFLAGS CPPFLAGS LDFLAGS
+
+# SEAL noise-bound certificate, required by the agent's rollback when the compiler calls it in
+# step 1 (same parameters as eval_unified_e2e.sbatch)
+export FHE_BFV_NOISE_BOUND_EXECUTABLE="${FHE_BFV_NOISE_BOUND_EXECUTABLE:-$PROJ_ROOT/build_bfv_noise/bfv_noise_bound_cli}"
+export FHE_BFV_POLY_MODULUS_DEGREE=16384
+export FHE_BFV_PLAIN_MODULUS=786433
+export FHE_BFV_COEFF_MODULUS_BITS=48,48,48,49,49,49,49,49,49
+[ -x "$FHE_BFV_NOISE_BOUND_EXECUTABLE" ] || { echo "ERROR: noise-bound certificate not found: $FHE_BFV_NOISE_BOUND_EXECUTABLE (run scripts/build_bfv_noise_cli.sh)"; exit 1; }
 
 # Same settings as the 43-benchmark run (run_unified_bisection.sbatch)
 CONSTRAINT="noise"
@@ -72,7 +88,7 @@ OUT="$PROJ_ROOT/RL/test_results/mo_metrics_46_${JOB}.xlsx"
 TABLES="$PROJ_ROOT/RL/test_results/mo_tables_46_${JOB}"
 
 # Model: argument, else the one of the 43-benchmark run (so both runs use the same policy)
-MODEL="${1:-}"
+MODEL="$MODEL_ARG"
 if [ -z "$MODEL" ] && [ -f "$PROJ_ROOT/logs/unified_bisection_19038297.log" ]; then
     MODEL=$(grep -m1 "Model:" "$PROJ_ROOT/logs/unified_bisection_19038297.log" | sed 's/.*Model:[[:space:]]*//')
 fi
