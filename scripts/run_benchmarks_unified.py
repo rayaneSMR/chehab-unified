@@ -60,7 +60,7 @@ RL_FIELDS = ["initial_ops", "initial_keys", "initial_noise_est", "agent_ops", "a
              "safety_activated", "best_valid_step", "rl_steps", "rl_time_ms",
              "certified", "certified_remaining_bits",
              "pipeline", "stage1_ops", "stage1_keys", "stage1_noise_est", "stage1_safety_activated",
-             "rollback", "method", "input_overridden", "compiler_input_matches"]
+             "rollback", "method", "input_overridden", "compiler_input_matches", "agent_budget"]
 COLUMNS = (["benchmark", "dataset_line", "slot_count", "w_ops", "w_keys", "budget", "status"] + OPERATIONS
            + ["Depth", "Multiplicative Depth", "compile_time (s)"] + list(EXEC_METRICS.values())
            + ["exec_runs", "outputs_match"] + RL_FIELDS)
@@ -240,6 +240,9 @@ def main():
                     default=os.environ.get("FHE_E2E_ROLLBACK", "1") == "0",
                     help="compile the agent's final program instead of the rollback's choice "
                          "(the SEAL bound still applies). Default: off, or $FHE_E2E_ROLLBACK=0")
+    ap.add_argument("--agent-budget", type=int, default=int(os.environ.get("FHE_E2E_AGENT_BUDGET") or 0) or None,
+                    help="budget given to the agent when it differs from --budget, which the rollback uses "
+                         "(e.g. 9000000: unconstrained agent rolled back at --budget). Default: $FHE_E2E_AGENT_BUDGET")
     ap.add_argument("--method", default=os.environ.get("FHE_E2E_METHOD", "nato_sc"),
                     choices=["nato_sc", "margin_barrier", "noise_masking", "none"],
                     help="constraint method the agent was trained with (default: nato_sc)")
@@ -311,6 +314,7 @@ def main():
         "FHE_RL_CONSTRAINT": "noise",
         "FHE_RL_METHOD": args.method,
         "FHE_RL_ROLLBACK": "0" if args.no_rollback else "1",
+        "FHE_RL_AGENT_BUDGET": str(args.agent_budget) if args.agent_budget else "",
         "FHE_RL_PASSTHROUGH": "1" if args.passthrough else "0",
         "FHE_RL_RUN_LOG": str(rl_log),
         "PYTHON": env.get("PYTHON") or sys.executable,   # otherwise the compiler may pick /usr/bin/python3
@@ -336,6 +340,7 @@ def main():
             points += [(bench, s, None) for s in sizes]
 
     log(f"Method {args.method} | rollback {'off' if args.no_rollback else 'on'}"
+        + (f" | agent budget {args.agent_budget} (rollback at {args.budget})" if args.agent_budget else "")
         + (" | PASSTHROUGH (input program, no agent)" if args.passthrough else ""))
     if model2:
         log(f"Separated pipeline | Stage 1 (ops) {model} | Stage 2 (rotations) {model2}")

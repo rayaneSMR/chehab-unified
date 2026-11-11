@@ -2,14 +2,14 @@
 """Near-threshold table with measured SEAL execution times.
 
 Reads the CSVs written by scripts/launch_threshold_e2e.sh:
-    <root>/cmorl/*.csv          CMO-RL at the program's budget B, with rollback
-    <root>/unconstrained/*.csv  same agent at B = 9000000, final program (no rollback)
+    <root>/cmorl/*.csv          CMO-RL at the program's budget B, with rollback at B
+    <root>/unconstrained/*.csv  same agent at budget 9000000, with rollback at B
     <root>/input/*.csv          input program (no agent)
-and reports, per budget, on the programs whose input is within B (estimated noise <= B):
-violation rate, circuit execution time reduction w.r.t. the input program, rotation key size,
-compile time. For the unconstrained agent, "repl." replaces its programs over B by the input
-program. Reductions are the mean over programs of 1 - t / t_input (and, in brackets, the
-reduction of the summed time).
+(as threshold_w0.9_2026-11-08) and reports, per budget, on the programs whose input is within B
+(estimated noise <= B): violation rate before rollback (agent's final program) and after rollback
+(compiled program), rollback rate, circuit execution time reduction w.r.t. the input program,
+rotation key size, compile time. Reductions are the mean over programs of 1 - t / t_input
+(and, in brackets, the reduction of the summed time).
 
     python scripts/threshold_e2e_summary.py RL/test_results/threshold_e2e_<date> [--xlsx out.xlsx]
 """
@@ -57,26 +57,29 @@ def main():
         "benchmark": inp["benchmark"], "B": inp["B"],
         "init_noise": inp["initial_noise_est"],
         "t_in": inp[T], "keys_in": inp[K], "ok_in": inp["status"].eq("ok"), "match_in": inp["outputs_match"],
-        "t_cm": cm[T], "keys_cm": cm[K], "comp_cm": cm[C], "noise_cm": cm["safe_noise_est"],
+        "t_cm": cm[T], "keys_cm": cm[K], "comp_cm": cm[C],
+        "agent_noise_cm": cm["agent_noise_est"], "noise_cm": cm["safe_noise_est"],
         "ok_cm": cm["status"].eq("ok"), "match_cm": cm["outputs_match"], "cert_cm": cm["certified"],
         "rollback_cm": cm["safety_activated"],
-        "t_un": un[T], "keys_un": un[K], "comp_un": un[C], "noise_un": un["agent_noise_est"],
+        "t_un": un[T], "keys_un": un[K], "comp_un": un[C],
+        "agent_noise_un": un["agent_noise_est"], "noise_un": un["safe_noise_est"],
         "ok_un": un["status"].eq("ok"), "match_un": un["outputs_match"], "cert_un": un["certified"],
+        "rollback_un": un["safety_activated"],
         # the three runs start from the same program (same initial ops, keys and noise)
         "same_input": pd.concat([(inp[c] == cm[c]) & (inp[c] == un[c])
                                  for c in ("initial_ops", "initial_keys", "initial_noise_est")], axis=1).all(axis=1),
     })
+    m["viol_before_cm"] = m["agent_noise_cm"] > m["B"]
+    m["viol_before_un"] = m["agent_noise_un"] > m["B"]
     m["viol_cm"] = m["noise_cm"] > m["B"]
     m["viol_un"] = m["noise_un"] > m["B"]
-    # Unconstrained, programs over B replaced by the input program
-    m["t_un_repl"] = m["t_un"].where(~m["viol_un"], m["t_in"])
-    m["keys_un_repl"] = m["keys_un"].where(~m["viol_un"], m["keys_in"])
 
     print(f"Programs: {len(m)} | all three runs ok: {(m.ok_in & m.ok_cm & m.ok_un).sum()} | "
           f"same input expression in the three runs: {m.same_input.sum()}")
     print(f"Decrypted outputs correct: input {m.match_in.eq(True).sum()}, CMO-RL {m.match_cm.eq(True).sum()}, "
           f"unconstrained {m.match_un.eq(True).sum()} (of {len(m)})")
-    print(f"Unconstrained programs not certified by the SEAL bound (input compiled instead): {(~m.cert_un.astype(bool)).sum()}\n")
+    print(f"Not certified by the SEAL bound (input compiled instead): CMO-RL {(~m.cert_cm.astype(bool)).sum()}, "
+          f"unconstrained {(~m.cert_un.astype(bool)).sum()}\n")
 
     rows = []
     groups = [("230", [230]), ("236", [236]), ("230+236", [230, 236]), ("369", [369])]
@@ -86,11 +89,14 @@ def main():
             continue
         rows.append({
             "B": label, "programs": len(g),
-            "CMO-RL viol %": round(g.viol_cm.mean() * 100, 1),
-            "Unc. viol %": round(g.viol_un.mean() * 100, 1),
+            "CMO-RL viol % (before rollback)": round(g.viol_before_cm.mean() * 100, 1),
+            "Unc. viol % (before rollback)": round(g.viol_before_un.mean() * 100, 1),
+            "CMO-RL viol % (after rollback)": round(g.viol_cm.mean() * 100, 1),
+            "Unc. viol % (after rollback)": round(g.viol_un.mean() * 100, 1),
+            "CMO-RL rollback %": round(g.rollback_cm.astype(bool).mean() * 100, 1),
+            "Unc. rollback %": round(g.rollback_un.astype(bool).mean() * 100, 1),
             "CMO-RL exec red. %": red(g.t_cm, g.t_in),
             "Unc. exec red. %": red(g.t_un, g.t_in),
-            "Unc. (repl.) exec red. %": red(g.t_un_repl, g.t_in),
             "CMO-RL keys MB": round(g.keys_cm.mean(), 1),
             "Unc. keys MB": round(g.keys_un.mean(), 1),
             "keys red. vs Unc. %": round((1 - g.keys_cm.sum() / g.keys_un.sum()) * 100, 1),

@@ -29,6 +29,7 @@ def run_agent_unified(
     log_file: str = None,
     model_stage2_filepath: str = None,
     rollback: bool = True,
+    agent_budget: int = None,
 ):
     """Unified agent inside the C++ compiler (real compile + SEAL execution evaluation).
 
@@ -40,6 +41,10 @@ def run_agent_unified(
 
     rollback=False: the compiler gets the agent's final program (still checked by the SEAL
     bound; the input if the bound does not certify it), see `_run_single_episode`.
+
+    agent_budget: budget given to the agent when it differs from `budget`, which the rollback
+    and the violation check use (e.g. 9000000: unconstrained agent rolled back at the real
+    budget, as `fhe_rl test --agent_budget`).
 
     Separated pipeline (model_stage2_filepath given), as in `fhe_rl test --pipeline separated`:
     Stage 1 (model_filepath, ops rules) runs at w = [1, 0], then Stage 2 (model_stage2_filepath,
@@ -120,9 +125,10 @@ def run_agent_unified(
 
     if separated:
         res1 = _run_single_episode(model, env, expr, budget, estimator, verifier, constraint_metric,
-                                   preference_vector=[1.0, 0.0], rollback=rollback)
+                                   preference_vector=[1.0, 0.0], rollback=rollback, agent_budget=agent_budget)
         res = _run_single_episode(model_rot, env_rot, res1["safe_expr"], budget, estimator, verifier,
-                                  constraint_metric, preference_vector=preference, rollback=rollback)
+                                  constraint_metric, preference_vector=preference, rollback=rollback,
+                                  agent_budget=agent_budget)
         # Report the whole pipeline: input of Stage 1 -> output of Stage 2
         res["initial_noise"] = res1["initial_noise"]
         res["safety_activated"] = res1["safety_activated"] or res["safety_activated"]
@@ -130,7 +136,7 @@ def run_agent_unified(
         res["elapsed_ms"] = res1["elapsed_ms"] + res["elapsed_ms"]
     else:
         res = _run_single_episode(model, env, expr, budget, estimator, verifier, constraint_metric,
-                                  preference_vector=preference, rollback=rollback)
+                                  preference_vector=preference, rollback=rollback, agent_budget=agent_budget)
     safe_expr = res["safe_expr"]
     _write_compiler_output(safe_expr, output_file)
 
@@ -153,6 +159,7 @@ def run_agent_unified(
         "compiler_expression": compiler_expr, "input_overridden": bool(override),
         "pipeline": "separated" if separated else "joint",
         "rollback": rollback, "method": constraint_method,
+        "agent_budget": agent_budget if agent_budget is not None else budget,
     }
     if separated:
         st1_ops, st1_keys = _get_split_costs(res1["safe_expr"])

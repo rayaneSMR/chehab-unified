@@ -709,6 +709,8 @@ def main(args=None):
                 # Separated pipeline: FHE_RL_MODEL is Stage 1 (ops), this is Stage 2 (rotations)
                 model_stage2_filepath=os.environ.get("FHE_RL_MODEL_STAGE2") or None,
                 rollback=os.environ.get("FHE_RL_ROLLBACK", "1") != "0",
+                # Budget the agent runs with, if not FHE_RL_BUDGET (which the rollback uses)
+                agent_budget=int(os.environ["FHE_RL_AGENT_BUDGET"]) if os.environ.get("FHE_RL_AGENT_BUDGET") else None,
             )
         else:
             agent_zip = get_model_path("agent_model")

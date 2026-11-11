@@ -101,10 +101,14 @@ METHOD="${METHOD:-nato_sc}"
 ROLLBACK="${ROLLBACK:-1}"
 STAGE2_ARGS+=(--method "$METHOD")
 [ "$ROLLBACK" = "0" ] && STAGE2_ARGS+=(--no-rollback)
+# AGENT_BUDGET=9000000: the agent runs with this budget, the rollback still uses BUDGET
+AGENT_BUDGET="${AGENT_BUDGET:-}"
+[ -n "$AGENT_BUDGET" ] && STAGE2_ARGS+=(--agent-budget "$AGENT_BUDGET")
 LINES="${LINES:-}"
 PASSTHROUGH="${PASSTHROUGH:-0}"
 [ -n "$LINES" ] && STAGE2_ARGS+=(--lines "$LINES") && TAG="${TAG}_L${LINES//,/_}"
 [ "$PASSTHROUGH" = "1" ] && STAGE2_ARGS+=(--passthrough) && TAG="${TAG}_input"
+[ -n "$AGENT_BUDGET" ] && TAG="${TAG}_agent${AGENT_BUDGET}"
 if [ "$FRAMEWORK" = "original" ]; then
     OUT="$OUT_DIR/e2e_original_${TAG}_${JOB}.csv"
 elif [ -n "$MODEL2" ]; then
