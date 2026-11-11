@@ -50,9 +50,13 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("root")
     ap.add_argument("--xlsx", default=None, help="also write the merged per-program table here")
+    ap.add_argument("--unconstrained-dir", default="unconstrained",
+                    help="subfolder of the unconstrained runs: 'unconstrained' (rollback at B) or "
+                         "'unconstrained_norollback' (agent's final program)")
     args = ap.parse_args()
     root = Path(args.root)
-    cm, un, inp = (load(root / d) for d in ("cmorl", "unconstrained", "input"))
+    cm, un, inp = (load(root / d) for d in ("cmorl", args.unconstrained_dir, "input"))
+    print(f"Unconstrained runs: {root / args.unconstrained_dir}")
 
     m = pd.DataFrame({
         "benchmark": inp["benchmark"], "B": inp["B"],

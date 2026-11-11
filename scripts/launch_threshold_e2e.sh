@@ -16,11 +16,15 @@
 #   cmorl          agent at the program's budget B, rollback at B
 #   unconstrained  agent at budget 9000000, rollback still at B (AGENT_BUDGET=9000000)
 #   input          no agent: the input program (baseline of the reductions)
+# Optional 4th kind, not submitted by default (ONLY=unconstrained_norollback):
+#   unconstrained_norollback   agent at budget 9000000, NO rollback: its final program
 # The SEAL bound still applies to every compiled program (the input is compiled if it fails).
 # Afterwards: python scripts/threshold_e2e_summary.py <OUT_DIR>
+#   (no-rollback variant: add --unconstrained-dir unconstrained_norollback)
 #
 # Optional environment:
-#   ONLY=unconstrained         submit only these kinds (comma-separated: cmorl,unconstrained,input)
+#   ONLY=unconstrained         submit only these kinds (comma-separated:
+#                              cmorl,unconstrained,input,unconstrained_norollback)
 #   OUT_ROOT=<dir>             results folder (default RL/test_results/threshold_e2e_<today>)
 
 set -eo pipefail
@@ -36,7 +40,9 @@ MODEL="$(cd "$(dirname "$MODEL")" && pwd)/$(basename "$MODEL")"
 [ -x build/benchmarks/threshold_expr/threshold_expr ] || { echo "ERROR: run 'bash scripts/build_e2e_benchmarks.sh' first"; exit 1; }
 
 OUT_ROOT="${OUT_ROOT:-RL/test_results/threshold_e2e_$(date +%Y-%m-%d)}"
-mkdir -p "$OUT_ROOT"/{cmorl,unconstrained,input}
+for kind in cmorl unconstrained input unconstrained_norollback; do
+    [[ "$ONLY" == *,$kind,* ]] && mkdir -p "$OUT_ROOT/$kind"
+done
 
 declare -A LINES_OF=([230]="1-20" [236]="21-40" [369]="41-60")
 for B in 230 236 369; do
@@ -53,6 +59,12 @@ for B in 230 236 369; do
         sbatch --parsable --export=ALL -J "thr-unc-$B" \
         scripts/eval_unified_e2e.sbatch "$B" "$MODEL" threshold "$PREF")
     echo "  submitted $jid   unconstrained  lines $L   (agent budget 9000000, rollback at B=$B)"
+    fi
+    if [[ "$ONLY" == *,unconstrained_norollback,* ]]; then
+    jid=$(LINES="$L" METHOD=nato_sc ROLLBACK=0 AGENT_BUDGET=9000000 PASSTHROUGH=0 OUT_DIR="$OUT_ROOT/unconstrained_norollback" \
+        sbatch --parsable --export=ALL -J "thr-uncNR-$B" \
+        scripts/eval_unified_e2e.sbatch "$B" "$MODEL" threshold "$PREF")
+    echo "  submitted $jid   unconstrained, NO rollback   lines $L   (agent budget 9000000, B=$B)"
     fi
     if [[ "$ONLY" == *,input,* ]]; then
     jid=$(LINES="$L" METHOD=nato_sc ROLLBACK=1 AGENT_BUDGET= PASSTHROUGH=1 OUT_DIR="$OUT_ROOT/input" \
