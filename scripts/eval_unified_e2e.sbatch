@@ -55,16 +55,15 @@ set +u
 if [ -f "/share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate" ]; then
     source /share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate
 fi
-conda activate /scratch/${USER}/conda/envs/chehabEnv 2>/dev/null \
-    || conda activate chehabEnv 2>/dev/null \
-    || true
+CONDA_ENV="${CONDA_ENV:-$HOME/.conda/envs/fhe_rl}"   # same env as the training / eval scripts
+conda activate "$CONDA_ENV" || { echo "ERROR: cannot activate the conda env $CONDA_ENV"; exit 1; }
 set -u
 unset CXX CC CXXFLAGS CFLAGS CPPFLAGS LDFLAGS
 export PYTHONUNBUFFERED=1
 export PYTHON="$(which python)"     # the compiler calls $PYTHON -m fhe_rl (else /usr/bin/python3)
 if ! command -v cmake >/dev/null 2>&1; then
     echo "ERROR: cmake not found on $(hostname). Install it in the conda env once (on the login node):"
-    echo "  conda activate /scratch/${USER}/conda/envs/chehabEnv && pip install cmake"
+    echo "  conda activate $CONDA_ENV && pip install cmake"
     exit 1
 fi
 

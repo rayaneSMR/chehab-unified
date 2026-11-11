@@ -26,15 +26,16 @@
 #SBATCH -e logs/error.unified_bisection_missing.%j.txt
 #SBATCH -J unif-bisect-miss
 
+ARGS=("$@")
+set --        # otherwise conda's activate script reads the job's arguments as an environment name
 set +u
 if [ -f "/share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate" ]; then
     source /share/apps/NYUAD5/miniconda/3-4.11.0/bin/activate
 fi
-conda activate /scratch/${USER}/conda/envs/chehabEnv 2>/dev/null \
-    || conda activate /scratch/${NETID:-$(whoami)}/conda/envs/chehabEnv 2>/dev/null \
-    || conda activate chehabEnv 2>/dev/null \
-    || true
+CONDA_ENV="${CONDA_ENV:-$HOME/.conda/envs/fhe_rl}"   # same env as the training / eval scripts
+conda activate "$CONDA_ENV" || { echo "ERROR: cannot activate the conda env $CONDA_ENV"; exit 1; }
 set -u
+set -- ${ARGS[@]+"${ARGS[@]}"}
 
 export PYTHONUNBUFFERED=1
 
