@@ -46,6 +46,35 @@ def red(t, t0):
     return round(per, 1), round(tot, 1)
 
 
+def compare_reference(ref_dir, cm, un, un_dir):
+    """Same programs as the agent-only run? Per program (at its own budget), compare the agent's
+    final (ops, keys) and the returned (ops, keys) with eval_threshold_benchmarks[_agent9000000]_ALL.xlsx."""
+    files = {"CMO-RL": (cm, "eval_threshold_benchmarks_ALL.xlsx"),
+             "unconstrained": (un, "eval_threshold_benchmarks_agent9000000_ALL.xlsx")}
+    for label, (df, fname) in files.items():
+        path = ref_dir / fname
+        if not path.is_file():
+            print(f"Reference {label}: {path} not found, skipped")
+            continue
+        ref = pd.read_excel(path, sheet_name="all_results")
+        ref["line"] = ref["Expression #"].astype(int)          # 1-based, as dataset_line
+        group_b = ref["line"].map(lambda i: 230 if i <= 20 else 236 if i <= 40 else 369)
+        ref = ref[ref["Budget"] == group_b].set_index("line")
+        e = df[df["status"].eq("ok")]
+        common = e.index.intersection(ref.index)
+        agent_same = ((e.loc[common, "agent_ops"] == ref.loc[common, "Agent Final Ops"])
+                      & (e.loc[common, "agent_keys"] == ref.loc[common, "Agent Final Keys"]))
+        msg = f"Same agent final program as {ref_dir.name} ({label}): {agent_same.sum()}/{len(common)}"
+        if not (label == "unconstrained" and un_dir != "unconstrained"):   # no-rollback: nothing returned to compare
+            safe_same = ((e.loc[common, "safe_ops"] == ref.loc[common, "Safe Final Ops"])
+                         & (e.loc[common, "safe_keys"] == ref.loc[common, "Safe Final Keys"]))
+            msg += f" | same returned program: {safe_same.sum()}/{len(common)}"
+            diff = list(common[~safe_same])
+        else:
+            diff = list(common[~agent_same])
+        print(msg + (f" | differ: lines {diff}" if diff else ""))
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("root")
@@ -53,6 +82,9 @@ def main():
     ap.add_argument("--unconstrained-dir", default="unconstrained",
                     help="subfolder of the unconstrained runs: 'unconstrained' (rollback at B) or "
                          "'unconstrained_norollback' (agent's final program)")
+    ap.add_argument("--reference", default="RL/test_results/threshold_w0.9_2026-11-08",
+                    help="agent-only run of the same experiment (fhe_rl test); per program, the agent's "
+                         "final and returned (ops, keys) are compared with it. '' to skip")
     args = ap.parse_args()
     root = Path(args.root)
     cm, un, inp = (load(root / d) for d in ("cmorl", args.unconstrained_dir, "input"))
@@ -84,7 +116,10 @@ def main():
     print(f"Decrypted outputs correct: input {m.match_in.eq(True).sum()}, CMO-RL {m.match_cm.eq(True).sum()}, "
           f"unconstrained {m.match_un.eq(True).sum()} (of {len(m)})")
     print(f"Not certified by the SEAL bound (input compiled instead): CMO-RL {(~m.cert_cm.astype(bool)).sum()}, "
-          f"unconstrained {(~m.cert_un.astype(bool)).sum()}\n")
+          f"unconstrained {(~m.cert_un.astype(bool)).sum()}")
+    if args.reference:
+        compare_reference(Path(args.reference), cm, un, args.unconstrained_dir)
+    print()
 
     rows = []
     groups = [("230", [230]), ("236", [236]), ("230+236", [230, 236]), ("369", [369])]
